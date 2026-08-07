@@ -26,7 +26,8 @@ projects:
             plan: starter
             region: oregon
             rootDir: apps/app
-            buildCommand: npm ci && npm run build
+            # NODE_ENV=production would skip vite/esbuild (devDependencies).
+            buildCommand: NPM_CONFIG_PRODUCTION=false npm ci && npm run build
             startCommand: npm start
             healthCheckPath: /
             autoDeployTrigger: commit
