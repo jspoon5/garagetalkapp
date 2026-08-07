@@ -3,27 +3,29 @@ import session from "express-session";
 import createMemoryStore from "memorystore";
 import connectPgSimple from "connect-pg-simple";
 import cookieParser from "cookie-parser";
-import pg from "pg";
 import { registerRoutes } from "./routes";
 import { registerGearHeadAiRoutes } from "./gearheadAi";
 import { setupVite, serveStatic, log } from "./vite";
-import { getUncachableStripeClient } from './stripeClient';
+import { getUncachableStripeClient } from "./stripeClient";
+import { pool } from "./db/client";
 
 const app = express();
 
 async function initStripe() {
   try {
-    const stripe = await getUncachableStripeClient();
-    console.log('[Stripe] Client initialized successfully');
-  } catch (error) {
-    console.warn('[Stripe] Not configured - subscription payments will redirect to Stripe Checkout');
+    await getUncachableStripeClient();
+    console.log("[Stripe] Client initialized successfully");
+  } catch {
+    console.warn(
+      "[Stripe] Not configured - subscription payments will redirect to Stripe Checkout",
+    );
   }
 }
 
 await initStripe();
 
-// Trust proxy for production (Replit runs behind a reverse proxy)
-app.set('trust proxy', 1);
+// Trust proxy for production (Render / reverse proxies)
+app.set("trust proxy", 1);
 
 const MemoryStore = createMemoryStore(session);
 const PgStore = connectPgSimple(session);
@@ -34,39 +36,36 @@ declare module "express-session" {
   }
 }
 
-declare module 'http' {
+declare module "http" {
   interface IncomingMessage {
-    rawBody: unknown
+    rawBody: unknown;
   }
 }
 
-app.use(express.json({
-  verify: (req, _res, buf) => {
-    req.rawBody = buf;
-  }
-}));
+app.use(
+  express.json({
+    verify: (req, _res, buf) => {
+      req.rawBody = buf;
+    },
+  }),
+);
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 
-// Session secret and store configuration
 const isDevelopment = app.get("env") === "development";
 
 if (!isDevelopment && !process.env.SESSION_SECRET) {
-  throw new Error("SESSION_SECRET environment variable is required in non-development environments");
+  throw new Error(
+    "SESSION_SECRET environment variable is required in non-development environments",
+  );
 }
 
-// Configure session store based on environment
 let sessionStore;
 if (isDevelopment) {
-  // Use MemoryStore for development
   sessionStore = new MemoryStore({
-    checkPeriod: 86400000, // prune expired entries every 24h
+    checkPeriod: 86400000,
   });
 } else {
-  // Use PostgreSQL store for production
-  const pool = new pg.Pool({
-    connectionString: process.env.DATABASE_URL,
-  });
   sessionStore = new PgStore({
     pool,
     tableName: "user_sessions",
@@ -81,13 +80,17 @@ app.use(
     resave: false,
     saveUninitialized: false,
     cookie: {
-      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      maxAge: 30 * 24 * 60 * 60 * 1000,
       httpOnly: true,
       sameSite: "lax",
       secure: !isDevelopment,
     },
-  })
+  }),
 );
+
+app.get("/api/health", (_req, res) => {
+  res.status(200).json({ ok: true });
+});
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -97,7 +100,7 @@ app.use((req, res, next) => {
   const originalResJson = res.json;
   res.json = function (bodyJson, ...args) {
     capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
+    return originalResJson.apply(this, [bodyJson, ...args]);
   };
 
   res.on("finish", () => {
@@ -131,24 +134,20 @@ app.use((req, res, next) => {
     throw err;
   });
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
   if (app.get("env") === "development") {
     await setupVite(app, server);
   } else {
     serveStatic(app);
   }
 
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || '5000', 10);
-   server.listen({
-    port,
-    host: "0.0.0.0",
-  }, () => {
-    log(`serving on port ${port}`);
-  });
+  const port = parseInt(process.env.PORT || "5000", 10);
+  server.listen(
+    {
+      port,
+      host: "0.0.0.0",
+    },
+    () => {
+      log(`serving on port ${port}`);
+    },
+  );
 })();

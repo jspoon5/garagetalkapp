@@ -26,10 +26,10 @@ projects:
             plan: starter
             region: oregon
             rootDir: apps/app
-            # NODE_ENV=production would skip vite/esbuild (devDependencies).
+            # Keep vite/esbuild available even when NODE_ENV=production.
             buildCommand: NPM_CONFIG_PRODUCTION=false npm ci && npm run build
             startCommand: npm start
-            healthCheckPath: /
+            healthCheckPath: /api/health
             autoDeployTrigger: commit
             buildFilter:
               paths:
@@ -40,7 +40,9 @@ projects:
               - key: NODE_ENV
                 value: production
               - key: DATABASE_URL
-                sync: false
+                fromDatabase:
+                  name: garagetalk-db
+                  property: connectionString
               - key: SESSION_SECRET
                 generateValue: true
               - key: ADMIN_EMAIL
@@ -63,3 +65,9 @@ projects:
                 sync: false
               - key: TWILIO_PHONE_NUMBER
                 sync: false
+
+        databases:
+          - name: garagetalk-db
+            plan: basic-256mb
+            region: oregon
+            postgresMajorVersion: "16"

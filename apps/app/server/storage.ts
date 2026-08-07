@@ -73,15 +73,8 @@ import {
   tips,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
-import { Pool, neonConfig } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-serverless";
 import { eq, and, desc, asc, ilike, or, sql as drizzleSql } from "drizzle-orm";
-import ws from "ws";
-
-// Configure WebSocket for neon-serverless BEFORE creating any connections
-if (typeof neonConfig.webSocketConstructor === "undefined") {
-  neonConfig.webSocketConstructor = ws;
-}
+import { db } from "./db/client";
 
 export interface IStorage {
   // Users
@@ -1582,13 +1575,7 @@ export class MemStorage implements IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
-  private db: ReturnType<typeof drizzle>;
-  private pool: Pool;
-
-  constructor(connectionString: string) {
-    this.pool = new Pool({ connectionString });
-    this.db = drizzle(this.pool);
-  }
+  private db = db;
 
   // Users
   async getUser(id: string): Promise<User | undefined> {
@@ -3014,14 +3001,5 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-// Initialize database storage with connection string from environment
-const databaseUrl = process.env.DATABASE_URL;
-if (!databaseUrl) {
-  throw new Error("DATABASE_URL environment variable is required");
-}
-
-// Create a shared pool and db instance for direct database access
-const sharedPool = new Pool({ connectionString: databaseUrl });
-export const db = drizzle(sharedPool);
-
-export const storage = new DatabaseStorage(databaseUrl);
+export const storage = new DatabaseStorage();
+export { db };
