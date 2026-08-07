@@ -1,0 +1,65 @@
+# https://render.com/schema/render.yaml.json
+projects:
+  - name: garagetalk
+    environments:
+      - name: production
+        services:
+          - type: web
+            name: garagetalk-homepage
+            runtime: static
+            plan: starter
+            region: oregon
+            rootDir: apps/homepage
+            buildCommand: "true"
+            staticPublishPath: .
+            autoDeployTrigger: commit
+            buildFilter:
+              paths:
+                - apps/homepage/**
+            routes:
+              - type: rewrite
+                source: /*
+                destination: /index.html
+
+          - type: web
+            name: garagetalk-app
+            runtime: node
+            plan: starter
+            region: oregon
+            rootDir: apps/app
+            buildCommand: npm ci && npm run build
+            startCommand: npm start
+            healthCheckPath: /
+            autoDeployTrigger: commit
+            buildFilter:
+              paths:
+                - apps/app/**
+            envVars:
+              - key: NODE_VERSION
+                value: "22"
+              - key: NODE_ENV
+                value: production
+              - key: DATABASE_URL
+                sync: false
+              - key: SESSION_SECRET
+                generateValue: true
+              - key: ADMIN_EMAIL
+                sync: false
+              - key: ADMIN_PASSWORD
+                sync: false
+              - key: AI_INTEGRATIONS_OPENAI_API_KEY
+                sync: false
+              - key: AI_INTEGRATIONS_OPENAI_BASE_URL
+                sync: false
+              - key: GEARHEAD_AI_MODEL
+                sync: false
+              - key: STRIPE_SECRET_KEY
+                sync: false
+              - key: STRIPE_PUBLISHABLE_KEY
+                sync: false
+              - key: TWILIO_ACCOUNT_SID
+                sync: false
+              - key: TWILIO_AUTH_TOKEN
+                sync: false
+              - key: TWILIO_PHONE_NUMBER
+                sync: false

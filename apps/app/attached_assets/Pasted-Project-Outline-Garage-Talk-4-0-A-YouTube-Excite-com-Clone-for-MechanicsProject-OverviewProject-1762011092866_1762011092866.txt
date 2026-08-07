@@ -1,0 +1,96 @@
+Project Outline: Garage Talk 4.0 - A YouTube & Excite.com Clone for MechanicsProject OverviewProject Name: Garage Talk 4.0
+Description: Garage Talk 4.0 is a web-based platform built on Replit, combining video sharing (YouTube-inspired) with a searchable content portal (Excite.com-inspired) tailored for automotive mechanics. The core focus is on diagnosing and troubleshooting engine faults through user-uploaded videos, tutorials, an integrated AI-powered search engine, and now virtual chat rooms for real-time discussions. Users (mechanics, DIY enthusiasts, shops) can upload/share videos, search for fault-specific content, get AI-summarized solutions, and join themed chat rooms (e.g., "Misfire Troubleshooting").
+Target Audience: Automotive mechanics, repair shop owners, hobbyists dealing with engine issues (e.g., misfires, overheating, unusual noises).
+Platform: Replit (full-stack web app using HTML/CSS/JS frontend, Node.js backend).
+MVP Scope: Basic video upload/viewing, simple search, AI integration for fault queries, and virtual chat rooms with Socket.io for live messaging. Expandable to forums, user profiles, and monetization.
+Estimated Timeline: 1 day for MVP (AI-accelerated solo developer), leveraging tools like Grok for code generation, debugging, and optimization. Assumes 8-10 hour focused session on November 1, 2025 (start: 9 AM, end: ~7 PM), with breaks. Total: ~8 hrs core work. AI handles 70% of boilerplate (e.g., routes, prompts, UI stubs, Socket.io setup).
+Success Metrics: Functional demo with 5+ sample videos, AI search responses, chat in 2 test rooms, and end-to-end flow; self-testable in Replit.Tech StackComponent
+Technology
+Rationale
+Frontend
+HTML5, CSS3 (with Tailwind CSS via CDN), Vanilla JS (or React via Replit template)
+Simple, fast prototyping on Replit; responsive for mobile mechanic use.
+Backend
+Node.js with Express.js
+Lightweight server for handling uploads, API routes; Replit supports natively.
+Database
+SQLite (via Replit's built-in DB) or MongoDB Atlas (free tier)
+Store user data, video metadata, search history, chat messages (with timestamps).
+Video Handling
+Multer for uploads; Embed YouTube/Vimeo links initially (full hosting via AWS S3 later)
+Avoid heavy storage costs on Replit; focus on metadata/search.
+AI Search
+OpenAI API (GPT-3.5/4 via Node.js SDK) or Hugging Face (free models)
+Query engine faults (e.g., "P0300 code on Ford F-150") and generate summaries from video transcripts/content.
+Search Engine
+Fuse.js (client-side fuzzy search) + AI backend
+Hybrid: Quick keyword matching + AI for natural language fault diagnosis.
+Chat Rooms
+Socket.io (real-time bidirectional communication)
+Enables virtual chat rooms for live mechanic discussions; easy Replit integration.
+Deployment
+Replit's built-in hosting
+One-click deploy; auto-scales for testing (Socket.io works via Replit's WebSocket support).
+Other Tools
+FFmpeg (via Node wrapper) for video thumbnails; Nodemailer for notifications.
+Essential for media processing.
+
+Replit Setup Notes: Start with a "Node.js" template. Install dependencies via package.json (e.g., npm i express multer openai fuse.js socket.io). Use AI (Grok) for instant code snippets and fixes, especially Socket.io room logic.Key FeaturesVideo Library (YouTube Clone)  Upload videos/tutorials on engine repairs (limit: 5-10min clips).  
+Categories: Engine Faults (e.g., Ignition, Cooling, Sensors), Tools & Tips.  
+Playback with comments, likes, playlists (e.g., "Common OBD-II Codes").
+AI-Powered Search (Excite.com Clone)  Natural language queries: "Engine knocking at idle on Chevy 350?"  
+AI Response: Summarizes top 3-5 videos/articles, suggests fixes (e.g., "Check timing chain; see Video X for demo").  
+Integration: Pulls from video metadata/transcripts + external APIs (e.g., AutoZone API for parts).
+Virtual Chat Rooms (New: Real-Time Collaboration)  Themed rooms: e.g., "Engine Misfires", "OBD Code Help", "Tool Reviews" (dynamic creation via search/AI suggestions).  
+Features: Live text chat, user mentions (@username
+), message history (stored in DB), join/leave notifications.  
+Integration: Link chats to videos/searches (e.g., "Discuss this fix in room Y"). Limit: 50 users/room for MVP.
+User Dashboard  Profile: Upload history, saved searches, fault logs, active chat rooms.  
+Community: Follow mechanics, share fault reports, join chats.
+Admin Tools  Moderation: Flag inappropriate content/chats.  
+Analytics: Top-searched faults, popular chat rooms for content recommendations.
+Development PhasesCompressed into a single high-intensity day (Nov 1, 2025). Phases overlap where possible; use AI for rapid iteration (e.g., "Generate Socket.io chat room code"). Track via Replit console timestamps. Assume access to OpenAI key in Replit secrets. Buffer 30 min lunch + 2x 10-min breaks. Chat rooms added as a lightweight extension (1 hr slot).One-Day MVP Sprint (8-10 hrs: 9 AM - 7 PM)Goal: From blank Replit to live demo with core flow (upload → search AI → view video → join chat). Prioritize: DB + routes (1.5 hrs), UI + search (1.5 hrs), AI + chat (2 hrs), test/deploy (1.5 hrs), polish (1.5 hrs). Leverage Phase 1 sample code as base; AI generates Socket.io boilerplate.9:00-10:30 AM (1.5 hrs: Setup & Foundation - Phase 1 Condensed)  Fork Node.js template; run npm i express sqlite3 body-parser ejs multer openai fuse.js bcrypt jsonwebtoken passport socket.io.  
+Paste Phase 1 server.js (DB init with added chats table: id, room, user_id, message, timestamp); basic routes: /, /videos, /search, /upload stub. Run node test-data.js for 3 sample videos + 2 chat rooms ("Misfires", "Timing").  
+Add views/index.ejs (search bar + grid + chat teaser button). Basic JS fetch.  
+AI Assist: Query Grok for "SQLite schema for chat messages" and "Fix any Replit SQLite errors" if needed.  
+Checkpoint: Server runs; page loads with sample grid. Test: Search "misfire" shows placeholders.
+10:30-12:00 PM (1.5 hrs: Video Upload & Library - Phase 2 Condensed)  Enhance /upload: Integrate Multer for metadata + URL (no full file yet); add thumbnail placeholder.  
+Create views/video.ejs for embeds + like/comment stubs (DB inserts) + "Join Chat" button linking to related room.  
+Update grid: Add Fuse.js client-side fuzzy search on load; room suggestions based on tags.  
+AI Assist: Generate "Multer upload code for video metadata" and "Fuse.js integration snippet."  
+Checkpoint: Upload test video via form; view in player; search filters dynamically. Test: Embed YouTube sample; click to "join" stub chat.  
+10-min Break
+12:00-2:00 PM (2 hrs: AI Search + Virtual Chat Integration - Phases 3 & New Condensed)  AI Search: Add /ai-search route: Fetch top videos, prompt OpenAI ("Summarize fixes for [query] from [videos]: include disclaimer and suggest chat room").  
+Frontend: Toggle AI mode in search JS; render cards with summaries + links + chat join buttons.  
+Chat Rooms: Install/configure Socket.io; add /chat route for room list; views/chat.ejs with message input, live updates (join/leave/emit). Backend: Socket events (joinRoom, sendMessage, store to DB). Stub auth for usernames.  
+Integration: AI responses suggest rooms (e.g., "Discuss in #Misfires"); search results link to chats.  
+AI Assist: Craft/test OpenAI prompt with chat suggestion; generate full "Socket.io chat rooms Express code" and "Error-handling for API hallucinations."  
+Checkpoint: Query "P0300 code" returns AI summary + video cards + chat join. Test: 3 mechanic queries; send/receive messages in room.  
+Lunch Break (30 min)
+2:00-3:30 PM (1.5 hrs: User Features & Polish - Phase 4 Condensed)  Auth stub: Add /register + /login (JWT); protect /upload and /chat (pass token to Socket.io).  
+Dashboard: views/dashboard.ejs with user uploads/searches/active chats (query by user_id; show recent messages).  
+Mobile polish: Tailwind responsive classes for chat UI (scrollable messages); add loading spinner.  
+Community stub: Simple follow button (DB flag); chat mentions (@user
+).  
+AI Assist: "Generate JWT auth middleware for Express + Socket.io" and "Mobile-first CSS tweaks for chat."  
+Checkpoint: Register → login → upload → search → join chat → dashboard view. Test: Multi-tab chat simulation.
+3:30-5:00 PM (1.5 hrs: Testing & Deployment - Phase 5 Condensed)  Unit tests: Quick Jest stubs for routes/Socket events (e.g., message storage).  
+E2E: Manual flow for 5 faults (upload video → AI search → chat discussion). Simulate 2 users (tabs).  
+Deploy: Public Replit; test WebSocket (Replit auto-handles). Add disclaimer modals.  
+AI Assist: "Jest test snippets for Socket.io" and "Replit Socket.io troubleshooting."  
+Checkpoint: Live URL: Videos play, AI responds, chats update in real-time. Bug fixes.
+5:00-7:00 PM (2 hrs: Iteration, Edge Cases & Final Polish)  Edge cases: Empty rooms, rate-limit chats (5 msg/min), offline reconnect (Socket.io auto).  
+Enhancements: Room creation via dashboard (e.g., "New room for Overheating"); persist history (load last 50 msgs).  
+User testing sim: Run 10 queries/chats; refine AI prompts for mechanic accuracy.  
+Documentation: Inline comments; README with demo flow.  
+AI Assist: "Socket.io room persistence code" and "Common edge cases for real-time chat."  
+End-of-Day Review: Full audit; share live link. Celebrate MVP!  
+Milestone: Live demo link; bug-free MVP with chats.
+Resources & BudgetFree Tools: Replit (core), OpenAI free tier (up to 3 RPM), YouTube embeds, Socket.io (free).
+Costs: ~$5-10/month for OpenAI if usage grows; free MongoDB tier (for chat scaling later).
+Learning Resources: Replit Docs: For Node.js/Socket.io hosting.
+Tutorials: freeCodeCamp (Express video upload), Socket.io quickstart, OpenAI Node SDK guide.
+Risks & Mitigations: AI inaccuracies—include disclaimers ("Consult pro mechanic"); Video/chat storage—cap at 100MB/file, 1K msgs/room; Replit WebSocket limits—test early, fallback to polling if needed. Scope creep—prioritize chat stubs.
+
+This updated outline integrates virtual chat rooms seamlessly into the one-day sprint, adding ~1 hr focused effort (leveraged by AI code gen). Chats enhance community without bloating MVP. Ready for Nov 1 kickoff? If you need sample Socket.io code or prompt tweaks, hit me up!
+
