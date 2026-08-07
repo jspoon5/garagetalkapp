@@ -4,14 +4,13 @@ projects:
     environments:
       - name: production
         services:
+          # Static sites: no plan/region (schema rejects them; CDN free tier).
+          # staticPublishPath is relative to the repo root.
           - type: web
             name: garagetalk-homepage
             runtime: static
-            plan: starter
-            region: oregon
-            rootDir: apps/homepage
             buildCommand: "true"
-            staticPublishPath: .
+            staticPublishPath: apps/homepage
             autoDeployTrigger: commit
             buildFilter:
               paths:
