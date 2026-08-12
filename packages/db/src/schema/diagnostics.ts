@@ -25,14 +25,32 @@ export const diagnosticSessions = pgTable(
       .notNull()
       .references(() => vehicles.id, { onDelete: "cascade" }),
     status: text("status").notNull().default("open"),
+    symptomText: text("symptom_text"),
+    photos: text("photos").array().notNull().default([]),
+    audioClips: jsonb("audio_clips").$type<unknown[]>().default([]),
+    dtcCodes: text("dtc_codes").array().notNull().default([]),
     inputs: jsonb("inputs").$type<Record<string, unknown>>().default({}),
+    contextSnapshot: jsonb("context_snapshot").$type<Record<string, unknown>>().default({}),
     hypotheses: jsonb("hypotheses").$type<unknown[]>().default([]),
+    followUpQuestions: text("follow_up_questions").array().notNull().default([]),
     safetyFlags: text("safety_flags").array().notNull().default([]),
     modelMeta: jsonb("model_meta").$type<Record<string, unknown>>().default({}),
+    costCents: integer("cost_cents").notNull().default(0),
     ...timestamps,
   },
   (t) => [index("diagnostic_sessions_user_idx").on(t.userId)],
 );
+
+export const diagnosticCostEvents = pgTable("diagnostic_cost_events", {
+  id: id(),
+  sessionId: uuid("session_id")
+    .notNull()
+    .references(() => diagnosticSessions.id, { onDelete: "cascade" }),
+  provider: text("provider").notNull(),
+  cents: integer("cents").notNull(),
+  meta: jsonb("meta").$type<Record<string, unknown>>().default({}),
+  ...timestamps,
+});
 
 export const repairBriefs = pgTable(
   "repair_briefs",
@@ -86,6 +104,7 @@ export const faultOutcomes = pgTable("fault_outcomes", {
   shopId: uuid("shop_id").references(() => shops.id, { onDelete: "set null" }),
   verifiedFix: text("verified_fix").notNull(),
   parts: jsonb("parts").$type<unknown[]>().default([]),
+  inputSnapshot: jsonb("input_snapshot").$type<Record<string, unknown>>().default({}),
   attestation: jsonb("attestation").$type<{
     signedAt: string;
     sig: string;
@@ -93,6 +112,20 @@ export const faultOutcomes = pgTable("fault_outcomes", {
   }>(),
   ...timestamps,
 });
+
+export const obdSnapshots = pgTable(
+  "obd_snapshots",
+  {
+    id: id(),
+    sessionId: uuid("session_id")
+      .notNull()
+      .references(() => diagnosticSessions.id, { onDelete: "cascade" }),
+    deviceId: uuid("device_id").references(() => obdDevices.id, { onDelete: "set null" }),
+    snapshot: jsonb("snapshot").$type<Record<string, unknown>>().notNull(),
+    ...timestamps,
+  },
+  (t) => [index("obd_snapshots_session_idx").on(t.sessionId)],
+);
 
 export const obdDevices = pgTable("obd_devices", {
   id: id(),

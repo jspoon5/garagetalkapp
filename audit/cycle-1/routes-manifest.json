@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-08-12T16:29:25.995Z",
+  "generatedAt": "2026-08-12T16:46:29.899Z",
   "source": "fastify onRoute hook at boot",
-  "count": 140,
+  "count": 187,
   "routes": [
     {
       "method": "GET",
@@ -44,6 +44,13 @@
       "auth": "admin",
       "rateLimit": "global 300/min",
       "csrf": "required"
+    },
+    {
+      "method": "GET",
+      "url": "/admin/reconciliation/:id",
+      "auth": "admin",
+      "rateLimit": "global 300/min",
+      "csrf": "n/a"
     },
     {
       "method": "GET",
@@ -98,6 +105,20 @@
       "method": "PATCH",
       "url": "/admin/users/:id/tier",
       "auth": "admin",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/ai/foreman",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/ai/foreman/corpus",
+      "auth": "session",
       "rateLimit": "global 300/min",
       "csrf": "required"
     },
@@ -222,6 +243,13 @@
     },
     {
       "method": "POST",
+      "url": "/avatars/items/:id/unlock",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
       "url": "/billing/connect/onboarding",
       "auth": "session",
       "rateLimit": "global 300/min",
@@ -256,6 +284,27 @@
       "csrf": "n/a"
     },
     {
+      "method": "POST",
+      "url": "/campus-lite/badges",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "GET",
+      "url": "/courses/:id/access",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "n/a"
+    },
+    {
+      "method": "POST",
+      "url": "/courses/:id/purchase",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
       "method": "GET",
       "url": "/creator/:id/supporter-badges",
       "auth": "public",
@@ -275,6 +324,48 @@
       "auth": "public",
       "rateLimit": "global 300/min",
       "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/diagnostics/sessions",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/diagnostics/sessions/:sessionId/brief",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/diagnostics/sessions/:sessionId/obd-snapshots",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "GET",
+      "url": "/earnings/dashboard-d11",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "n/a"
+    },
+    {
+      "method": "POST",
+      "url": "/earnings/heartbeats",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "GET",
+      "url": "/earnings/payout-preview",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "n/a"
     },
     {
       "method": "GET",
@@ -355,6 +446,13 @@
     },
     {
       "method": "GET",
+      "url": "/garage/vehicles/:vehicleId/recall-badge",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "n/a"
+    },
+    {
+      "method": "GET",
       "url": "/garage/vehicles/:vehicleId/service-records",
       "auth": "session",
       "rateLimit": "global 300/min",
@@ -396,6 +494,13 @@
       "csrf": "required"
     },
     {
+      "method": "GET",
+      "url": "/garage/vehicles/:vehicleId/verified-history",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "n/a"
+    },
+    {
       "method": "POST",
       "url": "/garage/vehicles/reorder",
       "auth": "session",
@@ -408,6 +513,27 @@
       "auth": "public",
       "rateLimit": "global 300/min",
       "csrf": "n/a"
+    },
+    {
+      "method": "GET",
+      "url": "/live/classes/:id/permissions",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "n/a"
+    },
+    {
+      "method": "POST",
+      "url": "/live/classes/:id/replay-chapters",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/live/classes/replay/seek",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
     },
     {
       "method": "POST",
@@ -508,6 +634,13 @@
       "csrf": "required"
     },
     {
+      "method": "GET",
+      "url": "/marketplace/listings/:id/verified-history",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "n/a"
+    },
+    {
       "method": "POST",
       "url": "/marketplace/orders/:id/refund",
       "auth": "session",
@@ -546,6 +679,41 @@
       "method": "POST",
       "url": "/me/location-pin",
       "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/obd/devices",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "GET",
+      "url": "/obd/web-bluetooth/support",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "n/a"
+    },
+    {
+      "method": "POST",
+      "url": "/pit-crews",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/pit-crews/:id/join",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/pit-crews/:id/streak",
+      "auth": "public",
       "rateLimit": "global 300/min",
       "csrf": "required"
     },
@@ -628,6 +796,69 @@
     },
     {
       "method": "GET",
+      "url": "/presence/content/:contentType/:contentId",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "n/a"
+    },
+    {
+      "method": "POST",
+      "url": "/presence/content/:contentType/:contentId/chat",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/presence/content/:contentType/:contentId/enter",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/presence/content/:contentType/:contentId/reactions",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/proof/badges/:id/share",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/quest-submissions/:id/review",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/quests",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/quests/:id/submissions",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/quotes/:id/book",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "GET",
       "url": "/r2r/articles",
       "auth": "public",
       "rateLimit": "global 300/min",
@@ -643,6 +874,20 @@
     {
       "method": "GET",
       "url": "/readyz",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "n/a"
+    },
+    {
+      "method": "POST",
+      "url": "/repair-briefs/:id/quote-requests",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "GET",
+      "url": "/repair-briefs/share/:token",
       "auth": "public",
       "rateLimit": "global 300/min",
       "csrf": "n/a"
@@ -719,6 +964,27 @@
     },
     {
       "method": "POST",
+      "url": "/schools",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/schools/:id/courses",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/schools/:id/membership/renewal",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
       "url": "/shops",
       "auth": "public",
       "rateLimit": "global 300/min",
@@ -747,7 +1013,21 @@
     },
     {
       "method": "POST",
+      "url": "/shops/:id/quotes",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
       "url": "/shops/:id/reviews/recompute",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/shops/:id/service-records/:recordId/attest",
       "auth": "public",
       "rateLimit": "global 300/min",
       "csrf": "required"
@@ -817,6 +1097,13 @@
     },
     {
       "method": "POST",
+      "url": "/shops/bookings/:id/outcome",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
       "url": "/shops/bookings/reminders/run",
       "auth": "public",
       "rateLimit": "global 300/min",
@@ -858,11 +1145,32 @@
       "csrf": "required"
     },
     {
+      "method": "POST",
+      "url": "/skill-paths/:pathId/nodes/:nodeId/complete",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "GET",
+      "url": "/skill-paths/recommendations",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "n/a"
+    },
+    {
       "method": "GET",
       "url": "/spatial/rooms",
       "auth": "public",
       "rateLimit": "global 300/min",
       "csrf": "n/a"
+    },
+    {
+      "method": "POST",
+      "url": "/track-c/recalls/sweep",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
     },
     {
       "method": "GET",
@@ -891,6 +1199,13 @@
       "auth": "session",
       "rateLimit": "{\"max\":30,\"timeWindow\":\"1 minute\"}",
       "csrf": "required"
+    },
+    {
+      "method": "GET",
+      "url": "/verify/service-records/:id",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "n/a"
     },
     {
       "method": "GET",
@@ -942,6 +1257,13 @@
       "csrf": "required"
     },
     {
+      "method": "GET",
+      "url": "/videos/:id/learn-this",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "n/a"
+    },
+    {
       "method": "DELETE",
       "url": "/videos/:id/like",
       "auth": "session",
@@ -974,6 +1296,13 @@
       "url": "/videos/upload-session",
       "auth": "session",
       "rateLimit": "{\"max\":10,\"timeWindow\":\"1 minute\"}",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/watch-parties/sync-preview",
+      "auth": "public",
+      "rateLimit": "global 300/min",
       "csrf": "required"
     },
     {

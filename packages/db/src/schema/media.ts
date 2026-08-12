@@ -211,14 +211,20 @@ export const qualifiedViews = pgTable(
     id: id(),
     mediaType: text("media_type").notNull(),
     mediaId: uuid("media_id").notNull(),
+    creatorUserId: uuid("creator_user_id").references(() => users.id, { onDelete: "set null" }),
     viewerId: uuid("viewer_id").references(() => users.id, { onDelete: "set null" }),
     sessionId: text("session_id").notNull(),
+    viewDate: text("view_date").notNull(),
     heartbeatCount: integer("heartbeat_count").notNull().default(0),
+    watchSeconds: integer("watch_seconds").notNull().default(0),
     valid: boolean("valid").notNull().default(false),
     invalidReason: text("invalid_reason"),
     ...timestamps,
   },
-  (t) => [index("qualified_views_media_idx").on(t.mediaType, t.mediaId)],
+  (t) => [
+    index("qualified_views_media_idx").on(t.mediaType, t.mediaId),
+    uniqueIndex("qualified_views_user_asset_day_uidx").on(t.viewerId, t.mediaId, t.viewDate),
+  ],
 );
 
 export const viewHeartbeats = pgTable(

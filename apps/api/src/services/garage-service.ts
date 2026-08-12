@@ -3,6 +3,7 @@ import type { Database } from "@garagetalk/db";
 import { vehicles } from "@garagetalk/db";
 import { uuidv7 } from "uuidv7";
 import { z } from "zod";
+import { RecordedNhtsaClient, type NhtsaClient } from "./nhtsa-service.js";
 
 export const vehicleInputSchema = z.object({
   type: z.string().min(1).max(64),
@@ -12,6 +13,7 @@ export const vehicleInputSchema = z.object({
   year: z.number().int().min(1900).max(2100),
   trim: z.string().max(64).nullable().optional(),
   vin: z.string().max(32).nullable().optional(),
+  vinDecoded: z.record(z.unknown()).nullable().optional(),
   nickname: z.string().max(64).nullable().optional(),
   isPrimary: z.boolean().optional(),
   photos: z.array(z.string().url()).max(20).optional(),
@@ -21,7 +23,14 @@ export const vehicleInputSchema = z.object({
 export type VehicleInput = z.infer<typeof vehicleInputSchema>;
 
 export class GarageService {
-  constructor(private readonly db: Database) {}
+  private readonly nhtsa: NhtsaClient;
+
+  constructor(
+    private readonly db: Database,
+    opts: { nhtsa?: NhtsaClient } = {},
+  ) {
+    this.nhtsa = opts.nhtsa ?? new RecordedNhtsaClient();
+  }
 
   list(userId: string) {
     return this.db
@@ -54,6 +63,7 @@ export class GarageService {
         year: input.year,
         trim: input.trim ?? null,
         vin: input.vin ?? null,
+        vinDecoded: await this.resolveVinDecoded(input.vin ?? null, input.vinDecoded),
         nickname: input.nickname ?? null,
         isPrimary: input.isPrimary ?? false,
         sortOrder,
@@ -72,6 +82,12 @@ export class GarageService {
       .update(vehicles)
       .set({
         ...input,
+        vinDecoded:
+          input.vinDecoded !== undefined
+            ? input.vinDecoded
+            : input.vin !== undefined
+              ? await this.resolveVinDecoded(input.vin ?? null)
+              : undefined,
         updatedAt: new Date(),
       })
       .where(
@@ -123,5 +139,11 @@ export class GarageService {
       .update(vehicles)
       .set({ isPrimary: false, updatedAt: new Date() })
       .where(and(eq(vehicles.userId, userId), isNull(vehicles.deletedAt)));
+  }
+
+  private async resolveVinDecoded(vin: string | null, override?: Record<string, unknown> | null) {
+    if (override !== undefined) return override;
+    if (!vin) return null;
+    return this.nhtsa.decodeVin(vin);
   }
 }

@@ -1,0 +1,927 @@
+commit 2d99eecf5f715f2731d5454e3efe0822e0f2918b
+Author: Cursor Agent <cursoragent@cursor.com>
+Date:   Wed Aug 12 16:29:26 2026 +0000
+
+    phase(A4-B8): podcasts chat spatial gearhead live billing admin i18n pwa feed marketplace shops booking — cert updated
+    
+    A4–A10 media/chat/AI/live/billing/admin; A11–A12 i18n+PWA offline garage; B1–B8 feed,
+    marketplace, shops, reviews, booking, service records, creator ledgers, R2R hub.
+    
+    Co-authored-by: jspoon5 <jspoon5@users.noreply.github.com>
+
+ BUILD-CERT.json                                    | 325 +++++++-
+ BUILD-CERT.md                                      | 551 +++++++++++++-
+ apps/api/package.json                              |   4 +-
+ apps/api/src/admin-a10.test.ts                     | 188 +++++
+ apps/api/src/app.ts                                |  48 +-
+ apps/api/src/auth-service.test.ts                  |   5 +
+ apps/api/src/auth.test.ts                          |   5 +
+ apps/api/src/billing-a9.test.ts                    | 208 +++++
+ apps/api/src/booking-b5.test.ts                    | 149 ++++
+ apps/api/src/chat-presence.test.ts                 | 131 ++++
+ apps/api/src/creator-monetization-b7.test.ts       | 101 +++
+ apps/api/src/feed-b1.test.ts                       | 147 ++++
+ apps/api/src/gearhead.test.ts                      | 126 +++
+ apps/api/src/live-a8.test.ts                       | 166 ++++
+ apps/api/src/marketplace-b2.test.ts                | 175 +++++
+ apps/api/src/plugins/csrf.ts                       |   1 +
+ apps/api/src/plugins/rate-limit-redis.ts           | 141 ++++
+ apps/api/src/podcasts.test.ts                      |  83 ++
+ apps/api/src/r2r-b8.test.ts                        |  95 +++
+ apps/api/src/rate-limit-redis.test.ts              |  38 +
+ apps/api/src/register-a8-a10.ts                    |  25 +
+ apps/api/src/register-b1-b2.ts                     |  11 +
+ apps/api/src/register-b3-b8.ts                     |  32 +
+ apps/api/src/reviews-b4.test.ts                    | 154 ++++
+ apps/api/src/routes-manifest.ts                    |  14 +-
+ apps/api/src/routes/admin-gate.ts                  |  20 +
+ apps/api/src/routes/admin.ts                       | 104 +++
+ apps/api/src/routes/billing.ts                     |  62 ++
+ apps/api/src/routes/creator.ts                     |  29 +
+ apps/api/src/routes/feed.ts                        |  64 ++
+ apps/api/src/routes/gearhead.ts                    |  29 +
+ apps/api/src/routes/live.ts                        |  88 +++
+ apps/api/src/routes/marketplace.ts                 |  76 ++
+ apps/api/src/routes/podcasts.ts                    |  94 +++
+ apps/api/src/routes/r2r.ts                         |  48 ++
+ apps/api/src/routes/rooms.ts                       | 171 +++++
+ apps/api/src/routes/service-records.ts             |  73 ++
+ apps/api/src/routes/shops.ts                       | 188 +++++
+ apps/api/src/routes/spatial.ts                     |  32 +
+ apps/api/src/service-records-b6.test.ts            | 124 +++
+ apps/api/src/services/admin-service.ts             | 202 +++++
+ apps/api/src/services/billing-service.ts           | 255 +++++++
+ apps/api/src/services/booking-service.ts           | 315 ++++++++
+ .../src/services/creator-monetization-service.ts   | 137 ++++
+ apps/api/src/services/feed-service.ts              | 172 +++++
+ apps/api/src/services/gearhead-service.ts          | 178 +++++
+ apps/api/src/services/live-service.ts              | 266 +++++++
+ apps/api/src/services/marketplace-service.ts       | 335 ++++++++
+ apps/api/src/services/podcast-service.ts           | 259 +++++++
+ apps/api/src/services/presence-store.ts            | 123 +++
+ apps/api/src/services/r2r-service.ts               |  98 +++
+ apps/api/src/services/room-service.ts              | 157 ++++
+ apps/api/src/services/service-record-service.ts    | 156 ++++
+ apps/api/src/services/shop-service.ts              | 290 +++++++
+ apps/api/src/services/spatial-service.ts           |  66 ++
+ apps/api/src/shops-b3.test.ts                      | 126 +++
+ apps/api/src/spatial.test.ts                       |  80 ++
+ apps/api/src/test/pglite-b3-b8.ts                  | 193 +++++
+ apps/api/src/test/pglite.ts                        | 276 +++++++
+ apps/web/public/offline.html                       |  30 +
+ apps/web/public/pwa-maskable.svg                   |   9 +
+ apps/web/src/App.tsx                               |  16 +-
+ apps/web/src/components/LanguageSwitcher.tsx       |  24 +
+ apps/web/src/components/PwaInstallPrompt.tsx       |  56 ++
+ apps/web/src/i18n.test.ts                          |  21 +
+ apps/web/src/i18n.ts                               |  73 ++
+ apps/web/src/locales/en.json                       |  17 +-
+ apps/web/src/locales/es.json                       |  37 +
+ apps/web/src/main.tsx                              |  11 +-
+ apps/web/src/pwa/offlineGarage.test.ts             |  40 +
+ apps/web/src/pwa/offlineGarage.ts                  |  18 +
+ apps/web/tsconfig.tsbuildinfo                      |   2 +-
+ apps/web/vite.config.ts                            |  56 +-
+ audit/a12-lighthouse-ENV_LIMITED.md                |   6 +
+ audit/cycle-1/git-log.txt                          |  68 ++
+ audit/cycle-1/routes-manifest.json                 | 706 ++++++++++++++++-
+ audit/cycle-1/test-output.txt                      | 843 +++++++++++++++------
+ audit/cycle-2/BUILD-CERT.json                      | 325 +++++++-
+ audit/cycle-2/BUILD-CERT.md                        | 551 +++++++++++++-
+ audit/cycle-2/routes-manifest.json                 | 706 ++++++++++++++++-
+ docs/data-map.md                                   |   5 +-
+ eslint.config.js                                   |  41 +
+ legacy/app/README.md                               |   6 +-
+ package.json                                       |   2 +
+ packages/ai/tsconfig.tsbuildinfo                   |   2 +-
+ packages/db/migrations/0002_a4_a7.sql              |  13 +
+ packages/db/migrations/0003_a8_a10.sql             |  21 +
+ packages/db/migrations/0004_a11_b2.sql             |  36 +
+ packages/db/migrations/0005_b3_b8.sql              |  70 ++
+ packages/db/src/schema/commerce.ts                 |  78 +-
+ packages/db/src/schema/common.ts                   |   3 +-
+ packages/db/src/schema/garage.ts                   |   2 +
+ packages/db/src/schema/identity.ts                 |   6 +
+ packages/db/src/schema/media.ts                    |  18 +-
+ packages/db/src/schema/platform.ts                 |  23 +
+ packages/db/src/schema/rooms-live.ts               |  18 +-
+ packages/db/tsconfig.tsbuildinfo                   |   2 +-
+ packages/email/src/index.ts                        |   9 +
+ packages/email/tsconfig.tsbuildinfo                |   2 +-
+ packages/shared/src/constants.ts                   |   7 +
+ packages/shared/tsconfig.tsbuildinfo               |   2 +-
+ pnpm-lock.yaml                                     |  81 ++
+ scripts/i18n-lint-hardcoded-demo.mjs               |  20 +
+ scripts/i18n-machine-translate.ts                  |  35 +
+ 104 files changed, 11474 insertions(+), 452 deletions(-)
+
+commit 128c38b9d9b6a5acb0d14bb9ca21541c3363f62f
+Author: Cursor Agent <cursoragent@cursor.com>
+Date:   Wed Aug 12 15:47:45 2026 +0000
+
+    phase(FIX+A3): auditor fixes, passkeys, email auth, reorder, video — cert updated
+    
+    FIX-1..8: regenerate auditor git-log/test-output; live Fastify onRoute routes
+    manifest; Better Auth blocked after 3 drizzle/adapter attempts — keep custom
+    Argon2id sessions + @simplewebauthn passkeys; Playwright signup→deletion
+    smoke; email verify/reset with MemoryEmailClient; vehicle reorder; security
+    checklist PENDING for out-of-scope items. A3: R2/Stream upload pipeline,
+    webhook fixtures, comment threads, heartbeat dedupe, sharp EXIF strip.
+    
+    Co-authored-by: jspoon5 <jspoon5@users.noreply.github.com>
+
+ BUILD-CERT.json                               | 132 ++++---
+ BUILD-CERT.md                                 | 132 +++----
+ apps/api/package.json                         |   4 +-
+ apps/api/src/app.ts                           |  63 +++-
+ apps/api/src/auth-email.test.ts               | 106 ++++++
+ apps/api/src/e2e-server.ts                    |  26 ++
+ apps/api/src/garage.test.ts                   |  47 +++
+ apps/api/src/media-upload.test.ts             | 138 +++++++
+ apps/api/src/passkey.test.ts                  | 139 +++++++
+ apps/api/src/plugins/csrf.ts                  |  23 ++
+ apps/api/src/routes-manifest.ts               |  68 +++-
+ apps/api/src/routes/garage.ts                 |  11 +-
+ apps/api/src/routes/passkeys.ts               |  94 +++++
+ apps/api/src/routes/uploads.ts                |  65 ++++
+ apps/api/src/routes/videos.ts                 | 116 ++++++
+ apps/api/src/routes/webhooks-stream.ts        |  28 ++
+ apps/api/src/services/auth-service.ts         | 148 +++++++-
+ apps/api/src/services/garage-service.ts       |  38 +-
+ apps/api/src/services/media-upload-service.ts | 156 ++++++++
+ apps/api/src/services/passkey-service.ts      | 276 ++++++++++++++
+ apps/api/src/services/video-service.ts        | 391 +++++++++++++++++++
+ apps/api/src/test/pglite.ts                   | 138 +++++++
+ apps/api/src/video.test.ts                    | 217 +++++++++++
+ apps/web/e2e/auth-smoke.spec.ts               |  28 ++
+ apps/web/package.json                         |   3 +
+ apps/web/playwright.config.ts                 |  41 ++
+ apps/web/src/App.tsx                          |  98 ++++-
+ apps/web/src/locales/en.json                  |   4 +
+ apps/web/vite.config.ts                       |   8 +
+ audit/cycle-1/BUILD-CERT.json                 | 132 ++++---
+ audit/cycle-1/BUILD-CERT.md                   | 132 +++----
+ audit/cycle-1/git-log.txt                     | 408 ++++++++++++++++++++
+ audit/cycle-1/routes-manifest.json            | 349 ++++++++++++++---
+ audit/cycle-1/test-output.txt                 | 364 ++++++++++++++++--
+ audit/cycle-2/BUILD-CERT.json                 | 523 ++++++++++++++++++++++++++
+ audit/cycle-2/BUILD-CERT.md                   | 210 +++++++++++
+ audit/cycle-2/routes-manifest.json            | 287 ++++++++++++++
+ docs/data-map.md                              |   4 +
+ package.json                                  |   1 +
+ packages/db/migrations/0001_a3_media.sql      | 121 ++++++
+ packages/db/package.json                      |   2 +-
+ packages/db/src/schema/common.ts              |   6 +
+ packages/db/src/schema/garage.ts              |   1 +
+ packages/db/src/schema/identity.ts            |  18 +
+ packages/db/src/schema/media.ts               |  68 +++-
+ packages/db/tsconfig.tsbuildinfo              |   2 +-
+ packages/email/src/index.test.ts              |  17 +-
+ packages/email/src/index.ts                   |   8 +
+ packages/email/tsconfig.tsbuildinfo           |   2 +-
+ pnpm-lock.yaml                                | 470 +++++++++++++++++++++--
+ scripts/dump-routes.ts                        |  61 +--
+ 51 files changed, 5475 insertions(+), 449 deletions(-)
+
+commit 043cc169f34d38c6e8c9917a58029ec547811e4b
+Author: Cursor Agent <cursoragent@cursor.com>
+Date:   Wed Aug 12 15:00:21 2026 +0000
+
+    Add cycle-1 build cert auditor packet zip for review download.
+    
+    Co-authored-by: jspoon5 <jspoon5@users.noreply.github.com>
+
+ audit/downloads/garagetalk-build-cert-cycle-1.zip | Bin 0 -> 21919 bytes
+ 1 file changed, 0 insertions(+), 0 deletions(-)
+
+commit 714bbee738a399e94da35253789c951a5e152947
+Author: Cursor Agent <cursoragent@cursor.com>
+Date:   Wed Aug 12 14:32:03 2026 +0000
+
+    phase(A2): fix createTestDb return type for tsc
+    
+    Co-authored-by: jspoon5 <jspoon5@users.noreply.github.com>
+
+ apps/api/src/test/pglite.ts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+commit 0e7e00681cfc1f2d3e4f8d4bb36ce9e70c7d6dda
+Author: Cursor Agent <cursoragent@cursor.com>
+Date:   Wed Aug 12 14:31:36 2026 +0000
+
+    phase(A2): garage vehicle CRUD parity — cert updated
+    
+    Authenticated vehicle create/list/update/delete with primary-flag exclusivity and zod validation. Photo presign + EXIF strip deferred to A3 (stubbed in certificate).
+    
+    Co-authored-by: jspoon5 <jspoon5@users.noreply.github.com>
+
+ BUILD-CERT.json                         |  36 ++++++++---
+ BUILD-CERT.md                           |  40 ++++++++++--
+ apps/api/src/app.ts                     |   4 ++
+ apps/api/src/garage.test.ts             | 108 ++++++++++++++++++++++++++++++++
+ apps/api/src/routes/garage.ts           |  36 +++++++++++
+ apps/api/src/services/garage-service.ts |  93 +++++++++++++++++++++++++++
+ apps/api/src/test/pglite.ts             |  66 +++++++++++++++++++
+ audit/cycle-1/BUILD-CERT.json           |  36 ++++++++---
+ audit/cycle-1/BUILD-CERT.md             |  40 ++++++++++--
+ 9 files changed, 437 insertions(+), 22 deletions(-)
+
+commit c9d23da075b191572da66c3ec5e23c2cf86bf483
+Author: Cursor Agent <cursoragent@cursor.com>
+Date:   Wed Aug 12 14:30:15 2026 +0000
+
+    phase(A1): foundation monorepo + auth — cert updated
+    
+    Scaffold pnpm/turbo v3 layout (apps/web, apps/api, packages/*), Part III Drizzle schema + migration, Fastify Argon2id sessions with signup/profile/export/deletion, Build Certificate dual-format, archive legacy under /legacy. A1 marked PARTIAL with evidence.
+    
+    Co-authored-by: jspoon5 <jspoon5@users.noreply.github.com>
+
+ .env.example                                       |   14 +
+ .github/workflows/ci.yml                           |   22 +
+ .gitignore                                         |   26 +-
+ .prettierrc.json                                   |    6 +
+ BUILD-CERT.json                                    |  493 ++
+ BUILD-CERT.md                                      |  190 +
+ README.md                                          |   71 +-
+ apps/api/package.json                              |   40 +
+ apps/api/src/app.ts                                |   59 +
+ apps/api/src/auth-service.test.ts                  |   81 +
+ apps/api/src/auth.test.ts                          |  131 +
+ apps/api/src/index.ts                              |   28 +
+ apps/api/src/logger.ts                             |   20 +
+ apps/api/src/plugins/session.ts                    |   33 +
+ apps/api/src/routes-manifest.ts                    |   46 +
+ apps/api/src/routes/auth.ts                        |  124 +
+ apps/api/src/routes/health.ts                      |   13 +
+ apps/api/src/services/auth-service.ts              |  173 +
+ apps/api/tsconfig.json                             |   15 +
+ apps/web/index.html                                |   13 +
+ apps/web/package.json                              |   37 +
+ apps/web/postcss.config.js                         |    6 +
+ apps/web/public/favicon.svg                        |    6 +
+ apps/web/src/App.tsx                               |  143 +
+ apps/web/src/i18n.test.ts                          |    9 +
+ apps/web/src/locales/en.json                       |   18 +
+ apps/web/src/main.tsx                              |   20 +
+ apps/web/src/styles.css                            |   16 +
+ apps/web/tailwind.config.js                        |    8 +
+ apps/web/tsconfig.json                             |   15 +
+ apps/web/tsconfig.tsbuildinfo                      |    1 +
+ apps/web/vite.config.ts                            |   47 +
+ audit/cycle-1/BUILD-CERT.json                      |  493 ++
+ audit/cycle-1/BUILD-CERT.md                        |  190 +
+ audit/cycle-1/git-log.txt                          |  334 +
+ audit/cycle-1/loc-report.txt                       |   53 +
+ audit/cycle-1/routes-manifest.json                 |   62 +
+ audit/cycle-1/test-output.txt                      |   61 +
+ docker-compose.yml                                 |   18 +
+ docs/data-map.md                                   |   11 +
+ docs/invention-log.md                              |    7 +
+ docs/legacy-metrics.md                             |    9 +
+ docs/parity-deltas.md                              |   12 +
+ docs/runbooks/README.md                            |    1 +
+ eslint.config.js                                   |   12 +
+ {apps => legacy}/app/.env.example                  |    0
+ {apps => legacy}/app/.gitignore                    |    0
+ {apps => legacy}/app/README.md                     |    0
+ .../1jan_1006_screenshot_1767280054692.png         |  Bin
+ ...ave-a-value-prop-that-is-not-_1770327379858.txt |    0
+ ...OverviewProject-1762011092866_1762011092866.txt |    0
+ .../Screenshot_2025-12-13_120108_1765645359687.png |  Bin
+ .../Screenshot_2025-12-13_191950_1765671657251.png |  Bin
+ .../Screenshot_2025-12-16_070716_1765886866099.png |  Bin
+ .../Screenshot_2025-12-20_115640_1766249819871.png |  Bin
+ .../Screenshot_2025-12-20_181151_1766272434576.png |  Bin
+ .../Screenshot_2026-01-01_091453_1767276916208.png |  Bin
+ .../Screenshot_2026-01-01_094804_1767278897486.png |  Bin
+ .../Screenshot_2026-01-01_094804_1767279210815.png |  Bin
+ .../Screenshot_2026-01-01_094804_1767279374900.png |  Bin
+ .../Screenshot_2026-01-09_203327_1768008822985.png |  Bin
+ .../Screenshot_2026-01-10_172559_1768084006808.png |  Bin
+ .../app/attached_assets/content-1765205160363.md   |    0
+ .../app/attached_assets/content-1766267321166.md   |    0
+ .../generated_images/garage_talk_app_icon.png      |  Bin
+ .../app/attached_assets/image_1767747578408.png    |  Bin
+ ...thenitated_app_search_scrnsht_1765213173807.png |  Bin
+ .../attached_assets/screenshot-1766267289834.png   |  Bin
+ .../attached_assets/screenshot-1766267318512.png   |  Bin
+ .../targeted_element_1765591726277.png             |  Bin
+ {apps => legacy}/app/capacitor.config.ts           |    0
+ {apps => legacy}/app/client/index.html             |    0
+ {apps => legacy}/app/client/public/favicon.png     |  Bin
+ .../app/client/public/icons/icon-128x128.png       |  Bin
+ .../app/client/public/icons/icon-144x144.png       |  Bin
+ .../app/client/public/icons/icon-152x152.png       |  Bin
+ .../app/client/public/icons/icon-192x192.png       |  Bin
+ .../app/client/public/icons/icon-384x384.png       |  Bin
+ .../app/client/public/icons/icon-512x512.png       |  Bin
+ .../app/client/public/icons/icon-72x72.png         |  Bin
+ .../app/client/public/icons/icon-96x96.png         |  Bin
+ {apps => legacy}/app/client/public/manifest.json   |    0
+ {apps => legacy}/app/client/public/sw.js           |    0
+ {apps => legacy}/app/client/src/App.tsx            |    0
+ .../app/client/src/components/AISearchResult.tsx   |    0
+ .../app/client/src/components/ActivityFeed.tsx     |    0
+ .../app/client/src/components/AdSense.tsx          |    0
+ .../app/client/src/components/AnalyticsTracker.tsx |    0
+ .../app/client/src/components/BroadcastSetup.tsx   |    0
+ .../app/client/src/components/CategoryFilter.tsx   |    0
+ .../app/client/src/components/ChatRoom.tsx         |    0
+ .../app/client/src/components/ChatRoomCard.tsx     |    0
+ .../app/client/src/components/ChatUserList.tsx     |    0
+ .../client/src/components/CreateChatRoomDialog.tsx |    0
+ .../app/client/src/components/DashboardStats.tsx   |    0
+ .../app/client/src/components/GarageMainNav.tsx    |    0
+ .../app/client/src/components/Header.tsx           |    0
+ .../app/client/src/components/JitsiMeetingRoom.tsx |    0
+ .../app/client/src/components/LanguageSelector.tsx |    0
+ .../app/client/src/components/MyGarage.tsx         |    0
+ .../app/client/src/components/NavigationArrows.tsx |    0
+ .../client/src/components/OBSStreamingGuide.tsx    |    0
+ .../app/client/src/components/ObjectUploader.tsx   |    0
+ .../app/client/src/components/PodcastCard.tsx      |    0
+ .../app/client/src/components/PodcastUpload.tsx    |    0
+ .../client/src/components/ProfileEditDialog.tsx    |    0
+ .../app/client/src/components/QuickScreenShare.tsx |    0
+ .../src/components/RecentlyWatchedCarousel.tsx     |    0
+ .../client/src/components/RequireContactInfo.tsx   |    0
+ .../src/components/ScheduleSessionDialog.tsx       |    0
+ .../src/components/ScheduledSessionsList.tsx       |    0
+ .../client/src/components/ScreenShareDialog.tsx    |    0
+ .../app/client/src/components/SpatialChatRoom.tsx  |    0
+ .../app/client/src/components/ThemeProvider.tsx    |    0
+ .../app/client/src/components/TipGiftDialog.tsx    |    0
+ .../app/client/src/components/UploadForm.tsx       |    0
+ .../app/client/src/components/VideoCard.tsx        |    0
+ .../client/src/components/VideoEffectsPanel.tsx    |    0
+ .../app/client/src/components/VideoPlayer.tsx      |    0
+ .../src/components/examples/AISearchResult.tsx     |    0
+ .../src/components/examples/ActivityFeed.tsx       |    0
+ .../src/components/examples/CategoryFilter.tsx     |    0
+ .../client/src/components/examples/ChatRoom.tsx    |    0
+ .../src/components/examples/ChatRoomCard.tsx       |    0
+ .../src/components/examples/DashboardStats.tsx     |    0
+ .../app/client/src/components/examples/Header.tsx  |    0
+ .../client/src/components/examples/UploadForm.tsx  |    0
+ .../client/src/components/examples/VideoCard.tsx   |    0
+ .../app/client/src/components/ui/accordion.tsx     |    0
+ .../app/client/src/components/ui/alert-dialog.tsx  |    0
+ .../app/client/src/components/ui/alert.tsx         |    0
+ .../app/client/src/components/ui/aspect-ratio.tsx  |    0
+ .../app/client/src/components/ui/avatar.tsx        |    0
+ .../app/client/src/components/ui/badge.tsx         |    0
+ .../app/client/src/components/ui/breadcrumb.tsx    |    0
+ .../app/client/src/components/ui/button.tsx        |    0
+ .../app/client/src/components/ui/calendar.tsx      |    0
+ .../app/client/src/components/ui/card.tsx          |    0
+ .../app/client/src/components/ui/carousel.tsx      |    0
+ .../app/client/src/components/ui/chart.tsx         |    0
+ .../app/client/src/components/ui/checkbox.tsx      |    0
+ .../app/client/src/components/ui/collapsible.tsx   |    0
+ .../app/client/src/components/ui/command.tsx       |    0
+ .../app/client/src/components/ui/context-menu.tsx  |    0
+ .../app/client/src/components/ui/dialog.tsx        |    0
+ .../app/client/src/components/ui/drawer.tsx        |    0
+ .../app/client/src/components/ui/dropdown-menu.tsx |    0
+ .../app/client/src/components/ui/form.tsx          |    0
+ .../app/client/src/components/ui/hover-card.tsx    |    0
+ .../app/client/src/components/ui/input-otp.tsx     |    0
+ .../app/client/src/components/ui/input.tsx         |    0
+ .../app/client/src/components/ui/label.tsx         |    0
+ .../app/client/src/components/ui/menubar.tsx       |    0
+ .../client/src/components/ui/navigation-menu.tsx   |    0
+ .../app/client/src/components/ui/pagination.tsx    |    0
+ .../app/client/src/components/ui/popover.tsx       |    0
+ .../app/client/src/components/ui/progress.tsx      |    0
+ .../app/client/src/components/ui/radio-group.tsx   |    0
+ .../app/client/src/components/ui/resizable.tsx     |    0
+ .../app/client/src/components/ui/scroll-area.tsx   |    0
+ .../app/client/src/components/ui/select.tsx        |    0
+ .../app/client/src/components/ui/separator.tsx     |    0
+ .../app/client/src/components/ui/sheet.tsx         |    0
+ .../app/client/src/components/ui/sidebar.tsx       |    0
+ .../app/client/src/components/ui/skeleton.tsx      |    0
+ .../app/client/src/components/ui/slider.tsx        |    0
+ .../app/client/src/components/ui/switch.tsx        |    0
+ .../app/client/src/components/ui/table.tsx         |    0
+ .../app/client/src/components/ui/tabs.tsx          |    0
+ .../app/client/src/components/ui/textarea.tsx      |    0
+ .../app/client/src/components/ui/toast.tsx         |    0
+ .../app/client/src/components/ui/toaster.tsx       |    0
+ .../app/client/src/components/ui/toggle-group.tsx  |    0
+ .../app/client/src/components/ui/toggle.tsx        |    0
+ .../app/client/src/components/ui/tooltip.tsx       |    0
+ {apps => legacy}/app/client/src/data/garageMvp.ts  |    0
+ .../app/client/src/hooks/use-mobile.tsx            |    0
+ .../app/client/src/hooks/use-session-tracking.ts   |    0
+ {apps => legacy}/app/client/src/hooks/use-toast.ts |    0
+ .../app/client/src/hooks/use-upload.ts             |    0
+ .../app/client/src/hooks/useCurrentUser.ts         |    0
+ .../app/client/src/hooks/useLanguageDetection.ts   |    0
+ .../app/client/src/hooks/useVideoEffects.ts        |    0
+ .../app/client/src/hooks/useVoiceInteraction.ts    |    0
+ {apps => legacy}/app/client/src/index.css          |    0
+ {apps => legacy}/app/client/src/lib/i18n.ts        |    0
+ {apps => legacy}/app/client/src/lib/queryClient.ts |    0
+ {apps => legacy}/app/client/src/lib/utils.ts       |    0
+ {apps => legacy}/app/client/src/locales/af.json    |    0
+ {apps => legacy}/app/client/src/locales/ar.json    |    0
+ {apps => legacy}/app/client/src/locales/de.json    |    0
+ {apps => legacy}/app/client/src/locales/el.json    |    0
+ {apps => legacy}/app/client/src/locales/en.json    |    0
+ {apps => legacy}/app/client/src/locales/es.json    |    0
+ {apps => legacy}/app/client/src/locales/fa.json    |    0
+ {apps => legacy}/app/client/src/locales/fi.json    |    0
+ {apps => legacy}/app/client/src/locales/fr.json    |    0
+ {apps => legacy}/app/client/src/locales/ha.json    |    0
+ {apps => legacy}/app/client/src/locales/he.json    |    0
+ {apps => legacy}/app/client/src/locales/hi.json    |    0
+ {apps => legacy}/app/client/src/locales/ig.json    |    0
+ {apps => legacy}/app/client/src/locales/it.json    |    0
+ {apps => legacy}/app/client/src/locales/nl.json    |    0
+ {apps => legacy}/app/client/src/locales/okr.json   |    0
+ {apps => legacy}/app/client/src/locales/pcm.json   |    0
+ {apps => legacy}/app/client/src/locales/pl.json    |    0
+ {apps => legacy}/app/client/src/locales/ps.json    |    0
+ {apps => legacy}/app/client/src/locales/pt.json    |    0
+ {apps => legacy}/app/client/src/locales/ro.json    |    0
+ {apps => legacy}/app/client/src/locales/ru.json    |    0
+ {apps => legacy}/app/client/src/locales/sw.json    |    0
+ {apps => legacy}/app/client/src/locales/uk.json    |    0
+ {apps => legacy}/app/client/src/locales/ur.json    |    0
+ {apps => legacy}/app/client/src/locales/yo.json    |    0
+ {apps => legacy}/app/client/src/locales/zh.json    |    0
+ {apps => legacy}/app/client/src/main.tsx           |    0
+ .../app/client/src/pages/AdminDashboard.tsx        |    0
+ .../app/client/src/pages/AdminLogin.tsx            |    0
+ .../app/client/src/pages/AdminPasswordRecovery.tsx |    0
+ .../app/client/src/pages/BookAppointment.tsx       |    0
+ {apps => legacy}/app/client/src/pages/Chat.tsx     |    0
+ .../app/client/src/pages/Dashboard.tsx             |    0
+ {apps => legacy}/app/client/src/pages/Feed.tsx     |    0
+ .../app/client/src/pages/ForgotPassword.tsx        |    0
+ .../app/client/src/pages/GarageProfile.tsx         |    0
+ .../app/client/src/pages/GearHeadAI.tsx            |    0
+ {apps => legacy}/app/client/src/pages/Home.tsx     |    0
+ {apps => legacy}/app/client/src/pages/Landing.tsx  |    0
+ {apps => legacy}/app/client/src/pages/Live.tsx     |    0
+ .../app/client/src/pages/Marketplace.tsx           |    0
+ .../app/client/src/pages/NativeStreaming.tsx       |    0
+ .../app/client/src/pages/PodcastEpisode.tsx        |    0
+ {apps => legacy}/app/client/src/pages/Podcasts.tsx |    0
+ .../app/client/src/pages/ProfileSettings.tsx       |    0
+ .../app/client/src/pages/ResetPassword.tsx         |    0
+ .../app/client/src/pages/RoomDetail.tsx            |    0
+ {apps => legacy}/app/client/src/pages/Rooms.tsx    |    0
+ {apps => legacy}/app/client/src/pages/Search.tsx   |    0
+ {apps => legacy}/app/client/src/pages/SignIn.tsx   |    0
+ .../app/client/src/pages/SiteSettings.tsx          |    0
+ .../app/client/src/pages/Subscribe.tsx             |    0
+ .../app/client/src/pages/SubscriptionSuccess.tsx   |    0
+ .../app/client/src/pages/SubscriptionTiers.tsx     |    0
+ .../app/client/src/pages/TipResult.tsx             |    0
+ {apps => legacy}/app/client/src/pages/Upload.tsx   |    0
+ .../app/client/src/pages/UserGuide.tsx             |    0
+ .../app/client/src/pages/VideoDetail.tsx           |    0
+ .../app/client/src/pages/VideoStreaming.tsx        |    0
+ .../app/client/src/pages/not-found.tsx             |    0
+ {apps => legacy}/app/components.json               |    0
+ {apps => legacy}/app/design_guidelines.md          |    0
+ {apps => legacy}/app/drizzle.config.ts             |    0
+ {apps => legacy}/app/generated-icon.png            |  Bin
+ {apps => legacy}/app/home-after-check.png          |  Bin
+ {apps => legacy}/app/ios/.gitignore                |    0
+ .../app/ios/App/App.xcodeproj/project.pbxproj      |    0
+ .../xcshareddata/IDEWorkspaceChecks.plist          |    0
+ {apps => legacy}/app/ios/App/App/AppDelegate.swift |    0
+ .../AppIcon.appiconset/AppIcon-512@2x.png          |  Bin
+ .../AppIcon.appiconset/Contents.json               |    0
+ .../app/ios/App/App/Assets.xcassets/Contents.json  |    0
+ .../Assets.xcassets/Splash.imageset/Contents.json  |    0
+ .../Splash.imageset/splash-2732x2732-1.png         |  Bin
+ .../Splash.imageset/splash-2732x2732-2.png         |  Bin
+ .../Splash.imageset/splash-2732x2732.png           |  Bin
+ .../ios/App/App/Base.lproj/LaunchScreen.storyboard |    0
+ .../app/ios/App/App/Base.lproj/Main.storyboard     |    0
+ {apps => legacy}/app/ios/App/App/Info.plist        |    0
+ {apps => legacy}/app/ios/App/Podfile               |    0
+ .../app/migrations/0000_certain_tinkerer.sql       |    0
+ .../app/migrations/0001_sync_schema_to_render.sql  |    0
+ .../app/migrations/meta/0000_snapshot.json         |    0
+ .../app/migrations/meta/0001_snapshot.json         |    0
+ {apps => legacy}/app/migrations/meta/_journal.json |    0
+ {apps => legacy}/app/package-lock.json             |    0
+ {apps => legacy}/app/package.json                  |    0
+ {apps => legacy}/app/postcss.config.js             |    0
+ {apps => legacy}/app/replit.md                     |    0
+ {apps => legacy}/app/server/db/client.ts           |    0
+ {apps => legacy}/app/server/db/migrateNeonHttp.ts  |    0
+ {apps => legacy}/app/server/db/migratePg.ts        |    0
+ {apps => legacy}/app/server/db/pool.ts             |    0
+ {apps => legacy}/app/server/email.ts               |    0
+ {apps => legacy}/app/server/gearheadAi.ts          |    0
+ {apps => legacy}/app/server/googleCalendar.ts      |    0
+ {apps => legacy}/app/server/index.ts               |    0
+ {apps => legacy}/app/server/objectStorage.ts       |    0
+ {apps => legacy}/app/server/passwordUtils.ts       |    0
+ .../replit_integrations/object_storage/index.ts    |    0
+ .../object_storage/objectAcl.ts                    |    0
+ .../object_storage/objectStorage.ts                |    0
+ .../replit_integrations/object_storage/routes.ts   |    0
+ {apps => legacy}/app/server/routes.ts              |    0
+ {apps => legacy}/app/server/storage.ts             |    0
+ {apps => legacy}/app/server/stripeClient.ts        |    0
+ {apps => legacy}/app/server/twilio.ts              |    0
+ {apps => legacy}/app/server/vite.ts                |    0
+ {apps => legacy}/app/server/webhookHandlers.ts     |    0
+ {apps => legacy}/app/shared/schema.ts              |    0
+ {apps => legacy}/app/tailwind.config.ts            |    0
+ {apps => legacy}/app/tsconfig.json                 |    0
+ {apps => legacy}/app/video-streaming-after-nav.png |  Bin
+ {apps => legacy}/app/video-streaming-verify.png    |  Bin
+ {apps => legacy}/app/vite.config.ts                |    0
+ {apps => legacy}/homepage/index.html               |    0
+ {apps => legacy}/homepage/main.js                  |    0
+ {apps => legacy}/homepage/styles.css               |    0
+ package.json                                       |   32 +
+ packages/ai/package.json                           |   22 +
+ packages/ai/src/index.test.ts                      |   20 +
+ packages/ai/src/index.ts                           |   49 +
+ packages/ai/tsconfig.json                          |    6 +
+ packages/ai/tsconfig.tsbuildinfo                   |    1 +
+ packages/db/drizzle.config.ts                      |   15 +
+ packages/db/migrations/0000_init_v3.sql            | 1040 +++
+ packages/db/migrations/meta/0000_snapshot.json     | 7551 +++++++++++++++++++
+ packages/db/migrations/meta/_journal.json          |   13 +
+ packages/db/package.json                           |   36 +
+ packages/db/src/index.ts                           |   11 +
+ packages/db/src/migrate.ts                         |   22 +
+ packages/db/src/schema.test.ts                     |   31 +
+ packages/db/src/schema/campus.ts                   |  284 +
+ packages/db/src/schema/commerce.ts                 |  236 +
+ packages/db/src/schema/common.ts                   |  109 +
+ packages/db/src/schema/diagnostics.ts              |  106 +
+ packages/db/src/schema/garage.ts                   |  108 +
+ packages/db/src/schema/identity.ts                 |  152 +
+ packages/db/src/schema/index.ts                    |    9 +
+ packages/db/src/schema/media.ts                    |  200 +
+ packages/db/src/schema/platform.ts                 |  100 +
+ packages/db/src/schema/rooms-live.ts               |  111 +
+ packages/db/src/seed.ts                            |   76 +
+ packages/db/tsconfig.json                          |   10 +
+ packages/db/tsconfig.tsbuildinfo                   |    1 +
+ packages/email/package.json                        |   21 +
+ packages/email/src/index.test.ts                   |   14 +
+ packages/email/src/index.ts                        |   27 +
+ packages/email/tsconfig.json                       |    5 +
+ packages/email/tsconfig.tsbuildinfo                |    1 +
+ packages/shared/package.json                       |   31 +
+ packages/shared/src/constants.ts                   |   28 +
+ packages/shared/src/env.test.ts                    |   36 +
+ packages/shared/src/env.ts                         |   90 +
+ packages/shared/src/index.ts                       |    2 +
+ packages/shared/tsconfig.json                      |    9 +
+ packages/shared/tsconfig.tsbuildinfo               |    1 +
+ pnpm-lock.yaml                                     | 7866 ++++++++++++++++++++
+ pnpm-workspace.yaml                                |    3 +
+ render.yaml                                        |    8 +-
+ scripts/dump-routes.ts                             |   27 +
+ scripts/render-cert.ts                             |  165 +
+ tsconfig.base.json                                 |   20 +
+ turbo.json                                         |   20 +
+ 353 files changed, 21845 insertions(+), 67 deletions(-)
+
+commit ced9728ff6e7f91bf159adb6a8909d04a19fb88a
+Author: jspoon5 <spoon.jeremy@gmail.com>
+Date:   Fri Aug 7 17:49:23 2026 -0500
+
+    Add migration for schema tables missing from initial SQL.
+    
+    Brings admin_users and other app tables onto Render Postgres so boot-time admin init and features work after migrate.
+    
+    Co-authored-by: Cursor <cursoragent@cursor.com>
+
+ apps/app/migrations/0001_sync_schema_to_render.sql |  310 +++
+ apps/app/migrations/meta/0001_snapshot.json        | 2445 ++++++++++++++++++++
+ apps/app/migrations/meta/_journal.json             |    7 +
+ 3 files changed, 2762 insertions(+)
+
+commit c77fb779c484e8df4e6e3bde06cdec302009c905
+Author: Cursor Agent <cursoragent@cursor.com>
+Date:   Fri Aug 7 18:04:00 2026 +0000
+
+    Fix garagetalk-app Render deploy: wire Postgres and migrate on boot.
+    
+    Provision garagetalk-db in the Blueprint, bind DATABASE_URL via fromDatabase, switch the app to node-postgres, run Drizzle migrations on start, and expose /api/health so the service can leave no-deploy.
+    
+    Co-authored-by: jspoon5 <jspoon5@users.noreply.github.com>
+
+ README.md                       |  16 ++--
+ apps/app/package-lock.json      | 206 ++--------------------------------------
+ apps/app/package.json           |  15 +--
+ apps/app/server/db/client.ts    |  10 ++
+ apps/app/server/db/migratePg.ts |  30 ++++++
+ apps/app/server/db/pool.ts      |  15 +++
+ apps/app/server/index.ts        |  83 ++++++++--------
+ apps/app/server/storage.ts      |  30 +-----
+ render.yaml                     |  14 ++-
+ 9 files changed, 139 insertions(+), 280 deletions(-)
+
+commit 504f48bef493792367c50fe9a8e7c8b462d031c0
+Author: jspoon5 <spoon.jeremy@gmail.com>
+Date:   Fri Aug 7 12:21:57 2026 -0500
+
+    Fix Render app build: install devDependencies for vite/esbuild.
+    
+    NODE_ENV=production made npm ci skip vite; use NPM_CONFIG_PRODUCTION=false and npx for the build.
+    
+    Co-authored-by: Cursor <cursoragent@cursor.com>
+
+ apps/app/package.json | 2 +-
+ render.yaml           | 3 ++-
+ 2 files changed, 3 insertions(+), 2 deletions(-)
+
+commit 3c2880582ea63834df352d96392940069c7c7201
+Author: jspoon5 <spoon.jeremy@gmail.com>
+Date:   Fri Aug 7 12:14:08 2026 -0500
+
+    Fix Render Blueprint sync for static homepage service.
+    
+    Drop plan/region from the static site (rejected by schema) and set staticPublishPath to apps/homepage relative to the repo root.
+    
+    Co-authored-by: Cursor <cursoragent@cursor.com>
+
+ render.yaml | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
+
+commit d871ea5c7c462cba8039a76520b08cb8be28235b
+Author: jspoon5 <spoon.jeremy@gmail.com>
+Date:   Fri Aug 7 12:10:34 2026 -0500
+
+    Initial commit: GarageTalk monorepo with Render Blueprint.
+    
+    Bring over the app from garage-talk-40, add a static homepage placeholder, and define homepage + app web services for Render.
+    
+    Co-authored-by: Cursor <cursoragent@cursor.com>
+
+ .gitignore                                         |    31 +
+ README.md                                          |    54 +
+ apps/app/.env.example                              |    31 +
+ apps/app/.gitignore                                |    13 +
+ apps/app/README.md                                 |   114 +
+ .../1jan_1006_screenshot_1767280054692.png         |   Bin 0 -> 167000 bytes
+ ...ave-a-value-prop-that-is-not-_1770327379858.txt |    11 +
+ ...OverviewProject-1762011092866_1762011092866.txt |    96 +
+ .../Screenshot_2025-12-13_120108_1765645359687.png |   Bin 0 -> 508646 bytes
+ .../Screenshot_2025-12-13_191950_1765671657251.png |   Bin 0 -> 72850 bytes
+ .../Screenshot_2025-12-16_070716_1765886866099.png |   Bin 0 -> 20746 bytes
+ .../Screenshot_2025-12-20_115640_1766249819871.png |   Bin 0 -> 80814 bytes
+ .../Screenshot_2025-12-20_181151_1766272434576.png |   Bin 0 -> 207626 bytes
+ .../Screenshot_2026-01-01_091453_1767276916208.png |   Bin 0 -> 171468 bytes
+ .../Screenshot_2026-01-01_094804_1767278897486.png |   Bin 0 -> 155130 bytes
+ .../Screenshot_2026-01-01_094804_1767279210815.png |   Bin 0 -> 155130 bytes
+ .../Screenshot_2026-01-01_094804_1767279374900.png |   Bin 0 -> 155130 bytes
+ .../Screenshot_2026-01-09_203327_1768008822985.png |   Bin 0 -> 97249 bytes
+ .../Screenshot_2026-01-10_172559_1768084006808.png |   Bin 0 -> 11449 bytes
+ apps/app/attached_assets/content-1765205160363.md  |    37 +
+ apps/app/attached_assets/content-1766267321166.md  |    55 +
+ .../generated_images/garage_talk_app_icon.png      |   Bin 0 -> 653819 bytes
+ apps/app/attached_assets/image_1767747578408.png   |   Bin 0 -> 142172 bytes
+ ...thenitated_app_search_scrnsht_1765213173807.png |   Bin 0 -> 106018 bytes
+ .../attached_assets/screenshot-1766267289834.png   |   Bin 0 -> 88590 bytes
+ .../attached_assets/screenshot-1766267318512.png   |   Bin 0 -> 88590 bytes
+ .../targeted_element_1765591726277.png             |   Bin 0 -> 210581 bytes
+ apps/app/capacitor.config.ts                       |    21 +
+ apps/app/client/index.html                         |    29 +
+ apps/app/client/public/favicon.png                 |   Bin 0 -> 1145 bytes
+ apps/app/client/public/icons/icon-128x128.png      |   Bin 0 -> 13839 bytes
+ apps/app/client/public/icons/icon-144x144.png      |   Bin 0 -> 16942 bytes
+ apps/app/client/public/icons/icon-152x152.png      |   Bin 0 -> 18310 bytes
+ apps/app/client/public/icons/icon-192x192.png      |   Bin 0 -> 27647 bytes
+ apps/app/client/public/icons/icon-384x384.png      |   Bin 0 -> 109086 bytes
+ apps/app/client/public/icons/icon-512x512.png      |   Bin 0 -> 191117 bytes
+ apps/app/client/public/icons/icon-72x72.png        |   Bin 0 -> 5918 bytes
+ apps/app/client/public/icons/icon-96x96.png        |   Bin 0 -> 8957 bytes
+ apps/app/client/public/manifest.json               |    63 +
+ apps/app/client/public/sw.js                       |    93 +
+ apps/app/client/src/App.tsx                        |   122 +
+ apps/app/client/src/components/AISearchResult.tsx  |   132 +
+ apps/app/client/src/components/ActivityFeed.tsx    |    48 +
+ apps/app/client/src/components/AdSense.tsx         |    70 +
+ .../app/client/src/components/AnalyticsTracker.tsx |    79 +
+ apps/app/client/src/components/BroadcastSetup.tsx  |   849 ++
+ apps/app/client/src/components/CategoryFilter.tsx  |    37 +
+ apps/app/client/src/components/ChatRoom.tsx        |   319 +
+ apps/app/client/src/components/ChatRoomCard.tsx    |    47 +
+ apps/app/client/src/components/ChatUserList.tsx    |   275 +
+ .../client/src/components/CreateChatRoomDialog.tsx |   143 +
+ apps/app/client/src/components/DashboardStats.tsx  |    66 +
+ apps/app/client/src/components/GarageMainNav.tsx   |    44 +
+ apps/app/client/src/components/Header.tsx          |   181 +
+ .../app/client/src/components/JitsiMeetingRoom.tsx |   237 +
+ .../app/client/src/components/LanguageSelector.tsx |    71 +
+ apps/app/client/src/components/MyGarage.tsx        |   513 +
+ .../app/client/src/components/NavigationArrows.tsx |    99 +
+ .../client/src/components/OBSStreamingGuide.tsx    |   326 +
+ apps/app/client/src/components/ObjectUploader.tsx  |   221 +
+ apps/app/client/src/components/PodcastCard.tsx     |   107 +
+ apps/app/client/src/components/PodcastUpload.tsx   |   255 +
+ .../client/src/components/ProfileEditDialog.tsx    |   386 +
+ .../app/client/src/components/QuickScreenShare.tsx |   247 +
+ .../src/components/RecentlyWatchedCarousel.tsx     |   137 +
+ .../client/src/components/RequireContactInfo.tsx   |   242 +
+ .../src/components/ScheduleSessionDialog.tsx       |   315 +
+ .../src/components/ScheduledSessionsList.tsx       |   264 +
+ .../client/src/components/ScreenShareDialog.tsx    |   512 +
+ apps/app/client/src/components/SpatialChatRoom.tsx |  1307 ++
+ apps/app/client/src/components/ThemeProvider.tsx   |    74 +
+ apps/app/client/src/components/TipGiftDialog.tsx   |   176 +
+ apps/app/client/src/components/UploadForm.tsx      |   287 +
+ apps/app/client/src/components/VideoCard.tsx       |    98 +
+ .../client/src/components/VideoEffectsPanel.tsx    |   508 +
+ apps/app/client/src/components/VideoPlayer.tsx     |    92 +
+ .../src/components/examples/AISearchResult.tsx     |    36 +
+ .../src/components/examples/ActivityFeed.tsx       |    40 +
+ .../src/components/examples/CategoryFilter.tsx     |    24 +
+ .../client/src/components/examples/ChatRoom.tsx    |    51 +
+ .../src/components/examples/ChatRoomCard.tsx       |    23 +
+ .../src/components/examples/DashboardStats.tsx     |    12 +
+ apps/app/client/src/components/examples/Header.tsx |     5 +
+ .../client/src/components/examples/UploadForm.tsx  |     9 +
+ .../client/src/components/examples/VideoCard.tsx   |    19 +
+ apps/app/client/src/components/ui/accordion.tsx    |    56 +
+ apps/app/client/src/components/ui/alert-dialog.tsx |   139 +
+ apps/app/client/src/components/ui/alert.tsx        |    59 +
+ apps/app/client/src/components/ui/aspect-ratio.tsx |     5 +
+ apps/app/client/src/components/ui/avatar.tsx       |    51 +
+ apps/app/client/src/components/ui/badge.tsx        |    38 +
+ apps/app/client/src/components/ui/breadcrumb.tsx   |   115 +
+ apps/app/client/src/components/ui/button.tsx       |    62 +
+ apps/app/client/src/components/ui/calendar.tsx     |    68 +
+ apps/app/client/src/components/ui/card.tsx         |    85 +
+ apps/app/client/src/components/ui/carousel.tsx     |   260 +
+ apps/app/client/src/components/ui/chart.tsx        |   365 +
+ apps/app/client/src/components/ui/checkbox.tsx     |    28 +
+ apps/app/client/src/components/ui/collapsible.tsx  |    11 +
+ apps/app/client/src/components/ui/command.tsx      |   151 +
+ apps/app/client/src/components/ui/context-menu.tsx |   198 +
+ apps/app/client/src/components/ui/dialog.tsx       |   122 +
+ apps/app/client/src/components/ui/drawer.tsx       |   118 +
+ .../app/client/src/components/ui/dropdown-menu.tsx |   198 +
+ apps/app/client/src/components/ui/form.tsx         |   178 +
+ apps/app/client/src/components/ui/hover-card.tsx   |    29 +
+ apps/app/client/src/components/ui/input-otp.tsx    |    69 +
+ apps/app/client/src/components/ui/input.tsx        |    23 +
+ apps/app/client/src/components/ui/label.tsx        |    24 +
+ apps/app/client/src/components/ui/menubar.tsx      |   256 +
+ .../client/src/components/ui/navigation-menu.tsx   |   128 +
+ apps/app/client/src/components/ui/pagination.tsx   |   117 +
+ apps/app/client/src/components/ui/popover.tsx      |    29 +
+ apps/app/client/src/components/ui/progress.tsx     |    28 +
+ apps/app/client/src/components/ui/radio-group.tsx  |    42 +
+ apps/app/client/src/components/ui/resizable.tsx    |    45 +
+ apps/app/client/src/components/ui/scroll-area.tsx  |    46 +
+ apps/app/client/src/components/ui/select.tsx       |   160 +
+ apps/app/client/src/components/ui/separator.tsx    |    29 +
+ apps/app/client/src/components/ui/sheet.tsx        |   140 +
+ apps/app/client/src/components/ui/sidebar.tsx      |   727 ++
+ apps/app/client/src/components/ui/skeleton.tsx     |    15 +
+ apps/app/client/src/components/ui/slider.tsx       |    26 +
+ apps/app/client/src/components/ui/switch.tsx       |    27 +
+ apps/app/client/src/components/ui/table.tsx        |   117 +
+ apps/app/client/src/components/ui/tabs.tsx         |    53 +
+ apps/app/client/src/components/ui/textarea.tsx     |    22 +
+ apps/app/client/src/components/ui/toast.tsx        |   127 +
+ apps/app/client/src/components/ui/toaster.tsx      |    33 +
+ apps/app/client/src/components/ui/toggle-group.tsx |    61 +
+ apps/app/client/src/components/ui/toggle.tsx       |    43 +
+ apps/app/client/src/components/ui/tooltip.tsx      |    30 +
+ apps/app/client/src/data/garageMvp.ts              |   457 +
+ apps/app/client/src/hooks/use-mobile.tsx           |    19 +
+ apps/app/client/src/hooks/use-session-tracking.ts  |   132 +
+ apps/app/client/src/hooks/use-toast.ts             |   191 +
+ apps/app/client/src/hooks/use-upload.ts            |   199 +
+ apps/app/client/src/hooks/useCurrentUser.ts        |    17 +
+ apps/app/client/src/hooks/useLanguageDetection.ts  |    72 +
+ apps/app/client/src/hooks/useVideoEffects.ts       |   637 +
+ apps/app/client/src/hooks/useVoiceInteraction.ts   |   243 +
+ apps/app/client/src/index.css                      |   355 +
+ apps/app/client/src/lib/i18n.ts                    |   115 +
+ apps/app/client/src/lib/queryClient.ts             |    57 +
+ apps/app/client/src/lib/utils.ts                   |     6 +
+ apps/app/client/src/locales/af.json                |   208 +
+ apps/app/client/src/locales/ar.json                |   208 +
+ apps/app/client/src/locales/de.json                |   208 +
+ apps/app/client/src/locales/el.json                |   208 +
+ apps/app/client/src/locales/en.json                |   208 +
+ apps/app/client/src/locales/es.json                |   208 +
+ apps/app/client/src/locales/fa.json                |   208 +
+ apps/app/client/src/locales/fi.json                |   208 +
+ apps/app/client/src/locales/fr.json                |   208 +
+ apps/app/client/src/locales/ha.json                |   208 +
+ apps/app/client/src/locales/he.json                |   208 +
+ apps/app/client/src/locales/hi.json                |   208 +
+ apps/app/client/src/locales/ig.json                |   208 +
+ apps/app/client/src/locales/it.json                |   208 +
+ apps/app/client/src/locales/nl.json                |   208 +
+ apps/app/client/src/locales/okr.json               |   208 +
+ apps/app/client/src/locales/pcm.json               |   208 +
+ apps/app/client/src/locales/pl.json                |   208 +
+ apps/app/client/src/locales/ps.json                |   208 +
+ apps/app/client/src/locales/pt.json                |   208 +
+ apps/app/client/src/locales/ro.json                |   208 +
+ apps/app/client/src/locales/ru.json                |   208 +
+ apps/app/client/src/locales/sw.json                |   208 +
+ apps/app/client/src/locales/uk.json                |   208 +
+ apps/app/client/src/locales/ur.json                |   208 +
+ apps/app/client/src/locales/yo.json                |   208 +
+ apps/app/client/src/locales/zh.json                |   207 +
+ apps/app/client/src/main.tsx                       |    17 +
+ apps/app/client/src/pages/AdminDashboard.tsx       |  1525 +++
+ apps/app/client/src/pages/AdminLogin.tsx           |   431 +
+ .../app/client/src/pages/AdminPasswordRecovery.tsx |   434 +
+ apps/app/client/src/pages/BookAppointment.tsx      |   139 +
+ apps/app/client/src/pages/Chat.tsx                 |   111 +
+ apps/app/client/src/pages/Dashboard.tsx            |   530 +
+ apps/app/client/src/pages/Feed.tsx                 |    63 +
+ apps/app/client/src/pages/ForgotPassword.tsx       |   174 +
+ apps/app/client/src/pages/GarageProfile.tsx        |    75 +
+ apps/app/client/src/pages/GearHeadAI.tsx           |   126 +
+ apps/app/client/src/pages/Home.tsx                 |   146 +
+ apps/app/client/src/pages/Landing.tsx              |   541 +
+ apps/app/client/src/pages/Live.tsx                 |    64 +
+ apps/app/client/src/pages/Marketplace.tsx          |    49 +
+ apps/app/client/src/pages/NativeStreaming.tsx      |   534 +
+ apps/app/client/src/pages/PodcastEpisode.tsx       |   420 +
+ apps/app/client/src/pages/Podcasts.tsx             |   169 +
+ apps/app/client/src/pages/ProfileSettings.tsx      |   364 +
+ apps/app/client/src/pages/ResetPassword.tsx        |   254 +
+ apps/app/client/src/pages/RoomDetail.tsx           |   120 +
+ apps/app/client/src/pages/Rooms.tsx                |    68 +
+ apps/app/client/src/pages/Search.tsx               |   812 ++
+ apps/app/client/src/pages/SignIn.tsx               |   734 ++
+ apps/app/client/src/pages/SiteSettings.tsx         |   486 +
+ apps/app/client/src/pages/Subscribe.tsx            |   209 +
+ apps/app/client/src/pages/SubscriptionSuccess.tsx  |   129 +
+ apps/app/client/src/pages/SubscriptionTiers.tsx    |   342 +
+ apps/app/client/src/pages/TipResult.tsx            |    75 +
+ apps/app/client/src/pages/Upload.tsx               |    27 +
+ apps/app/client/src/pages/UserGuide.tsx            |   405 +
+ apps/app/client/src/pages/VideoDetail.tsx          |   349 +
+ apps/app/client/src/pages/VideoStreaming.tsx       |   365 +
+ apps/app/client/src/pages/not-found.tsx            |    21 +
+ apps/app/components.json                           |    20 +
+ apps/app/design_guidelines.md                      |   228 +
+ apps/app/drizzle.config.ts                         |    40 +
+ apps/app/generated-icon.png                        |   Bin 0 -> 5333 bytes
+ apps/app/home-after-check.png                      |   Bin 0 -> 604522 bytes
+ apps/app/ios/.gitignore                            |    13 +
+ apps/app/ios/App/App.xcodeproj/project.pbxproj     |   408 +
+ .../xcshareddata/IDEWorkspaceChecks.plist          |     8 +
+ apps/app/ios/App/App/AppDelegate.swift             |    49 +
+ .../AppIcon.appiconset/AppIcon-512@2x.png          |   Bin 0 -> 110522 bytes
+ .../AppIcon.appiconset/Contents.json               |    14 +
+ apps/app/ios/App/App/Assets.xcassets/Contents.json |     6 +
+ .../Assets.xcassets/Splash.imageset/Contents.json  |    23 +
+ .../Splash.imageset/splash-2732x2732-1.png         |   Bin 0 -> 41273 bytes
+ .../Splash.imageset/splash-2732x2732-2.png         |   Bin 0 -> 41273 bytes
+ .../Splash.imageset/splash-2732x2732.png           |   Bin 0 -> 41273 bytes
+ .../ios/App/App/Base.lproj/LaunchScreen.storyboard |    32 +
+ apps/app/ios/App/App/Base.lproj/Main.storyboard    |    19 +
+ apps/app/ios/App/App/Info.plist                    |    49 +
+ apps/app/ios/App/Podfile                           |    24 +
+ apps/app/migrations/0000_certain_tinkerer.sql      |    85 +
+ apps/app/migrations/meta/0000_snapshot.json        |   546 +
+ apps/app/migrations/meta/_journal.json             |    13 +
+ apps/app/package-lock.json                         | 12661 +++++++++++++++++++
+ apps/app/package.json                              |   146 +
+ apps/app/postcss.config.js                         |     6 +
+ apps/app/replit.md                                 |    45 +
+ apps/app/server/db/migrateNeonHttp.ts              |    49 +
+ apps/app/server/email.ts                           |   222 +
+ apps/app/server/gearheadAi.ts                      |   107 +
+ apps/app/server/googleCalendar.ts                  |   174 +
+ apps/app/server/index.ts                           |   154 +
+ apps/app/server/objectStorage.ts                   |   538 +
+ apps/app/server/passwordUtils.ts                   |    42 +
+ .../replit_integrations/object_storage/index.ts    |    21 +
+ .../object_storage/objectAcl.ts                    |   181 +
+ .../object_storage/objectStorage.ts                |   300 +
+ .../replit_integrations/object_storage/routes.ts   |    86 +
+ apps/app/server/routes.ts                          |  5154 ++++++++
+ apps/app/server/storage.ts                         |  3027 +++++
+ apps/app/server/stripeClient.ts                    |   101 +
+ apps/app/server/twilio.ts                          |   122 +
+ apps/app/server/vite.ts                            |    85 +
+ apps/app/server/webhookHandlers.ts                 |    17 +
+ apps/app/shared/schema.ts                          |   735 ++
+ apps/app/tailwind.config.ts                        |   106 +
+ apps/app/tsconfig.json                             |    23 +
+ apps/app/video-streaming-after-nav.png             |   Bin 0 -> 242567 bytes
+ apps/app/video-streaming-verify.png                |   Bin 0 -> 242567 bytes
+ apps/app/vite.config.ts                            |    40 +
+ apps/homepage/index.html                           |    39 +
+ apps/homepage/main.js                              |     1 +
+ apps/homepage/styles.css                           |   179 +
+ render.yaml                                        |    65 +
+ 260 files changed, 58932 insertions(+)

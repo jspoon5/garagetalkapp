@@ -3,6 +3,9 @@ import { drizzle } from "drizzle-orm/pglite";
 import type { Database } from "@garagetalk/db";
 import * as schema from "@garagetalk/db";
 import { B3_B8_TEST_SQL } from "./pglite-b3-b8.js";
+import { C1_C6_TEST_SQL } from "./pglite-c1-c6.js";
+import { D1_D11_TEST_SQL } from "./pglite-d1-d11.js";
+import { MEDIA_QUALIFIED_TEST_SQL } from "./pglite-media-qualified.js";
 
 export async function createTestDb(): Promise<{ client: PGlite; db: Database }> {
   const client = new PGlite();
@@ -476,5 +479,8 @@ export async function createTestDb(): Promise<{ client: PGlite; db: Database }> 
     );
   `);
   await client.exec(B3_B8_TEST_SQL);
+  await client.exec(MEDIA_QUALIFIED_TEST_SQL);
+  await client.exec(D1_D11_TEST_SQL);
+  await client.exec(C1_C6_TEST_SQL);
   return { client, db };
 }

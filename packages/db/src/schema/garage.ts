@@ -109,3 +109,19 @@ export const recallChecks = pgTable(
   },
   (t) => [index("recall_checks_vehicle_idx").on(t.vehicleId)],
 );
+
+export const recallAlerts = pgTable(
+  "recall_alerts",
+  {
+    id: id(),
+    vehicleId: uuid("vehicle_id")
+      .notNull()
+      .references(() => vehicles.id, { onDelete: "cascade" }),
+    recallId: uuid("recall_id").references(() => recalls.id, { onDelete: "set null" }),
+    campaignId: text("campaign_id").notNull(),
+    status: text("status").notNull().default("open"),
+    notifiedAt: timestamp("notified_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (t) => [index("recall_alerts_vehicle_idx").on(t.vehicleId)],
+);

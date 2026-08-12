@@ -169,7 +169,7 @@ export const lessonProgress = pgTable("lesson_progress", {
     .references(() => users.id, { onDelete: "cascade" }),
   completedAt: timestamp("completed_at", { withTimezone: true }),
   ...timestamps,
-});
+}, (t) => [uniqueIndex("lesson_progress_user_lesson_uidx").on(t.userId, t.lessonId)]);
 
 export const pathProgress = pgTable("path_progress", {
   id: id(),
@@ -181,7 +181,7 @@ export const pathProgress = pgTable("path_progress", {
     .references(() => users.id, { onDelete: "cascade" }),
   completedNodeIds: uuid("completed_node_ids").array().notNull().default([]),
   ...timestamps,
-});
+}, (t) => [uniqueIndex("path_progress_user_path_uidx").on(t.userId, t.pathId)]);
 
 export const questSubmissions = pgTable("quest_submissions", {
   id: id(),
@@ -209,7 +209,10 @@ export const skillBadges = pgTable("skill_badges", {
   earnedAt: timestamp("earned_at", { withTimezone: true }).notNull().defaultNow(),
   source: text("source").notNull().default("learning_event"),
   ...timestamps,
-});
+}, (t) => [
+  uniqueIndex("skill_badges_user_path_uidx").on(t.userId, t.pathId),
+  uniqueIndex("skill_badges_user_quest_uidx").on(t.userId, t.questId),
+]);
 
 export const endorsements = pgTable("endorsements", {
   id: id(),
@@ -237,6 +240,25 @@ export const pitCrews = pgTable("pit_crews", {
   ...timestamps,
 });
 
+export const crewMembers = pgTable(
+  "crew_members",
+  {
+    id: id(),
+    crewId: uuid("crew_id")
+      .notNull()
+      .references(() => pitCrews.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: text("role").notNull().default("member"),
+    dailyStreak: integer("daily_streak").notNull().default(0),
+    lastLearningDay: text("last_learning_day"),
+    timezone: text("timezone").notNull().default("UTC"),
+    ...timestamps,
+  },
+  (t) => [uniqueIndex("crew_members_crew_user_uidx").on(t.crewId, t.userId)],
+);
+
 export const watchParties = pgTable("watch_parties", {
   id: id(),
   crewId: uuid("crew_id")
@@ -258,6 +280,21 @@ export const avatarItems = pgTable("avatar_items", {
   ...timestamps,
 });
 
+export const learningEvents = pgTable(
+  "learning_events",
+  {
+    id: id(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sourceType: text("source_type").notNull(),
+    sourceId: uuid("source_id"),
+    context: text("context").notNull().default("learning"),
+    ...timestamps,
+  },
+  (t) => [index("learning_events_user_idx").on(t.userId)],
+);
+
 /** Learning-event only unlocks — FK targets learning tables; no purchase pathway. */
 export const avatarUnlocks = pgTable(
   "avatar_unlocks",
@@ -270,15 +307,89 @@ export const avatarUnlocks = pgTable(
       .notNull()
       .references(() => avatarItems.id, { onDelete: "cascade" }),
     sourceEventType: text("source_event_type").notNull(),
-    sourceEventId: uuid("source_event_id").notNull(),
+    sourceEventId: uuid("source_event_id")
+      .notNull()
+      .references(() => learningEvents.id, { onDelete: "restrict" }),
     ...timestamps,
   },
   (t) => [
     index("avatar_unlocks_user_idx").on(t.userId),
+    uniqueIndex("avatar_unlocks_user_item_uidx").on(t.userId, t.itemId),
     foreignKey({
       columns: [t.itemId],
       foreignColumns: [avatarItems.id],
       name: "avatar_unlocks_item_fk",
     }),
   ],
+);
+
+export const coursePurchases = pgTable(
+  "course_purchases",
+  {
+    id: id(),
+    courseId: uuid("course_id")
+      .notNull()
+      .references(() => courses.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    amountCents: integer("amount_cents").notNull(),
+    status: text("status").notNull().default("paid"),
+    ...timestamps,
+  },
+  (t) => [uniqueIndex("course_purchases_user_course_uidx").on(t.userId, t.courseId)],
+);
+
+export const schoolMemberships = pgTable(
+  "school_memberships",
+  {
+    id: id(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    status: text("status").notNull().default("active"),
+    currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
+    ...timestamps,
+  },
+  (t) => [uniqueIndex("school_memberships_user_school_uidx").on(t.userId, t.schoolId)],
+);
+
+export const approvedCorpus = pgTable(
+  "approved_corpus",
+  {
+    id: id(),
+    slug: text("slug").notNull(),
+    sourceType: text("source_type").notNull(),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    published: boolean("published").notNull().default(false),
+    hazardClass: hazardClassEnum("hazard_class").notNull().default("none"),
+    ...timestamps,
+  },
+  (t) => [uniqueIndex("approved_corpus_slug_uidx").on(t.slug)],
+);
+
+export const publicBadgeShares = pgTable("public_badge_shares", {
+  id: id(),
+  badgeId: uuid("badge_id")
+    .notNull()
+    .references(() => skillBadges.id, { onDelete: "cascade" }),
+  slug: text("slug").notNull().unique(),
+  disclaimer: text("disclaimer").notNull(),
+  ...timestamps,
+});
+
+export const contentPresenceRooms = pgTable(
+  "content_presence_rooms",
+  {
+    id: id(),
+    contentType: text("content_type").notNull(),
+    contentId: uuid("content_id").notNull(),
+    roomKey: text("room_key").notNull(),
+    ...timestamps,
+  },
+  (t) => [uniqueIndex("content_presence_rooms_subject_uidx").on(t.contentType, t.contentId)],
 );

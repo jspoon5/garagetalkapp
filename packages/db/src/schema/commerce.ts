@@ -247,6 +247,7 @@ export const bookings = pgTable(
     vehicleId: uuid("vehicle_id").references(() => vehicles.id, { onDelete: "set null" }),
     scheduledAt: timestamp("scheduled_at", { withTimezone: true }).notNull(),
     status: bookingStatusEnum("status").notNull().default("requested"),
+    applicationFeeCents: integer("application_fee_cents").notNull().default(0),
     reminderSentAt: timestamp("reminder_sent_at", { withTimezone: true }),
     reminder24hSentAt: timestamp("reminder_24h_sent_at", { withTimezone: true }),
     reminder2hSentAt: timestamp("reminder_2h_sent_at", { withTimezone: true }),

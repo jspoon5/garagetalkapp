@@ -40,6 +40,10 @@ import { registerRouteCollector } from "./routes-manifest.js";
 import { registerA8A10Routes } from "./register-a8-a10.js";
 import { registerB1B2Routes } from "./register-b1-b2.js";
 import { registerB3B8Routes } from "./register-b3-b8.js";
+import { registerC1C6Routes } from "./register-c1-c6.js";
+import type { DiagnosticProvider } from "./services/c1-c6-diagnostics.js";
+import type { NhtsaClient } from "./services/nhtsa-service.js";
+import { registerD1D11Routes } from "./register-d1-d11.js";
 
 export type BuildAppOptions = {
   db: Database;
@@ -56,6 +60,8 @@ export type BuildAppOptions = {
   gearhead?: GearHeadService;
   presence?: PresenceStore;
   trustProxy?: boolean;
+  nhtsa?: NhtsaClient;
+  diagnosticsProvider?: DiagnosticProvider;
 };
 
 export async function buildApp(opts: BuildAppOptions) {
@@ -82,7 +88,7 @@ export async function buildApp(opts: BuildAppOptions) {
     emailClient,
     appBaseUrl: opts.appBaseUrl ?? "http://localhost:5173",
   });
-  const garage = new GarageService(opts.db);
+  const garage = new GarageService(opts.db, { nhtsa: opts.nhtsa });
   const media = new MediaUploadService(opts.db);
   const video = opts.video ?? new VideoService(opts.db);
   const podcasts = opts.podcasts ?? new PodcastService(opts.db);
@@ -130,6 +136,13 @@ export async function buildApp(opts: BuildAppOptions) {
   });
   await registerB1B2Routes(app as never, opts.db);
   await registerB3B8Routes(app as never, { db: opts.db, emailClient });
+  await registerC1C6Routes(app as never, {
+    db: opts.db,
+    emailClient,
+    nhtsa: opts.nhtsa,
+    diagnostics: opts.diagnosticsProvider,
+  });
+  await registerD1D11Routes(app as never, opts.db);
 
   app.setErrorHandler((err, req, reply) => {
     const zodErr = err instanceof ZodError ? err : null;
