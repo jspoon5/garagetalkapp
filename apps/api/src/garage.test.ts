@@ -105,4 +105,51 @@ describe("garage vehicles", () => {
     });
     expect(finalList.json().vehicles).toHaveLength(1);
   });
+
+  it("reorders vehicles by sortOrder", async () => {
+    const first = await app.inject({
+      method: "POST",
+      url: "/garage/vehicles",
+      headers: { cookie },
+      payload: {
+        type: "car",
+        fuelType: "gas",
+        make: "Ford",
+        model: "Focus",
+        year: 2015,
+      },
+    });
+    const second = await app.inject({
+      method: "POST",
+      url: "/garage/vehicles",
+      headers: { cookie },
+      payload: {
+        type: "car",
+        fuelType: "gas",
+        make: "Toyota",
+        model: "Corolla",
+        year: 2016,
+      },
+    });
+    const idA = first.json().vehicle.id as string;
+    const idB = second.json().vehicle.id as string;
+
+    const reorder = await app.inject({
+      method: "POST",
+      url: "/garage/vehicles/reorder",
+      headers: { cookie },
+      payload: { vehicleIds: [idB, idA] },
+    });
+    expect(reorder.statusCode).toBe(200);
+
+    const listed = await app.inject({
+      method: "GET",
+      url: "/garage/vehicles",
+      headers: { cookie },
+    });
+    const vehicles = listed.json().vehicles as Array<{ id: string; make: string }>;
+    const reordered = vehicles.filter((v) => v.id === idA || v.id === idB);
+    expect(reordered[0]?.make).toBe("Toyota");
+    expect(reordered[1]?.make).toBe("Ford");
+  });
 });

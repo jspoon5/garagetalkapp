@@ -25,3 +25,11 @@ export class MemoryEmailClient implements EmailClient {
 export function welcomeEmailHtml(username: string): string {
   return `<p>Welcome to Garage Talk, ${username}.</p>`;
 }
+
+export function verificationEmailHtml(link: string): string {
+  return `<p>Verify your Garage Talk email:</p><p><a href="${link}">${link}</a></p>`;
+}
+
+export function passwordResetEmailHtml(link: string): string {
+  return `<p>Reset your Garage Talk password:</p><p><a href="${link}">${link}</a></p>`;
+}

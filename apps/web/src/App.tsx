@@ -17,6 +17,9 @@ export function App() {
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [bio, setBio] = useState("");
+  const [cityText, setCityText] = useState("");
+  const [exportData, setExportData] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function register() {
@@ -33,6 +36,8 @@ export function App() {
     }
     const data = (await res.json()) as { user: User };
     setUser(data.user);
+    setBio(data.user.bio ?? "");
+    setCityText(data.user.cityText ?? "");
   }
 
   async function login() {
@@ -49,11 +54,35 @@ export function App() {
     }
     const data = (await res.json()) as { user: User };
     setUser(data.user);
+    setBio(data.user.bio ?? "");
+    setCityText(data.user.cityText ?? "");
+  }
+
+  async function saveProfile() {
+    const res = await fetch(`${API}/auth/profile`, {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ bio: bio || null, cityText: cityText || null }),
+    });
+    if (res.ok) {
+      const data = (await res.json()) as { user: User };
+      setUser(data.user);
+    }
+  }
+
+  async function exportAccount() {
+    const res = await fetch(`${API}/auth/export`, { credentials: "include" });
+    if (res.ok) {
+      const data = await res.json();
+      setExportData(JSON.stringify(data));
+    }
   }
 
   async function deleteAccount() {
     await fetch(`${API}/auth/delete-account`, { method: "POST", credentials: "include" });
     setUser(null);
+    setExportData(null);
   }
 
   return (
@@ -75,13 +104,58 @@ export function App() {
         <section className="rounded-xl bg-slate-900/80 p-5" aria-live="polite">
           <h2 className="text-xl">{t("home.signedIn", { name: user.username })}</h2>
           <p className="mt-2 text-slate-300">{user.email}</p>
-          <button
-            type="button"
-            className="mt-4 rounded bg-red-700 px-4 py-2"
-            onClick={() => void deleteAccount()}
-          >
-            {t("auth.deleteAccount")}
-          </button>
+          <label className="mt-4 flex flex-col gap-1 text-sm">
+            {t("auth.bio")}
+            <input
+              data-testid="profile-bio"
+              className="rounded border border-slate-700 bg-slate-950 px-3 py-2"
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+            />
+          </label>
+          <label className="mt-2 flex flex-col gap-1 text-sm">
+            {t("auth.city")}
+            <input
+              data-testid="profile-city"
+              className="rounded border border-slate-700 bg-slate-950 px-3 py-2"
+              value={cityText}
+              onChange={(e) => setCityText(e.target.value)}
+            />
+          </label>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              data-testid="profile-save"
+              className="rounded bg-amber-500 px-4 py-2 font-medium text-slate-950"
+              onClick={() => void saveProfile()}
+            >
+              {t("auth.saveProfile")}
+            </button>
+            <button
+              type="button"
+              data-testid="export-data"
+              className="rounded border border-slate-600 px-4 py-2"
+              onClick={() => void exportAccount()}
+            >
+              {t("auth.exportData")}
+            </button>
+            <button
+              type="button"
+              data-testid="delete-account"
+              className="rounded bg-red-700 px-4 py-2"
+              onClick={() => void deleteAccount()}
+            >
+              {t("auth.deleteAccount")}
+            </button>
+          </div>
+          {exportData ? (
+            <pre
+              data-testid="export-output"
+              className="mt-4 max-h-40 overflow-auto rounded bg-slate-950 p-3 text-xs"
+            >
+              {exportData}
+            </pre>
+          ) : null}
         </section>
       ) : (
         <form
@@ -94,6 +168,7 @@ export function App() {
           <label className="flex flex-col gap-1 text-sm">
             {t("auth.email")}
             <input
+              data-testid="auth-email"
               className="rounded border border-slate-700 bg-slate-950 px-3 py-2"
               type="email"
               autoComplete="email"
@@ -105,6 +180,7 @@ export function App() {
           <label className="flex flex-col gap-1 text-sm">
             {t("auth.username")}
             <input
+              data-testid="auth-username"
               className="rounded border border-slate-700 bg-slate-950 px-3 py-2"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
@@ -114,6 +190,7 @@ export function App() {
           <label className="flex flex-col gap-1 text-sm">
             {t("auth.password")}
             <input
+              data-testid="auth-password"
               className="rounded border border-slate-700 bg-slate-950 px-3 py-2"
               type="password"
               autoComplete="new-password"
@@ -125,11 +202,16 @@ export function App() {
           </label>
           {error ? <p className="text-sm text-red-400">{error}</p> : null}
           <div className="flex gap-2">
-            <button type="submit" className="rounded bg-amber-500 px-4 py-2 font-medium text-slate-950">
+            <button
+              type="submit"
+              data-testid="auth-register"
+              className="rounded bg-amber-500 px-4 py-2 font-medium text-slate-950"
+            >
               {t("auth.register")}
             </button>
             <button
               type="button"
+              data-testid="auth-login"
               className="rounded border border-slate-600 px-4 py-2"
               onClick={() => void login()}
             >

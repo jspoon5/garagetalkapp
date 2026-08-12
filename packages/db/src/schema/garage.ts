@@ -30,6 +30,7 @@ export const vehicles = pgTable(
     vinDecoded: jsonb("vin_decoded").$type<Record<string, unknown>>(),
     nickname: text("nickname"),
     isPrimary: boolean("is_primary").notNull().default(false),
+    sortOrder: integer("sort_order").notNull().default(0),
     photos: text("photos").array().notNull().default([]),
     privacy: text("privacy").notNull().default("private"),
     ...timestamps,

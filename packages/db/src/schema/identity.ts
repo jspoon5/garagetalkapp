@@ -1,4 +1,5 @@
 import {
+  authTokenTypeEnum,
   avatarTypeEnum,
   boolean,
   id,
@@ -64,6 +65,23 @@ export const sessions = pgTable(
   (t) => [
     uniqueIndex("sessions_token_uidx").on(t.token),
     index("sessions_user_idx").on(t.userId),
+  ],
+);
+
+export const authTokens = pgTable(
+  "auth_tokens",
+  {
+    id: id(),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
+    type: authTokenTypeEnum("type").notNull(),
+    tokenHash: text("token_hash").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (t) => [
+    index("auth_tokens_user_idx").on(t.userId),
+    index("auth_tokens_hash_idx").on(t.tokenHash),
   ],
 );
 

@@ -9,8 +9,12 @@
     "email": "Email",
     "username": "Username",
     "password": "Password",
+    "bio": "Bio",
+    "city": "City",
     "register": "Create account",
     "login": "Sign in",
+    "saveProfile": "Save profile",
+    "exportData": "Export my data",
     "deleteAccount": "Delete my account",
     "registerFailed": "Could not register",
     "loginFailed": "Invalid credentials"

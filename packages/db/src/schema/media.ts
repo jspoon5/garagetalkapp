@@ -3,10 +3,13 @@ import {
   id,
   index,
   integer,
+  jsonb,
   pgTable,
   softDelete,
   text,
+  timestamp,
   timestamps,
+  uniqueIndex,
   uuid,
 } from "./common.js";
 import { users } from "./identity.js";
@@ -27,6 +30,8 @@ export const videos = pgTable(
     status: text("status").notNull().default("processing"),
     durationSeconds: integer("duration_seconds"),
     thumbUrl: text("thumb_url"),
+    customThumb: text("custom_thumb"),
+    hlsUrl: text("hls_url"),
     viewCount: integer("view_count").notNull().default(0),
     likeCount: integer("like_count").notNull().default(0),
     ...timestamps,
@@ -47,7 +52,10 @@ export const videoLikes = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     ...timestamps,
   },
-  (t) => [index("video_likes_video_idx").on(t.videoId)],
+  (t) => [
+    index("video_likes_video_idx").on(t.videoId),
+    uniqueIndex("video_likes_user_video_uidx").on(t.userId, t.videoId),
+  ],
 );
 
 export const videoComments = pgTable(
@@ -197,4 +205,62 @@ export const qualifiedViews = pgTable(
     ...timestamps,
   },
   (t) => [index("qualified_views_media_idx").on(t.mediaType, t.mediaId)],
+);
+
+export const viewHeartbeats = pgTable(
+  "view_heartbeats",
+  {
+    id: id(),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    sessionId: text("session_id").notNull(),
+    mediaType: text("media_type").notNull(),
+    mediaId: uuid("media_id").notNull(),
+    viewDate: text("view_date").notNull(),
+    positionSeconds: integer("position_seconds").notNull().default(0),
+    ...timestamps,
+  },
+  (t) => [
+    index("view_heartbeats_media_idx").on(t.mediaType, t.mediaId),
+    uniqueIndex("view_heartbeats_dedupe_uidx").on(t.userId, t.mediaId, t.viewDate),
+  ],
+);
+
+export const recentlyWatched = pgTable(
+  "recently_watched",
+  {
+    id: id(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    videoId: uuid("video_id")
+      .notNull()
+      .references(() => videos.id, { onDelete: "cascade" }),
+    positionSeconds: integer("position_seconds").notNull().default(0),
+    lastWatchedAt: timestamp("last_watched_at", { withTimezone: true }).notNull().defaultNow(),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex("recently_watched_user_video_uidx").on(t.userId, t.videoId),
+    index("recently_watched_user_idx").on(t.userId),
+  ],
+);
+
+export const mediaAssets = pgTable(
+  "media_assets",
+  {
+    id: id(),
+    ownerId: uuid("owner_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    mimeType: text("mime_type").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    storageKey: text("storage_key").notNull(),
+    status: text("status").notNull().default("pending"),
+    publicUrl: text("public_url"),
+    exifStripped: boolean("exif_stripped").notNull().default(false),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>().default({}),
+    ...timestamps,
+  },
+  (t) => [index("media_assets_owner_idx").on(t.ownerId)],
 );

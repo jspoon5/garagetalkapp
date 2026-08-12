@@ -36,10 +36,18 @@ export default defineConfig({
       },
     }),
   ],
+  test: {
+    include: ["src/**/*.{test,spec}.{ts,tsx}"],
+    exclude: ["e2e/**", "node_modules/**"],
+  },
   server: {
     port: 5173,
     proxy: {
       "/auth": "http://127.0.0.1:3000",
+      "/garage": "http://127.0.0.1:3000",
+      "/uploads": "http://127.0.0.1:3000",
+      "/videos": "http://127.0.0.1:3000",
+      "/webhooks": "http://127.0.0.1:3000",
       "/healthz": "http://127.0.0.1:3000",
       "/readyz": "http://127.0.0.1:3000",
     },

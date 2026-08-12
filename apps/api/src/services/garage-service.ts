@@ -1,4 +1,4 @@
-import { and, asc, eq, isNull } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import type { Database } from "@garagetalk/db";
 import { vehicles } from "@garagetalk/db";
 import { uuidv7 } from "uuidv7";
@@ -28,13 +28,20 @@ export class GarageService {
       .select()
       .from(vehicles)
       .where(and(eq(vehicles.userId, userId), isNull(vehicles.deletedAt)))
-      .orderBy(asc(vehicles.createdAt));
+      .orderBy(asc(vehicles.sortOrder), asc(vehicles.createdAt));
   }
 
   async create(userId: string, input: VehicleInput) {
     if (input.isPrimary) {
       await this.clearPrimary(userId);
     }
+    const existing = await this.db
+      .select({ sortOrder: vehicles.sortOrder })
+      .from(vehicles)
+      .where(and(eq(vehicles.userId, userId), isNull(vehicles.deletedAt)));
+    const sortOrder =
+      existing.length === 0 ? 0 : Math.max(...existing.map((row) => row.sortOrder)) + 1;
+
     const [row] = await this.db
       .insert(vehicles)
       .values({
@@ -49,6 +56,7 @@ export class GarageService {
         vin: input.vin ?? null,
         nickname: input.nickname ?? null,
         isPrimary: input.isPrimary ?? false,
+        sortOrder,
         photos: input.photos ?? [],
         privacy: input.privacy ?? "private",
       })
@@ -82,6 +90,32 @@ export class GarageService {
       )
       .returning();
     return row ?? null;
+  }
+
+  async reorder(userId: string, orderedIds: string[]): Promise<boolean> {
+    if (orderedIds.length === 0) return true;
+
+    const owned = await this.db
+      .select({ id: vehicles.id })
+      .from(vehicles)
+      .where(
+        and(
+          eq(vehicles.userId, userId),
+          isNull(vehicles.deletedAt),
+          inArray(vehicles.id, orderedIds),
+        ),
+      );
+    if (owned.length !== orderedIds.length) return false;
+
+    await this.db.transaction(async (tx) => {
+      for (let i = 0; i < orderedIds.length; i++) {
+        await tx
+          .update(vehicles)
+          .set({ sortOrder: i, updatedAt: new Date() })
+          .where(and(eq(vehicles.id, orderedIds[i]!), eq(vehicles.userId, userId)));
+      }
+    });
+    return true;
   }
 
   private async clearPrimary(userId: string) {

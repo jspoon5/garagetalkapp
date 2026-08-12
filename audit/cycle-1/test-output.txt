@@ -1,4 +1,69 @@
 
+> garagetalk@ typecheck /workspace
+> turbo run typecheck
+
+• turbo 2.10.9
+
+   • Packages in scope: @garagetalk/ai, @garagetalk/api, @garagetalk/db, @garagetalk/email, @garagetalk/shared, @garagetalk/web
+   • Running typecheck in 6 packages
+   • Remote caching disabled
+
+@garagetalk/shared:build: cache hit, replaying logs 1d6063a2b9f252d4
+@garagetalk/shared:build: 
+@garagetalk/shared:build: > @garagetalk/shared@0.0.1 build /workspace/packages/shared
+@garagetalk/shared:build: > tsc -p tsconfig.json
+@garagetalk/shared:build: 
+@garagetalk/shared:typecheck: cache hit, replaying logs 077e5606e17c1ff3
+@garagetalk/ai:typecheck: cache hit, replaying logs 8559782ab7298524
+@garagetalk/email:build: cache hit, replaying logs 1549b7259fcfa176
+@garagetalk/ai:typecheck: 
+@garagetalk/email:build: 
+@garagetalk/ai:typecheck: > @garagetalk/ai@0.0.1 typecheck /workspace/packages/ai
+@garagetalk/ai:typecheck: > tsc -p tsconfig.json --noEmit
+@garagetalk/ai:typecheck: 
+@garagetalk/email:build: > @garagetalk/email@0.0.1 build /workspace/packages/email
+@garagetalk/email:build: > tsc -p tsconfig.json
+@garagetalk/email:build: 
+@garagetalk/web:typecheck: cache miss, executing 9ff038c87b337487
+@garagetalk/db:typecheck: cache hit, replaying logs f5cc280e7cdbe8b7
+@garagetalk/db:typecheck: 
+@garagetalk/db:typecheck: > @garagetalk/db@0.0.1 typecheck /workspace/packages/db
+@garagetalk/db:typecheck: > tsc -p tsconfig.json --noEmit
+@garagetalk/db:typecheck: 
+@garagetalk/ai:build: cache hit, replaying logs eacfd43f348410cc
+@garagetalk/ai:build: 
+@garagetalk/ai:build: > @garagetalk/ai@0.0.1 build /workspace/packages/ai
+@garagetalk/ai:build: > tsc -p tsconfig.json
+@garagetalk/ai:build: 
+@garagetalk/email:typecheck: cache hit, replaying logs 0c0a52c30fe0f6b2
+@garagetalk/email:typecheck: 
+@garagetalk/email:typecheck: > @garagetalk/email@0.0.1 typecheck /workspace/packages/email
+@garagetalk/email:typecheck: > tsc -p tsconfig.json --noEmit
+@garagetalk/email:typecheck: 
+@garagetalk/shared:typecheck: 
+@garagetalk/shared:typecheck: > @garagetalk/shared@0.0.1 typecheck /workspace/packages/shared
+@garagetalk/shared:typecheck: > tsc -p tsconfig.json --noEmit
+@garagetalk/shared:typecheck: 
+@garagetalk/db:build: cache hit, replaying logs 5e847601111a9938
+@garagetalk/db:build: 
+@garagetalk/db:build: > @garagetalk/db@0.0.1 build /workspace/packages/db
+@garagetalk/db:build: > tsc -p tsconfig.json
+@garagetalk/db:build: 
+@garagetalk/api:typecheck: cache hit, replaying logs 635906bd9eb4603b
+@garagetalk/api:typecheck: 
+@garagetalk/api:typecheck: > @garagetalk/api@0.0.1 typecheck /workspace/apps/api
+@garagetalk/api:typecheck: > tsc -p tsconfig.json --noEmit
+@garagetalk/api:typecheck: 
+@garagetalk/web:typecheck: 
+@garagetalk/web:typecheck: > @garagetalk/web@0.0.1 typecheck /workspace/apps/web
+@garagetalk/web:typecheck: > tsc -b --noEmit
+@garagetalk/web:typecheck: 
+
+ Tasks:    10 successful, 10 total
+Cached:    9 cached, 10 total
+  Time:    1.288s 
+
+
 > garagetalk@ lint /workspace
 > turbo run lint
 
@@ -8,54 +73,281 @@
    • Running lint in 6 packages
    • Remote caching disabled
 
-@garagetalk/shared:lint: cache hit, replaying logs d45a2b2de9be543d
-@garagetalk/shared:lint: 
-@garagetalk/shared:lint: > @garagetalk/shared@0.0.1 lint /workspace/packages/shared
-@garagetalk/shared:lint: > eslint src --max-warnings=0
-@garagetalk/shared:lint: 
-@garagetalk/shared:lint: (node:7866) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///workspace/eslint.config.js?mtime=1786544692439 is not specified and it doesn't parse as CommonJS.
-@garagetalk/shared:lint: Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
-@garagetalk/shared:lint: To eliminate this warning, add "type": "module" to /workspace/package.json.
-@garagetalk/shared:lint: (Use `node --trace-warnings ...` to show where the warning was created)
-@garagetalk/ai:lint: cache hit, replaying logs 4b92b890e675e201
+@garagetalk/web:lint: cache miss, executing e30c26fd2889da55
+@garagetalk/api:lint: cache hit, replaying logs 13ab76c30a5a63d1
+@garagetalk/api:lint: 
+@garagetalk/api:lint: > @garagetalk/api@0.0.1 lint /workspace/apps/api
+@garagetalk/api:lint: > eslint src --max-warnings=0
+@garagetalk/ai:lint: cache hit, replaying logs bba256ee32ba568c
+@garagetalk/api:lint: 
 @garagetalk/ai:lint: 
 @garagetalk/ai:lint: > @garagetalk/ai@0.0.1 lint /workspace/packages/ai
 @garagetalk/ai:lint: > eslint src --max-warnings=0
 @garagetalk/ai:lint: 
-@garagetalk/ai:lint: (node:7832) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///workspace/eslint.config.js?mtime=1786544692439 is not specified and it doesn't parse as CommonJS.
-@garagetalk/ai:lint: Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
-@garagetalk/ai:lint: To eliminate this warning, add "type": "module" to /workspace/package.json.
-@garagetalk/ai:lint: (Use `node --trace-warnings ...` to show where the warning was created)
-@garagetalk/db:lint: cache miss, executing 06aaa40019d93858
-@garagetalk/email:lint: cache hit, replaying logs 002d7161ff7406b6
+@garagetalk/shared:lint: cache hit, replaying logs 0f2866e3941068a2
+@garagetalk/db:lint: cache hit, replaying logs a0b03dee6f99194c
+@garagetalk/shared:lint: 
+@garagetalk/db:lint: 
+@garagetalk/db:lint: > @garagetalk/db@0.0.1 lint /workspace/packages/db
+@garagetalk/db:lint: > eslint src --max-warnings=0
+@garagetalk/shared:lint: > @garagetalk/shared@0.0.1 lint /workspace/packages/shared
+@garagetalk/shared:lint: > eslint src --max-warnings=0
+@garagetalk/shared:lint: 
+@garagetalk/db:lint: 
+@garagetalk/email:lint: cache hit, replaying logs 277f122f1381e39c
 @garagetalk/email:lint: 
 @garagetalk/email:lint: > @garagetalk/email@0.0.1 lint /workspace/packages/email
 @garagetalk/email:lint: > eslint src --max-warnings=0
 @garagetalk/email:lint: 
-@garagetalk/email:lint: (node:7807) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///workspace/eslint.config.js?mtime=1786544692439 is not specified and it doesn't parse as CommonJS.
-@garagetalk/email:lint: Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
-@garagetalk/email:lint: To eliminate this warning, add "type": "module" to /workspace/package.json.
-@garagetalk/email:lint: (Use `node --trace-warnings ...` to show where the warning was created)
-@garagetalk/api:lint: cache miss, executing 9604e6fa5e14c5d5
-@garagetalk/web:lint: cache hit, replaying logs fb67ee2b386ce91a
 @garagetalk/web:lint: 
 @garagetalk/web:lint: > @garagetalk/web@0.0.1 lint /workspace/apps/web
 @garagetalk/web:lint: > eslint src --max-warnings=0
 @garagetalk/web:lint: 
-@garagetalk/web:lint: (node:7857) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///workspace/eslint.config.js?mtime=1786544692439 is not specified and it doesn't parse as CommonJS.
-@garagetalk/web:lint: Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
-@garagetalk/web:lint: To eliminate this warning, add "type": "module" to /workspace/package.json.
-@garagetalk/web:lint: (Use `node --trace-warnings ...` to show where the warning was created)
-@garagetalk/db:lint: 
-@garagetalk/db:lint: > @garagetalk/db@0.0.1 lint /workspace/packages/db
-@garagetalk/db:lint: > eslint src --max-warnings=0
-@garagetalk/db:lint: 
-@garagetalk/api:lint: 
-@garagetalk/api:lint: > @garagetalk/api@0.0.1 lint /workspace/apps/api
-@garagetalk/api:lint: > eslint src --max-warnings=0
-@garagetalk/api:lint: 
 
  Tasks:    6 successful, 6 total
-Cached:    4 cached, 6 total
-  Time:    933ms 
+Cached:    5 cached, 6 total
+  Time:    790ms 
+
+
+> garagetalk@ test /workspace
+> turbo run test
+
+• turbo 2.10.9
+
+   • Packages in scope: @garagetalk/ai, @garagetalk/api, @garagetalk/db, @garagetalk/email, @garagetalk/shared, @garagetalk/web
+   • Running test in 6 packages
+   • Remote caching disabled
+
+@garagetalk/shared:test: cache hit, replaying logs a246125ea4cc6825
+@garagetalk/email:build: cache hit, replaying logs 1549b7259fcfa176
+@garagetalk/shared:test: 
+@garagetalk/shared:test: > @garagetalk/shared@0.0.1 test /workspace/packages/shared
+@garagetalk/shared:test: > vitest run
+@garagetalk/shared:test: 
+@garagetalk/shared:test: 
+@garagetalk/email:build: 
+@garagetalk/email:build: > @garagetalk/email@0.0.1 build /workspace/packages/email
+@garagetalk/email:build: > tsc -p tsconfig.json
+@garagetalk/email:build: 
+@garagetalk/shared:test:  RUN  v2.1.9 /workspace/packages/shared
+@garagetalk/shared:test: 
+@garagetalk/shared:test:  ✓ src/env.test.ts (3 tests) 9ms
+@garagetalk/shared:test: 
+@garagetalk/shared:test:  Test Files  1 passed (1)
+@garagetalk/shared:test:       Tests  3 passed (3)
+@garagetalk/shared:test:    Start at  15:46:27
+@garagetalk/shared:test:    Duration  656ms (transform 142ms, setup 0ms, collect 158ms, tests 9ms, environment 0ms, prepare 167ms)
+@garagetalk/email:test: cache hit, replaying logs 2e39e63c1a5e4a42
+@garagetalk/email:test: 
+@garagetalk/email:test: > @garagetalk/email@0.0.1 test /workspace/packages/email
+@garagetalk/email:test: > vitest run
+@garagetalk/email:test: 
+@garagetalk/email:test: 
+@garagetalk/email:test:  RUN  v2.1.9 /workspace/packages/email
+@garagetalk/email:test: 
+@garagetalk/email:test:  ✓ src/index.test.ts (2 tests) 3ms
+@garagetalk/shared:test: 
+@garagetalk/email:test: 
+@garagetalk/email:test:  Test Files  1 passed (1)
+@garagetalk/email:test:       Tests  2 passed (2)
+@garagetalk/shared:build: cache hit, replaying logs 1d6063a2b9f252d4
+@garagetalk/email:test:    Start at  15:46:27
+@garagetalk/email:test:    Duration  702ms (transform 119ms, setup 0ms, collect 117ms, tests 3ms, environment 0ms, prepare 175ms)
+@garagetalk/email:test: 
+@garagetalk/shared:build: 
+@garagetalk/shared:build: > @garagetalk/shared@0.0.1 build /workspace/packages/shared
+@garagetalk/shared:build: > tsc -p tsconfig.json
+@garagetalk/shared:build: 
+@garagetalk/web:test: cache miss, executing 206558b75bc88631
+@garagetalk/db:test: cache hit, replaying logs 7c774b38eba43bcf
+@garagetalk/ai:build: cache hit, replaying logs eacfd43f348410cc
+@garagetalk/ai:build: 
+@garagetalk/ai:build: > @garagetalk/ai@0.0.1 build /workspace/packages/ai
+@garagetalk/ai:build: > tsc -p tsconfig.json
+@garagetalk/ai:build: 
+@garagetalk/db:test: 
+@garagetalk/db:test: > @garagetalk/db@0.0.1 test /workspace/packages/db
+@garagetalk/db:test: > vitest run
+@garagetalk/db:test: 
+@garagetalk/db:test: 
+@garagetalk/db:test:  RUN  v2.1.9 /workspace/packages/db
+@garagetalk/db:test: 
+@garagetalk/db:test:  ✓ src/schema.test.ts (1 test) 2ms
+@garagetalk/db:test: 
+@garagetalk/db:test:  Test Files  1 passed (1)
+@garagetalk/db:test:       Tests  1 passed (1)
+@garagetalk/db:test:    Start at  15:46:27
+@garagetalk/db:test:    Duration  1.24s (transform 211ms, setup 0ms, collect 829ms, tests 2ms, environment 0ms, prepare 164ms)
+@garagetalk/db:test: 
+@garagetalk/ai:test: cache hit, replaying logs e2ed28f6d56b1c8a
+@garagetalk/ai:test: 
+@garagetalk/ai:test: > @garagetalk/ai@0.0.1 test /workspace/packages/ai
+@garagetalk/ai:test: > vitest run
+@garagetalk/ai:test: 
+@garagetalk/ai:test: 
+@garagetalk/ai:test:  RUN  v2.1.9 /workspace/packages/ai
+@garagetalk/ai:test: 
+@garagetalk/ai:test:  ✓ src/index.test.ts (2 tests) 2ms
+@garagetalk/ai:test: 
+@garagetalk/ai:test:  Test Files  1 passed (1)
+@garagetalk/ai:test:       Tests  2 passed (2)
+@garagetalk/ai:test:    Start at  15:46:27
+@garagetalk/ai:test:    Duration  720ms (transform 205ms, setup 0ms, collect 278ms, tests 2ms, environment 0ms, prepare 177ms)
+@garagetalk/ai:test: 
+@garagetalk/db:build: cache hit, replaying logs 5e847601111a9938
+@garagetalk/db:build: 
+@garagetalk/db:build: > @garagetalk/db@0.0.1 build /workspace/packages/db
+@garagetalk/db:build: > tsc -p tsconfig.json
+@garagetalk/db:build: 
+@garagetalk/api:test: cache miss, executing f1467b81abcce6eb
+@garagetalk/api:test: 
+@garagetalk/api:test: > @garagetalk/api@0.0.1 test /workspace/apps/api
+@garagetalk/api:test: > vitest run
+@garagetalk/api:test: 
+@garagetalk/web:test: 
+@garagetalk/web:test: > @garagetalk/web@0.0.1 test /workspace/apps/web
+@garagetalk/web:test: > vitest run
+@garagetalk/web:test: 
+@garagetalk/api:test: 
+@garagetalk/api:test:  RUN  v2.1.9 /workspace/apps/api
+@garagetalk/api:test: 
+@garagetalk/web:test: 
+@garagetalk/web:test:  RUN  v2.1.9 /workspace/apps/web
+@garagetalk/web:test: 
+@garagetalk/web:test:  ✓ src/i18n.test.ts (1 test) 1ms
+@garagetalk/web:test: 
+@garagetalk/web:test:  Test Files  1 passed (1)
+@garagetalk/web:test:       Tests  1 passed (1)
+@garagetalk/web:test:    Start at  15:46:56
+@garagetalk/web:test:    Duration  378ms (transform 26ms, setup 0ms, collect 25ms, tests 1ms, environment 0ms, prepare 138ms)
+@garagetalk/web:test: 
+@garagetalk/api:test: {"level":30,"time":1786549618620,"pid":25441,"hostname":"cursor","reqId":"req-1","req":{"method":"POST","url":"/auth/register","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549618633,"pid":25435,"hostname":"cursor","reqId":"req-1","req":{"method":"POST","url":"/auth/register","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549618645,"pid":25434,"hostname":"cursor","reqId":"req-1","req":{"method":"POST","url":"/auth/register","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549618772,"pid":25441,"hostname":"cursor","reqId":"req-1","res":{"statusCode":200},"responseTime":151.4257550000002,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549618787,"pid":25435,"hostname":"cursor","reqId":"req-1","res":{"statusCode":200},"responseTime":153.0638859999999,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549618773,"pid":25441,"hostname":"cursor","reqId":"req-2","req":{"method":"GET","url":"/auth/me","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549618779,"pid":25441,"hostname":"cursor","reqId":"req-2","res":{"statusCode":200},"responseTime":5.5593730000000505,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549618779,"pid":25441,"hostname":"cursor","reqId":"req-3","req":{"method":"PATCH","url":"/auth/profile","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549618785,"pid":25441,"hostname":"cursor","reqId":"req-3","res":{"statusCode":200},"responseTime":5.857376999999815,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549618785,"pid":25441,"hostname":"cursor","reqId":"req-4","req":{"method":"GET","url":"/auth/export","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549618789,"pid":25441,"hostname":"cursor","reqId":"req-4","res":{"statusCode":200},"responseTime":3.928480000000036,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549618790,"pid":25441,"hostname":"cursor","reqId":"req-5","req":{"method":"POST","url":"/auth/delete-account","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549618794,"pid":25441,"hostname":"cursor","reqId":"req-5","res":{"statusCode":200},"responseTime":4.374706999999944,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549618795,"pid":25441,"hostname":"cursor","reqId":"req-6","req":{"method":"GET","url":"/auth/me","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549618796,"pid":25441,"hostname":"cursor","reqId":"req-6","res":{"statusCode":401},"responseTime":1.6317870000002586,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549618797,"pid":25441,"hostname":"cursor","reqId":"req-7","req":{"method":"GET","url":"/healthz","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549618797,"pid":25441,"hostname":"cursor","reqId":"req-7","res":{"statusCode":200},"responseTime":0.27650900000026013,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549618798,"pid":25441,"hostname":"cursor","reqId":"req-8","req":{"method":"GET","url":"/readyz","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549618798,"pid":25441,"hostname":"cursor","reqId":"req-8","res":{"statusCode":200},"responseTime":0.27027200000020457,"msg":"request completed"}
+@garagetalk/api:test:  ✓ src/auth.test.ts (2 tests) 1786ms
+@garagetalk/api:test: {"level":30,"time":1786549618788,"pid":25435,"hostname":"cursor","reqId":"req-2","req":{"method":"POST","url":"/auth/passkey/register/options","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549618796,"pid":25435,"hostname":"cursor","reqId":"req-2","res":{"statusCode":200},"responseTime":8.095197999999982,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549618797,"pid":25435,"hostname":"cursor","reqId":"req-3","req":{"method":"POST","url":"/auth/passkey/register/verify","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549618802,"pid":25435,"hostname":"cursor","reqId":"req-3","res":{"statusCode":200},"responseTime":4.884296000000177,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549618805,"pid":25435,"hostname":"cursor","reqId":"req-4","req":{"method":"POST","url":"/auth/passkey/login/options","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549618806,"pid":25435,"hostname":"cursor","reqId":"req-4","res":{"statusCode":200},"responseTime":1.6253420000002734,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549618807,"pid":25435,"hostname":"cursor","reqId":"req-5","req":{"method":"POST","url":"/auth/passkey/login/verify","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549618811,"pid":25435,"hostname":"cursor","reqId":"req-5","res":{"statusCode":200},"responseTime":4.32358400000021,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549618812,"pid":25435,"hostname":"cursor","reqId":"req-6","req":{"method":"GET","url":"/auth/me","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549618814,"pid":25435,"hostname":"cursor","reqId":"req-6","res":{"statusCode":200},"responseTime":2.414465000000291,"msg":"request completed"}
+@garagetalk/api:test:  ✓ src/passkey.test.ts (2 tests) 1777ms
+@garagetalk/api:test: {"level":30,"time":1786549618827,"pid":25434,"hostname":"cursor","reqId":"req-1","res":{"statusCode":200},"responseTime":181.65531999999985,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549618828,"pid":25434,"hostname":"cursor","reqId":"req-2","req":{"method":"POST","url":"/videos/upload-session","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549618836,"pid":25434,"hostname":"cursor","reqId":"req-2","res":{"statusCode":201},"responseTime":7.462515000000167,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549618837,"pid":25434,"hostname":"cursor","reqId":"req-3","req":{"method":"POST","url":"/webhooks/stream","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549618842,"pid":25434,"hostname":"cursor","reqId":"req-3","res":{"statusCode":200},"responseTime":5.189632999999958,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549618842,"pid":25434,"hostname":"cursor","reqId":"req-4","req":{"method":"GET","url":"/videos/019ff6a7-c892-78bf-8ff0-00b75d7984e5","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549618844,"pid":25434,"hostname":"cursor","reqId":"req-4","res":{"statusCode":200},"responseTime":1.6701100000000224,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549618844,"pid":25434,"hostname":"cursor","reqId":"req-5","req":{"method":"POST","url":"/videos/019ff6a7-c892-78bf-8ff0-00b75d7984e5/heartbeat","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549618856,"pid":25434,"hostname":"cursor","reqId":"req-5","res":{"statusCode":200},"responseTime":10.967482000000018,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549618856,"pid":25434,"hostname":"cursor","reqId":"req-6","req":{"method":"POST","url":"/videos/019ff6a7-c892-78bf-8ff0-00b75d7984e5/heartbeat","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549618869,"pid":25434,"hostname":"cursor","reqId":"req-6","res":{"statusCode":200},"responseTime":12.816878999999972,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549618869,"pid":25434,"hostname":"cursor","reqId":"req-7","req":{"method":"GET","url":"/videos/recently-watched","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549618878,"pid":25434,"hostname":"cursor","reqId":"req-7","res":{"statusCode":200},"responseTime":8.454310999999961,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549618879,"pid":25434,"hostname":"cursor","reqId":"req-8","req":{"method":"POST","url":"/videos/upload-session","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549618891,"pid":25434,"hostname":"cursor","reqId":"req-8","res":{"statusCode":201},"responseTime":11.704043999999612,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549618891,"pid":25434,"hostname":"cursor","reqId":"req-9","req":{"method":"POST","url":"/webhooks/stream","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549618896,"pid":25434,"hostname":"cursor","reqId":"req-9","res":{"statusCode":200},"responseTime":4.47401600000012,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549618897,"pid":25434,"hostname":"cursor","reqId":"req-a","req":{"method":"POST","url":"/videos/019ff6a7-c8c9-73d5-9180-02b898f033cb/comments","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549618905,"pid":25434,"hostname":"cursor","reqId":"req-a","res":{"statusCode":201},"responseTime":7.713463000000047,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549618905,"pid":25434,"hostname":"cursor","reqId":"req-b","req":{"method":"POST","url":"/videos/019ff6a7-c8c9-73d5-9180-02b898f033cb/comments","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549618911,"pid":25434,"hostname":"cursor","reqId":"req-b","res":{"statusCode":201},"responseTime":5.389662000000044,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549618911,"pid":25434,"hostname":"cursor","reqId":"req-c","req":{"method":"POST","url":"/videos/019ff6a7-c8c9-73d5-9180-02b898f033cb/comments","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549618916,"pid":25434,"hostname":"cursor","reqId":"req-c","res":{"statusCode":201},"responseTime":5.250169999999798,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549618916,"pid":25434,"hostname":"cursor","reqId":"req-d","req":{"method":"GET","url":"/videos/019ff6a7-c8c9-73d5-9180-02b898f033cb/comments","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549618919,"pid":25434,"hostname":"cursor","reqId":"req-d","res":{"statusCode":200},"responseTime":2.139310000000023,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549618919,"pid":25434,"hostname":"cursor","reqId":"req-e","req":{"method":"POST","url":"/videos/upload-session","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549618923,"pid":25434,"hostname":"cursor","reqId":"req-e","res":{"statusCode":201},"responseTime":3.3722579999998743,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549618923,"pid":25434,"hostname":"cursor","reqId":"req-f","req":{"method":"POST","url":"/webhooks/stream","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549618926,"pid":25434,"hostname":"cursor","reqId":"req-f","res":{"statusCode":200},"responseTime":2.909889999999905,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549618926,"pid":25434,"hostname":"cursor","reqId":"req-g","req":{"method":"DELETE","url":"/videos/019ff6a7-c8e9-777f-91ae-ee04a5f22560","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549618929,"pid":25434,"hostname":"cursor","reqId":"req-g","res":{"statusCode":200},"responseTime":3.1322949999998855,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549618929,"pid":25434,"hostname":"cursor","reqId":"req-h","req":{"method":"GET","url":"/videos/019ff6a7-c8e9-777f-91ae-ee04a5f22560","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549618930,"pid":25434,"hostname":"cursor","reqId":"req-h","res":{"statusCode":404},"responseTime":1.2040059999999357,"msg":"request completed"}
+@garagetalk/api:test:  ✓ src/video.test.ts (3 tests) 1891ms
+@garagetalk/api:test: {"level":30,"time":1786549620955,"pid":25737,"hostname":"cursor","reqId":"req-1","req":{"method":"POST","url":"/auth/register","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549621120,"pid":25737,"hostname":"cursor","reqId":"req-1","res":{"statusCode":200},"responseTime":164.74471600000015,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549621121,"pid":25737,"hostname":"cursor","reqId":"req-2","req":{"method":"POST","url":"/uploads/presign","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549621128,"pid":25737,"hostname":"cursor","reqId":"req-2","res":{"statusCode":400},"responseTime":6.25894500000004,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549621128,"pid":25737,"hostname":"cursor","reqId":"req-3","req":{"method":"POST","url":"/uploads/presign","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549621132,"pid":25737,"hostname":"cursor","reqId":"req-3","res":{"statusCode":400},"responseTime":3.0728300000000672,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549621132,"pid":25737,"hostname":"cursor","reqId":"req-4","req":{"method":"POST","url":"/uploads/presign","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549621139,"pid":25730,"hostname":"cursor","reqId":"req-1","req":{"method":"POST","url":"/auth/register","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549621139,"pid":25737,"hostname":"cursor","reqId":"req-4","res":{"statusCode":201},"responseTime":6.171081999999842,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549621194,"pid":25776,"hostname":"cursor","reqId":"req-1","req":{"method":"POST","url":"/auth/register","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549621320,"pid":25730,"hostname":"cursor","reqId":"req-1","res":{"statusCode":200},"responseTime":180.27738500000032,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549621321,"pid":25730,"hostname":"cursor","reqId":"req-2","req":{"method":"POST","url":"/garage/vehicles","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549621331,"pid":25730,"hostname":"cursor","reqId":"req-2","res":{"statusCode":201},"responseTime":9.896838000000116,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549621332,"pid":25730,"hostname":"cursor","reqId":"req-3","req":{"method":"GET","url":"/garage/vehicles","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549621336,"pid":25730,"hostname":"cursor","reqId":"req-3","res":{"statusCode":200},"responseTime":3.9101959999998144,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549621337,"pid":25730,"hostname":"cursor","reqId":"req-4","req":{"method":"PATCH","url":"/garage/vehicles/019ff6a7-d251-707a-8bea-4ce6a76cdeb6","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549621342,"pid":25730,"hostname":"cursor","reqId":"req-4","res":{"statusCode":200},"responseTime":5.001776999999947,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549621342,"pid":25730,"hostname":"cursor","reqId":"req-5","req":{"method":"POST","url":"/garage/vehicles","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549621348,"pid":25730,"hostname":"cursor","reqId":"req-5","res":{"statusCode":201},"responseTime":5.726662000000033,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549621349,"pid":25730,"hostname":"cursor","reqId":"req-6","req":{"method":"GET","url":"/garage/vehicles","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549621353,"pid":25730,"hostname":"cursor","reqId":"req-6","res":{"statusCode":200},"responseTime":4.021777999999813,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549621353,"pid":25730,"hostname":"cursor","reqId":"req-7","req":{"method":"DELETE","url":"/garage/vehicles/019ff6a7-d251-707a-8bea-4ce6a76cdeb6","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549621358,"pid":25730,"hostname":"cursor","reqId":"req-7","res":{"statusCode":200},"responseTime":4.393221000000267,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549621358,"pid":25730,"hostname":"cursor","reqId":"req-8","req":{"method":"GET","url":"/garage/vehicles","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549621364,"pid":25730,"hostname":"cursor","reqId":"req-8","res":{"statusCode":200},"responseTime":5.564206999999897,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549621365,"pid":25730,"hostname":"cursor","reqId":"req-9","req":{"method":"POST","url":"/garage/vehicles","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549621371,"pid":25776,"hostname":"cursor","reqId":"req-1","res":{"statusCode":200},"responseTime":176.80699900000036,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549621377,"pid":25730,"hostname":"cursor","reqId":"req-9","res":{"statusCode":201},"responseTime":11.945821000000251,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549621377,"pid":25730,"hostname":"cursor","reqId":"req-a","req":{"method":"POST","url":"/garage/vehicles","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549621383,"pid":25730,"hostname":"cursor","reqId":"req-a","res":{"statusCode":201},"responseTime":5.375361999999768,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549621383,"pid":25730,"hostname":"cursor","reqId":"req-b","req":{"method":"POST","url":"/garage/vehicles/reorder","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549621372,"pid":25776,"hostname":"cursor","reqId":"req-2","req":{"method":"POST","url":"/auth/verify-email/request","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549621385,"pid":25776,"hostname":"cursor","reqId":"req-2","res":{"statusCode":200},"responseTime":12.434184000000187,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549621386,"pid":25776,"hostname":"cursor","reqId":"req-3","req":{"method":"POST","url":"/auth/verify-email/confirm","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549621391,"pid":25776,"hostname":"cursor","reqId":"req-3","res":{"statusCode":200},"responseTime":4.505985000000237,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549621392,"pid":25776,"hostname":"cursor","reqId":"req-4","req":{"method":"POST","url":"/auth/password-reset/request","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549621395,"pid":25776,"hostname":"cursor","reqId":"req-4","res":{"statusCode":200},"responseTime":2.9500699999998687,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549621395,"pid":25776,"hostname":"cursor","reqId":"req-5","req":{"method":"POST","url":"/auth/password-reset/confirm","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test:  ✓ src/garage.test.ts (2 tests) 1858ms
+@garagetalk/api:test: {"level":30,"time":1786549621390,"pid":25730,"hostname":"cursor","reqId":"req-b","res":{"statusCode":200},"responseTime":6.941995000000134,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549621390,"pid":25730,"hostname":"cursor","reqId":"req-c","req":{"method":"GET","url":"/garage/vehicles","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549621394,"pid":25730,"hostname":"cursor","reqId":"req-c","res":{"statusCode":200},"responseTime":3.713380000000143,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549621562,"pid":25776,"hostname":"cursor","reqId":"req-5","res":{"statusCode":200},"responseTime":167.30697200000031,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549621563,"pid":25776,"hostname":"cursor","reqId":"req-6","req":{"method":"POST","url":"/auth/login","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549621681,"pid":25776,"hostname":"cursor","reqId":"req-6","res":{"statusCode":401},"responseTime":117.87768400000004,"msg":"request completed"}
+@garagetalk/api:test: {"level":30,"time":1786549621681,"pid":25776,"hostname":"cursor","reqId":"req-7","req":{"method":"POST","url":"/auth/login","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549621818,"pid":25776,"hostname":"cursor","reqId":"req-7","res":{"statusCode":200},"responseTime":136.19535300000007,"msg":"request completed"}
+@garagetalk/api:test:  ✓ src/auth-email.test.ts (3 tests) 2184ms
+@garagetalk/api:test:    ✓ auth email flows > password reset request and confirm 427ms
+@garagetalk/api:test: {"level":30,"time":1786549621890,"pid":25737,"hostname":"cursor","reqId":"req-1","req":{"method":"POST","url":"/auth/register","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+@garagetalk/api:test: {"level":30,"time":1786549622002,"pid":25737,"hostname":"cursor","reqId":"req-1","res":{"statusCode":200},"responseTime":111.8119270000002,"msg":"request completed"}
+@garagetalk/api:test:  ✓ src/media-upload.test.ts (4 tests) 2486ms
+@garagetalk/api:test:    ✓ media upload EXIF strip > processes asset through service pipeline 854ms
+@garagetalk/api:test:  ✓ src/auth-service.test.ts (1 test) 916ms
+@garagetalk/api:test: 
+@garagetalk/api:test:  Test Files  7 passed (7)
+@garagetalk/api:test:       Tests  17 passed (17)
+@garagetalk/api:test:    Start at  15:46:56
+@garagetalk/api:test:    Duration  6.92s (transform 355ms, setup 0ms, collect 4.41s, tests 12.90s, environment 1ms, prepare 499ms)
+@garagetalk/api:test: 
+
+ Tasks:    10 successful, 10 total
+Cached:    8 cached, 10 total
+  Time:    7.364s 
 

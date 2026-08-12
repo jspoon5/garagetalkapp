@@ -2,7 +2,13 @@ import { createHash, randomBytes } from "node:crypto";
 import argon2 from "argon2";
 import { and, eq, isNull } from "drizzle-orm";
 import type { Database } from "@garagetalk/db";
-import { sessions, users } from "@garagetalk/db";
+import { authTokens, sessions, users } from "@garagetalk/db";
+import {
+  MemoryEmailClient,
+  passwordResetEmailHtml,
+  verificationEmailHtml,
+  type EmailClient,
+} from "@garagetalk/email";
 import { uuidv7 } from "uuidv7";
 
 const ARGON2_OPTS: argon2.Options & { raw?: false } = {
@@ -10,6 +16,8 @@ const ARGON2_OPTS: argon2.Options & { raw?: false } = {
   memoryCost: 65536,
   timeCost: 3,
 };
+
+const TOKEN_TTL_MS = 60 * 60 * 1000;
 
 export type PublicUser = {
   id: string;
@@ -41,8 +49,26 @@ export function hashIp(ip: string): string {
   return createHash("sha256").update(ip).digest("hex");
 }
 
+function hashToken(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
+}
+
+export type AuthServiceOptions = {
+  emailClient?: EmailClient;
+  appBaseUrl?: string;
+};
+
 export class AuthService {
-  constructor(private readonly db: Database) {}
+  private readonly emailClient: EmailClient;
+  private readonly appBaseUrl: string;
+
+  constructor(
+    private readonly db: Database,
+    opts: AuthServiceOptions = {},
+  ) {
+    this.emailClient = opts.emailClient ?? new MemoryEmailClient();
+    this.appBaseUrl = opts.appBaseUrl ?? "http://localhost:5173";
+  }
 
   async register(input: {
     email: string;
@@ -111,13 +137,9 @@ export class AuthService {
       .innerJoin(users, eq(sessions.userId, users.id))
       .where(and(eq(sessions.token, token), isNull(users.deletedAt)))
       .limit(1);
-    if (!row) {
-      // debug: fall through
-      return null;
-    }
+    if (!row) return null;
     if (row.session.expiresAt.getTime() < Date.now()) return null;
 
-    // rolling expiry
     const newExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     await this.db
       .update(sessions)
@@ -169,5 +191,117 @@ export class AuthService {
       user: toPublic(user),
       note: "Full zip export of media/objects lands in later phase job; JSON core export available now.",
     };
+  }
+
+  async requestEmailVerification(userId: string): Promise<void> {
+    const [user] = await this.db
+      .select()
+      .from(users)
+      .where(and(eq(users.id, userId), isNull(users.deletedAt)))
+      .limit(1);
+    if (!user) throw new Error("not found");
+    if (user.emailVerifiedAt) return;
+
+    const rawToken = randomBytes(32).toString("base64url");
+    await this.db.insert(authTokens).values({
+      id: uuidv7(),
+      userId,
+      type: "verify_email",
+      tokenHash: hashToken(rawToken),
+      expiresAt: new Date(Date.now() + TOKEN_TTL_MS),
+    });
+
+    const link = `${this.appBaseUrl}/verify-email?token=${rawToken}`;
+    await this.emailClient.send({
+      to: user.email,
+      subject: "Verify your Garage Talk email",
+      html: verificationEmailHtml(link),
+    });
+  }
+
+  async confirmEmailVerification(token: string): Promise<PublicUser | null> {
+    const tokenHash = hashToken(token);
+    const [row] = await this.db
+      .select()
+      .from(authTokens)
+      .where(
+        and(
+          eq(authTokens.tokenHash, tokenHash),
+          eq(authTokens.type, "verify_email"),
+          isNull(authTokens.usedAt),
+        ),
+      )
+      .limit(1);
+    if (!row || !row.userId || row.expiresAt.getTime() < Date.now()) return null;
+    const userId = row.userId;
+
+    await this.db
+      .update(authTokens)
+      .set({ usedAt: new Date(), updatedAt: new Date() })
+      .where(eq(authTokens.id, row.id));
+
+    const [user] = await this.db
+      .update(users)
+      .set({ emailVerifiedAt: new Date(), updatedAt: new Date() })
+      .where(and(eq(users.id, userId), isNull(users.deletedAt)))
+      .returning();
+    return user ? toPublic(user) : null;
+  }
+
+  async requestPasswordReset(email: string): Promise<void> {
+    const normalized = email.trim().toLowerCase();
+    const [user] = await this.db
+      .select()
+      .from(users)
+      .where(and(eq(users.email, normalized), isNull(users.deletedAt)))
+      .limit(1);
+    if (!user) return;
+
+    const rawToken = randomBytes(32).toString("base64url");
+    await this.db.insert(authTokens).values({
+      id: uuidv7(),
+      userId: user.id,
+      type: "password_reset",
+      tokenHash: hashToken(rawToken),
+      expiresAt: new Date(Date.now() + TOKEN_TTL_MS),
+    });
+
+    const link = `${this.appBaseUrl}/reset-password?token=${rawToken}`;
+    await this.emailClient.send({
+      to: user.email,
+      subject: "Reset your Garage Talk password",
+      html: passwordResetEmailHtml(link),
+    });
+  }
+
+  async confirmPasswordReset(token: string, password: string): Promise<boolean> {
+    const tokenHash = hashToken(token);
+    const [row] = await this.db
+      .select()
+      .from(authTokens)
+      .where(
+        and(
+          eq(authTokens.tokenHash, tokenHash),
+          eq(authTokens.type, "password_reset"),
+          isNull(authTokens.usedAt),
+        ),
+      )
+      .limit(1);
+    if (!row || !row.userId || row.expiresAt.getTime() < Date.now()) return false;
+    const userId = row.userId;
+
+    const passwordHash = await argon2.hash(password, ARGON2_OPTS);
+    await this.db
+      .update(users)
+      .set({ passwordHash, updatedAt: new Date() })
+      .where(and(eq(users.id, userId), isNull(users.deletedAt)));
+
+    await this.db
+      .update(authTokens)
+      .set({ usedAt: new Date(), updatedAt: new Date() })
+      .where(eq(authTokens.id, row.id));
+
+    await this.logoutEverywhere(userId);
+    return true;
   }
 }

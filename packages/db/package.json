@@ -22,7 +22,7 @@
   },
   "dependencies": {
     "@garagetalk/shared": "workspace:*",
-    "drizzle-orm": "^0.38.3",
+    "drizzle-orm": "^0.45.2",
     "pg": "^8.13.1",
     "uuidv7": "^1.0.2",
     "zod": "^3.24.1"

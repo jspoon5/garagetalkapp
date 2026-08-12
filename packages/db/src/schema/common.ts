@@ -46,6 +46,12 @@ export const subscriptionStatusEnum = pgEnum("subscription_status", [
 
 export const avatarTypeEnum = pgEnum("avatar_type", ["color", "image", "animated"]);
 
+export const authTokenTypeEnum = pgEnum("auth_token_type", [
+  "verify_email",
+  "password_reset",
+  "stream_webhook",
+]);
+
 export const roomKindEnum = pgEnum("room_kind", ["topic", "spatial", "pit_crew", "class"]);
 
 export const listingKindEnum = pgEnum("listing_kind", [
