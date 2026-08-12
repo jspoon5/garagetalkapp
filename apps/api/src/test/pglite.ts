@@ -3,7 +3,7 @@ import { drizzle } from "drizzle-orm/pglite";
 import type { Database } from "@garagetalk/db";
 import * as schema from "@garagetalk/db";
 
-export async function createTestDb() {
+export async function createTestDb(): Promise<{ client: PGlite; db: Database }> {
   const client = new PGlite();
   const db = drizzle(client, { schema }) as unknown as Database;
   await client.exec(`
