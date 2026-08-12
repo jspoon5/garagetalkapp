@@ -10,11 +10,11 @@ projects:
             name: garagetalk-homepage
             runtime: static
             buildCommand: "true"
-            staticPublishPath: apps/homepage
+            staticPublishPath: legacy/homepage
             autoDeployTrigger: commit
             buildFilter:
               paths:
-                - apps/homepage/**
+                - legacy/homepage/**
             routes:
               - type: rewrite
                 source: /*
@@ -25,7 +25,7 @@ projects:
             runtime: node
             plan: starter
             region: oregon
-            rootDir: apps/app
+            rootDir: legacy/app
             # Keep vite/esbuild available even when NODE_ENV=production.
             buildCommand: NPM_CONFIG_PRODUCTION=false npm ci && npm run build
             startCommand: npm start
@@ -33,7 +33,7 @@ projects:
             autoDeployTrigger: commit
             buildFilter:
               paths:
-                - apps/app/**
+                - legacy/app/**
             envVars:
               - key: NODE_VERSION
                 value: "22"

@@ -1,0 +1,32 @@
+{
+  "name": "garagetalk",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.33.3",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "format": "prettier --write .",
+    "cert:render": "tsx scripts/render-cert.ts",
+    "routes:dump": "tsx scripts/dump-routes.ts",
+    "db:generate": "pnpm --filter @garagetalk/db generate",
+    "db:migrate": "pnpm --filter @garagetalk/db migrate",
+    "db:seed": "pnpm --filter @garagetalk/db seed"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "eslint": "^9.16.0",
+    "prettier": "^3.4.2",
+    "tsx": "^4.19.2",
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.18.0",
+    "vitest": "^2.1.8"
+  }
+}

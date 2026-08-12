@@ -1,0 +1,53 @@
+{"header" : {
+  "cloc_url"           : "github.com/AlDanial/cloc",
+  "cloc_version"       : "2.06",
+  "elapsed_seconds"    : 0.0643579959869385,
+  "n_files"            : 120,
+  "n_lines"            : 16931,
+  "files_per_second"   : 1864.57017748586,
+  "lines_per_second"   : 263075.313958442},
+"TypeScript" :{
+  "nFiles": 58,
+  "blank": 222,
+  "comment": 30,
+  "code": 14657},
+"JavaScript" :{
+  "nFiles": 24,
+  "blank": 1,
+  "comment": 26,
+  "code": 1373},
+"Bourne Shell" :{
+  "nFiles": 15,
+  "blank": 30,
+  "comment": 0,
+  "code": 285},
+"JSON" :{
+  "nFiles": 20,
+  "blank": 0,
+  "comment": 0,
+  "code": 272},
+"CSS" :{
+  "nFiles": 1,
+  "blank": 2,
+  "comment": 0,
+  "code": 14},
+"HTML" :{
+  "nFiles": 1,
+  "blank": 0,
+  "comment": 0,
+  "code": 13},
+"SVG" :{
+  "nFiles": 1,
+  "blank": 0,
+  "comment": 0,
+  "code": 6},
+"SUM": {
+  "blank": 255,
+  "comment": 56,
+  "code": 16620,
+  "nFiles": 120} }
+npm notice
+npm notice New major version of npm available! 10.9.2 -> 12.0.2
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.0.2
+npm notice To update run: npm install -g npm@12.0.2
+npm notice

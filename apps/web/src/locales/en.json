@@ -1,0 +1,18 @@
+{
+  "home": {
+    "title": "Build. Diagnose. Learn.",
+    "subtitle": "AI-powered automotive social platform — PWA first.",
+    "language": "Switch language",
+    "signedIn": "Signed in as {{name}}"
+  },
+  "auth": {
+    "email": "Email",
+    "username": "Username",
+    "password": "Password",
+    "register": "Create account",
+    "login": "Sign in",
+    "deleteAccount": "Delete my account",
+    "registerFailed": "Could not register",
+    "loginFailed": "Invalid credentials"
+  }
+}

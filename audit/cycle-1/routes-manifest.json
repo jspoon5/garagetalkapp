@@ -1,0 +1,62 @@
+[
+  {
+    "method": "GET",
+    "url": "/healthz",
+    "auth": "public",
+    "rateLimit": "global 300/min"
+  },
+  {
+    "method": "GET",
+    "url": "/readyz",
+    "auth": "public",
+    "rateLimit": "global 300/min"
+  },
+  {
+    "method": "POST",
+    "url": "/auth/register",
+    "auth": "public",
+    "rateLimit": "10/min"
+  },
+  {
+    "method": "POST",
+    "url": "/auth/login",
+    "auth": "public",
+    "rateLimit": "10/min"
+  },
+  {
+    "method": "POST",
+    "url": "/auth/logout",
+    "auth": "public",
+    "rateLimit": "global 300/min"
+  },
+  {
+    "method": "POST",
+    "url": "/auth/logout-everywhere",
+    "auth": "session",
+    "rateLimit": "global 300/min"
+  },
+  {
+    "method": "GET",
+    "url": "/auth/me",
+    "auth": "session",
+    "rateLimit": "global 300/min"
+  },
+  {
+    "method": "PATCH",
+    "url": "/auth/profile",
+    "auth": "session",
+    "rateLimit": "global 300/min"
+  },
+  {
+    "method": "POST",
+    "url": "/auth/delete-account",
+    "auth": "session",
+    "rateLimit": "global 300/min"
+  },
+  {
+    "method": "GET",
+    "url": "/auth/export",
+    "auth": "session",
+    "rateLimit": "global 300/min"
+  }
+]

@@ -1,0 +1,334 @@
+commit ced9728ff6e7f91bf159adb6a8909d04a19fb88a
+Author: jspoon5 <spoon.jeremy@gmail.com>
+Date:   Fri Aug 7 17:49:23 2026 -0500
+
+    Add migration for schema tables missing from initial SQL.
+    
+    Brings admin_users and other app tables onto Render Postgres so boot-time admin init and features work after migrate.
+    
+    Co-authored-by: Cursor <cursoragent@cursor.com>
+
+ apps/app/migrations/0001_sync_schema_to_render.sql |  310 +++
+ apps/app/migrations/meta/0001_snapshot.json        | 2445 ++++++++++++++++++++
+ apps/app/migrations/meta/_journal.json             |    7 +
+ 3 files changed, 2762 insertions(+)
+
+commit c77fb779c484e8df4e6e3bde06cdec302009c905
+Author: Cursor Agent <cursoragent@cursor.com>
+Date:   Fri Aug 7 18:04:00 2026 +0000
+
+    Fix garagetalk-app Render deploy: wire Postgres and migrate on boot.
+    
+    Provision garagetalk-db in the Blueprint, bind DATABASE_URL via fromDatabase, switch the app to node-postgres, run Drizzle migrations on start, and expose /api/health so the service can leave no-deploy.
+    
+    Co-authored-by: jspoon5 <jspoon5@users.noreply.github.com>
+
+ README.md                       |  16 ++--
+ apps/app/package-lock.json      | 206 ++--------------------------------------
+ apps/app/package.json           |  15 +--
+ apps/app/server/db/client.ts    |  10 ++
+ apps/app/server/db/migratePg.ts |  30 ++++++
+ apps/app/server/db/pool.ts      |  15 +++
+ apps/app/server/index.ts        |  83 ++++++++--------
+ apps/app/server/storage.ts      |  30 +-----
+ render.yaml                     |  14 ++-
+ 9 files changed, 139 insertions(+), 280 deletions(-)
+
+commit 504f48bef493792367c50fe9a8e7c8b462d031c0
+Author: jspoon5 <spoon.jeremy@gmail.com>
+Date:   Fri Aug 7 12:21:57 2026 -0500
+
+    Fix Render app build: install devDependencies for vite/esbuild.
+    
+    NODE_ENV=production made npm ci skip vite; use NPM_CONFIG_PRODUCTION=false and npx for the build.
+    
+    Co-authored-by: Cursor <cursoragent@cursor.com>
+
+ apps/app/package.json | 2 +-
+ render.yaml           | 3 ++-
+ 2 files changed, 3 insertions(+), 2 deletions(-)
+
+commit 3c2880582ea63834df352d96392940069c7c7201
+Author: jspoon5 <spoon.jeremy@gmail.com>
+Date:   Fri Aug 7 12:14:08 2026 -0500
+
+    Fix Render Blueprint sync for static homepage service.
+    
+    Drop plan/region from the static site (rejected by schema) and set staticPublishPath to apps/homepage relative to the repo root.
+    
+    Co-authored-by: Cursor <cursoragent@cursor.com>
+
+ render.yaml | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
+
+commit d871ea5c7c462cba8039a76520b08cb8be28235b
+Author: jspoon5 <spoon.jeremy@gmail.com>
+Date:   Fri Aug 7 12:10:34 2026 -0500
+
+    Initial commit: GarageTalk monorepo with Render Blueprint.
+    
+    Bring over the app from garage-talk-40, add a static homepage placeholder, and define homepage + app web services for Render.
+    
+    Co-authored-by: Cursor <cursoragent@cursor.com>
+
+ .gitignore                                         |    31 +
+ README.md                                          |    54 +
+ apps/app/.env.example                              |    31 +
+ apps/app/.gitignore                                |    13 +
+ apps/app/README.md                                 |   114 +
+ .../1jan_1006_screenshot_1767280054692.png         |   Bin 0 -> 167000 bytes
+ ...ave-a-value-prop-that-is-not-_1770327379858.txt |    11 +
+ ...OverviewProject-1762011092866_1762011092866.txt |    96 +
+ .../Screenshot_2025-12-13_120108_1765645359687.png |   Bin 0 -> 508646 bytes
+ .../Screenshot_2025-12-13_191950_1765671657251.png |   Bin 0 -> 72850 bytes
+ .../Screenshot_2025-12-16_070716_1765886866099.png |   Bin 0 -> 20746 bytes
+ .../Screenshot_2025-12-20_115640_1766249819871.png |   Bin 0 -> 80814 bytes
+ .../Screenshot_2025-12-20_181151_1766272434576.png |   Bin 0 -> 207626 bytes
+ .../Screenshot_2026-01-01_091453_1767276916208.png |   Bin 0 -> 171468 bytes
+ .../Screenshot_2026-01-01_094804_1767278897486.png |   Bin 0 -> 155130 bytes
+ .../Screenshot_2026-01-01_094804_1767279210815.png |   Bin 0 -> 155130 bytes
+ .../Screenshot_2026-01-01_094804_1767279374900.png |   Bin 0 -> 155130 bytes
+ .../Screenshot_2026-01-09_203327_1768008822985.png |   Bin 0 -> 97249 bytes
+ .../Screenshot_2026-01-10_172559_1768084006808.png |   Bin 0 -> 11449 bytes
+ apps/app/attached_assets/content-1765205160363.md  |    37 +
+ apps/app/attached_assets/content-1766267321166.md  |    55 +
+ .../generated_images/garage_talk_app_icon.png      |   Bin 0 -> 653819 bytes
+ apps/app/attached_assets/image_1767747578408.png   |   Bin 0 -> 142172 bytes
+ ...thenitated_app_search_scrnsht_1765213173807.png |   Bin 0 -> 106018 bytes
+ .../attached_assets/screenshot-1766267289834.png   |   Bin 0 -> 88590 bytes
+ .../attached_assets/screenshot-1766267318512.png   |   Bin 0 -> 88590 bytes
+ .../targeted_element_1765591726277.png             |   Bin 0 -> 210581 bytes
+ apps/app/capacitor.config.ts                       |    21 +
+ apps/app/client/index.html                         |    29 +
+ apps/app/client/public/favicon.png                 |   Bin 0 -> 1145 bytes
+ apps/app/client/public/icons/icon-128x128.png      |   Bin 0 -> 13839 bytes
+ apps/app/client/public/icons/icon-144x144.png      |   Bin 0 -> 16942 bytes
+ apps/app/client/public/icons/icon-152x152.png      |   Bin 0 -> 18310 bytes
+ apps/app/client/public/icons/icon-192x192.png      |   Bin 0 -> 27647 bytes
+ apps/app/client/public/icons/icon-384x384.png      |   Bin 0 -> 109086 bytes
+ apps/app/client/public/icons/icon-512x512.png      |   Bin 0 -> 191117 bytes
+ apps/app/client/public/icons/icon-72x72.png        |   Bin 0 -> 5918 bytes
+ apps/app/client/public/icons/icon-96x96.png        |   Bin 0 -> 8957 bytes
+ apps/app/client/public/manifest.json               |    63 +
+ apps/app/client/public/sw.js                       |    93 +
+ apps/app/client/src/App.tsx                        |   122 +
+ apps/app/client/src/components/AISearchResult.tsx  |   132 +
+ apps/app/client/src/components/ActivityFeed.tsx    |    48 +
+ apps/app/client/src/components/AdSense.tsx         |    70 +
+ .../app/client/src/components/AnalyticsTracker.tsx |    79 +
+ apps/app/client/src/components/BroadcastSetup.tsx  |   849 ++
+ apps/app/client/src/components/CategoryFilter.tsx  |    37 +
+ apps/app/client/src/components/ChatRoom.tsx        |   319 +
+ apps/app/client/src/components/ChatRoomCard.tsx    |    47 +
+ apps/app/client/src/components/ChatUserList.tsx    |   275 +
+ .../client/src/components/CreateChatRoomDialog.tsx |   143 +
+ apps/app/client/src/components/DashboardStats.tsx  |    66 +
+ apps/app/client/src/components/GarageMainNav.tsx   |    44 +
+ apps/app/client/src/components/Header.tsx          |   181 +
+ .../app/client/src/components/JitsiMeetingRoom.tsx |   237 +
+ .../app/client/src/components/LanguageSelector.tsx |    71 +
+ apps/app/client/src/components/MyGarage.tsx        |   513 +
+ .../app/client/src/components/NavigationArrows.tsx |    99 +
+ .../client/src/components/OBSStreamingGuide.tsx    |   326 +
+ apps/app/client/src/components/ObjectUploader.tsx  |   221 +
+ apps/app/client/src/components/PodcastCard.tsx     |   107 +
+ apps/app/client/src/components/PodcastUpload.tsx   |   255 +
+ .../client/src/components/ProfileEditDialog.tsx    |   386 +
+ .../app/client/src/components/QuickScreenShare.tsx |   247 +
+ .../src/components/RecentlyWatchedCarousel.tsx     |   137 +
+ .../client/src/components/RequireContactInfo.tsx   |   242 +
+ .../src/components/ScheduleSessionDialog.tsx       |   315 +
+ .../src/components/ScheduledSessionsList.tsx       |   264 +
+ .../client/src/components/ScreenShareDialog.tsx    |   512 +
+ apps/app/client/src/components/SpatialChatRoom.tsx |  1307 ++
+ apps/app/client/src/components/ThemeProvider.tsx   |    74 +
+ apps/app/client/src/components/TipGiftDialog.tsx   |   176 +
+ apps/app/client/src/components/UploadForm.tsx      |   287 +
+ apps/app/client/src/components/VideoCard.tsx       |    98 +
+ .../client/src/components/VideoEffectsPanel.tsx    |   508 +
+ apps/app/client/src/components/VideoPlayer.tsx     |    92 +
+ .../src/components/examples/AISearchResult.tsx     |    36 +
+ .../src/components/examples/ActivityFeed.tsx       |    40 +
+ .../src/components/examples/CategoryFilter.tsx     |    24 +
+ .../client/src/components/examples/ChatRoom.tsx    |    51 +
+ .../src/components/examples/ChatRoomCard.tsx       |    23 +
+ .../src/components/examples/DashboardStats.tsx     |    12 +
+ apps/app/client/src/components/examples/Header.tsx |     5 +
+ .../client/src/components/examples/UploadForm.tsx  |     9 +
+ .../client/src/components/examples/VideoCard.tsx   |    19 +
+ apps/app/client/src/components/ui/accordion.tsx    |    56 +
+ apps/app/client/src/components/ui/alert-dialog.tsx |   139 +
+ apps/app/client/src/components/ui/alert.tsx        |    59 +
+ apps/app/client/src/components/ui/aspect-ratio.tsx |     5 +
+ apps/app/client/src/components/ui/avatar.tsx       |    51 +
+ apps/app/client/src/components/ui/badge.tsx        |    38 +
+ apps/app/client/src/components/ui/breadcrumb.tsx   |   115 +
+ apps/app/client/src/components/ui/button.tsx       |    62 +
+ apps/app/client/src/components/ui/calendar.tsx     |    68 +
+ apps/app/client/src/components/ui/card.tsx         |    85 +
+ apps/app/client/src/components/ui/carousel.tsx     |   260 +
+ apps/app/client/src/components/ui/chart.tsx        |   365 +
+ apps/app/client/src/components/ui/checkbox.tsx     |    28 +
+ apps/app/client/src/components/ui/collapsible.tsx  |    11 +
+ apps/app/client/src/components/ui/command.tsx      |   151 +
+ apps/app/client/src/components/ui/context-menu.tsx |   198 +
+ apps/app/client/src/components/ui/dialog.tsx       |   122 +
+ apps/app/client/src/components/ui/drawer.tsx       |   118 +
+ .../app/client/src/components/ui/dropdown-menu.tsx |   198 +
+ apps/app/client/src/components/ui/form.tsx         |   178 +
+ apps/app/client/src/components/ui/hover-card.tsx   |    29 +
+ apps/app/client/src/components/ui/input-otp.tsx    |    69 +
+ apps/app/client/src/components/ui/input.tsx        |    23 +
+ apps/app/client/src/components/ui/label.tsx        |    24 +
+ apps/app/client/src/components/ui/menubar.tsx      |   256 +
+ .../client/src/components/ui/navigation-menu.tsx   |   128 +
+ apps/app/client/src/components/ui/pagination.tsx   |   117 +
+ apps/app/client/src/components/ui/popover.tsx      |    29 +
+ apps/app/client/src/components/ui/progress.tsx     |    28 +
+ apps/app/client/src/components/ui/radio-group.tsx  |    42 +
+ apps/app/client/src/components/ui/resizable.tsx    |    45 +
+ apps/app/client/src/components/ui/scroll-area.tsx  |    46 +
+ apps/app/client/src/components/ui/select.tsx       |   160 +
+ apps/app/client/src/components/ui/separator.tsx    |    29 +
+ apps/app/client/src/components/ui/sheet.tsx        |   140 +
+ apps/app/client/src/components/ui/sidebar.tsx      |   727 ++
+ apps/app/client/src/components/ui/skeleton.tsx     |    15 +
+ apps/app/client/src/components/ui/slider.tsx       |    26 +
+ apps/app/client/src/components/ui/switch.tsx       |    27 +
+ apps/app/client/src/components/ui/table.tsx        |   117 +
+ apps/app/client/src/components/ui/tabs.tsx         |    53 +
+ apps/app/client/src/components/ui/textarea.tsx     |    22 +
+ apps/app/client/src/components/ui/toast.tsx        |   127 +
+ apps/app/client/src/components/ui/toaster.tsx      |    33 +
+ apps/app/client/src/components/ui/toggle-group.tsx |    61 +
+ apps/app/client/src/components/ui/toggle.tsx       |    43 +
+ apps/app/client/src/components/ui/tooltip.tsx      |    30 +
+ apps/app/client/src/data/garageMvp.ts              |   457 +
+ apps/app/client/src/hooks/use-mobile.tsx           |    19 +
+ apps/app/client/src/hooks/use-session-tracking.ts  |   132 +
+ apps/app/client/src/hooks/use-toast.ts             |   191 +
+ apps/app/client/src/hooks/use-upload.ts            |   199 +
+ apps/app/client/src/hooks/useCurrentUser.ts        |    17 +
+ apps/app/client/src/hooks/useLanguageDetection.ts  |    72 +
+ apps/app/client/src/hooks/useVideoEffects.ts       |   637 +
+ apps/app/client/src/hooks/useVoiceInteraction.ts   |   243 +
+ apps/app/client/src/index.css                      |   355 +
+ apps/app/client/src/lib/i18n.ts                    |   115 +
+ apps/app/client/src/lib/queryClient.ts             |    57 +
+ apps/app/client/src/lib/utils.ts                   |     6 +
+ apps/app/client/src/locales/af.json                |   208 +
+ apps/app/client/src/locales/ar.json                |   208 +
+ apps/app/client/src/locales/de.json                |   208 +
+ apps/app/client/src/locales/el.json                |   208 +
+ apps/app/client/src/locales/en.json                |   208 +
+ apps/app/client/src/locales/es.json                |   208 +
+ apps/app/client/src/locales/fa.json                |   208 +
+ apps/app/client/src/locales/fi.json                |   208 +
+ apps/app/client/src/locales/fr.json                |   208 +
+ apps/app/client/src/locales/ha.json                |   208 +
+ apps/app/client/src/locales/he.json                |   208 +
+ apps/app/client/src/locales/hi.json                |   208 +
+ apps/app/client/src/locales/ig.json                |   208 +
+ apps/app/client/src/locales/it.json                |   208 +
+ apps/app/client/src/locales/nl.json                |   208 +
+ apps/app/client/src/locales/okr.json               |   208 +
+ apps/app/client/src/locales/pcm.json               |   208 +
+ apps/app/client/src/locales/pl.json                |   208 +
+ apps/app/client/src/locales/ps.json                |   208 +
+ apps/app/client/src/locales/pt.json                |   208 +
+ apps/app/client/src/locales/ro.json                |   208 +
+ apps/app/client/src/locales/ru.json                |   208 +
+ apps/app/client/src/locales/sw.json                |   208 +
+ apps/app/client/src/locales/uk.json                |   208 +
+ apps/app/client/src/locales/ur.json                |   208 +
+ apps/app/client/src/locales/yo.json                |   208 +
+ apps/app/client/src/locales/zh.json                |   207 +
+ apps/app/client/src/main.tsx                       |    17 +
+ apps/app/client/src/pages/AdminDashboard.tsx       |  1525 +++
+ apps/app/client/src/pages/AdminLogin.tsx           |   431 +
+ .../app/client/src/pages/AdminPasswordRecovery.tsx |   434 +
+ apps/app/client/src/pages/BookAppointment.tsx      |   139 +
+ apps/app/client/src/pages/Chat.tsx                 |   111 +
+ apps/app/client/src/pages/Dashboard.tsx            |   530 +
+ apps/app/client/src/pages/Feed.tsx                 |    63 +
+ apps/app/client/src/pages/ForgotPassword.tsx       |   174 +
+ apps/app/client/src/pages/GarageProfile.tsx        |    75 +
+ apps/app/client/src/pages/GearHeadAI.tsx           |   126 +
+ apps/app/client/src/pages/Home.tsx                 |   146 +
+ apps/app/client/src/pages/Landing.tsx              |   541 +
+ apps/app/client/src/pages/Live.tsx                 |    64 +
+ apps/app/client/src/pages/Marketplace.tsx          |    49 +
+ apps/app/client/src/pages/NativeStreaming.tsx      |   534 +
+ apps/app/client/src/pages/PodcastEpisode.tsx       |   420 +
+ apps/app/client/src/pages/Podcasts.tsx             |   169 +
+ apps/app/client/src/pages/ProfileSettings.tsx      |   364 +
+ apps/app/client/src/pages/ResetPassword.tsx        |   254 +
+ apps/app/client/src/pages/RoomDetail.tsx           |   120 +
+ apps/app/client/src/pages/Rooms.tsx                |    68 +
+ apps/app/client/src/pages/Search.tsx               |   812 ++
+ apps/app/client/src/pages/SignIn.tsx               |   734 ++
+ apps/app/client/src/pages/SiteSettings.tsx         |   486 +
+ apps/app/client/src/pages/Subscribe.tsx            |   209 +
+ apps/app/client/src/pages/SubscriptionSuccess.tsx  |   129 +
+ apps/app/client/src/pages/SubscriptionTiers.tsx    |   342 +
+ apps/app/client/src/pages/TipResult.tsx            |    75 +
+ apps/app/client/src/pages/Upload.tsx               |    27 +
+ apps/app/client/src/pages/UserGuide.tsx            |   405 +
+ apps/app/client/src/pages/VideoDetail.tsx          |   349 +
+ apps/app/client/src/pages/VideoStreaming.tsx       |   365 +
+ apps/app/client/src/pages/not-found.tsx            |    21 +
+ apps/app/components.json                           |    20 +
+ apps/app/design_guidelines.md                      |   228 +
+ apps/app/drizzle.config.ts                         |    40 +
+ apps/app/generated-icon.png                        |   Bin 0 -> 5333 bytes
+ apps/app/home-after-check.png                      |   Bin 0 -> 604522 bytes
+ apps/app/ios/.gitignore                            |    13 +
+ apps/app/ios/App/App.xcodeproj/project.pbxproj     |   408 +
+ .../xcshareddata/IDEWorkspaceChecks.plist          |     8 +
+ apps/app/ios/App/App/AppDelegate.swift             |    49 +
+ .../AppIcon.appiconset/AppIcon-512@2x.png          |   Bin 0 -> 110522 bytes
+ .../AppIcon.appiconset/Contents.json               |    14 +
+ apps/app/ios/App/App/Assets.xcassets/Contents.json |     6 +
+ .../Assets.xcassets/Splash.imageset/Contents.json  |    23 +
+ .../Splash.imageset/splash-2732x2732-1.png         |   Bin 0 -> 41273 bytes
+ .../Splash.imageset/splash-2732x2732-2.png         |   Bin 0 -> 41273 bytes
+ .../Splash.imageset/splash-2732x2732.png           |   Bin 0 -> 41273 bytes
+ .../ios/App/App/Base.lproj/LaunchScreen.storyboard |    32 +
+ apps/app/ios/App/App/Base.lproj/Main.storyboard    |    19 +
+ apps/app/ios/App/App/Info.plist                    |    49 +
+ apps/app/ios/App/Podfile                           |    24 +
+ apps/app/migrations/0000_certain_tinkerer.sql      |    85 +
+ apps/app/migrations/meta/0000_snapshot.json        |   546 +
+ apps/app/migrations/meta/_journal.json             |    13 +
+ apps/app/package-lock.json                         | 12661 +++++++++++++++++++
+ apps/app/package.json                              |   146 +
+ apps/app/postcss.config.js                         |     6 +
+ apps/app/replit.md                                 |    45 +
+ apps/app/server/db/migrateNeonHttp.ts              |    49 +
+ apps/app/server/email.ts                           |   222 +
+ apps/app/server/gearheadAi.ts                      |   107 +
+ apps/app/server/googleCalendar.ts                  |   174 +
+ apps/app/server/index.ts                           |   154 +
+ apps/app/server/objectStorage.ts                   |   538 +
+ apps/app/server/passwordUtils.ts                   |    42 +
+ .../replit_integrations/object_storage/index.ts    |    21 +
+ .../object_storage/objectAcl.ts                    |   181 +
+ .../object_storage/objectStorage.ts                |   300 +
+ .../replit_integrations/object_storage/routes.ts   |    86 +
+ apps/app/server/routes.ts                          |  5154 ++++++++
+ apps/app/server/storage.ts                         |  3027 +++++
+ apps/app/server/stripeClient.ts                    |   101 +
+ apps/app/server/twilio.ts                          |   122 +
+ apps/app/server/vite.ts                            |    85 +
+ apps/app/server/webhookHandlers.ts                 |    17 +
+ apps/app/shared/schema.ts                          |   735 ++
+ apps/app/tailwind.config.ts                        |   106 +
+ apps/app/tsconfig.json                             |    23 +
+ apps/app/video-streaming-after-nav.png             |   Bin 0 -> 242567 bytes
+ apps/app/video-streaming-verify.png                |   Bin 0 -> 242567 bytes
+ apps/app/vite.config.ts                            |    40 +
+ apps/homepage/index.html                           |    39 +
+ apps/homepage/main.js                              |     1 +
+ apps/homepage/styles.css                           |   179 +
+ render.yaml                                        |    65 +
+ 260 files changed, 58932 insertions(+)
