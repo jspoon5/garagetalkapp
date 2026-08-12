@@ -1,3 +1,70 @@
+commit 9845967a81581bb0244d86c4d84f350f2090dfb2
+Author: Cursor Agent <cursoragent@cursor.com>
+Date:   Wed Aug 12 16:47:01 2026 +0000
+
+    phase(C1-D11): diagnostics campus launch-loops — cert updated
+    
+    Track C VIN/recalls/diagnostics/OBD/briefs/outcomes/attestations; Track D
+    presence/campus/paths/quests/schools/pit-crews/live-classes/Foreman/badges/
+    avatar/earnings; three launch loops tested; cycle-2 auditor packet.
+    
+    Co-authored-by: jspoon5 <jspoon5@users.noreply.github.com>
+
+ BUILD-CERT.json                                    |  355 +++++-
+ BUILD-CERT.md                                      |  578 ++++++++-
+ apps/api/src/app.ts                                |   15 +-
+ apps/api/src/c1-c3.test.ts                         |  144 +++
+ apps/api/src/c4-c6.test.ts                         |  274 ++++
+ apps/api/src/d1-d4-track.test.ts                   |  126 ++
+ apps/api/src/d5-d11-track.test.ts                  |  293 +++++
+ apps/api/src/launch-loops.test.ts                  |   30 +
+ apps/api/src/register-c1-c6.ts                     |   23 +
+ apps/api/src/register-d1-d11.ts                    |   16 +
+ apps/api/src/routes/c1-c6.ts                       |  153 +++
+ apps/api/src/routes/d1-d6-campus.ts                |  163 +++
+ apps/api/src/routes/d7-d11-integrity.ts            |   84 ++
+ apps/api/src/services/attestation.ts               |   43 +
+ apps/api/src/services/c1-c6-diagnostics.ts         |   76 ++
+ apps/api/src/services/c1-c6-service.ts             |  398 ++++++
+ .../src/services/d1-d2-presence-campus-service.ts  |  108 ++
+ apps/api/src/services/d3-d6-campus-service.ts      |  298 +++++
+ apps/api/src/services/d7-d11-integrity-service.ts  |  253 ++++
+ apps/api/src/services/garage-service.ts            |   24 +-
+ apps/api/src/services/launch-loops.ts              |   28 +
+ apps/api/src/services/nhtsa-service.ts             |  106 ++
+ apps/api/src/services/obd-elm327.ts                |   62 +
+ apps/api/src/services/service-record-projection.ts |   15 +
+ apps/api/src/test/pglite-c1-c6.ts                  |  149 +++
+ apps/api/src/test/pglite-d1-d11.ts                 |  307 +++++
+ apps/api/src/test/pglite-media-qualified.ts        |   18 +
+ apps/api/src/test/pglite.ts                        |    6 +
+ apps/web/src/components/CampusLite.test.ts         |   27 +
+ apps/web/src/components/CampusLite.tsx             |   81 ++
+ apps/web/src/components/SkillBadge.test.ts         |   14 +
+ apps/web/src/components/SkillBadge.tsx             |   30 +
+ apps/web/tsconfig.tsbuildinfo                      |    2 +-
+ audit/cycle-1/BUILD-CERT.json                      |  672 ++++++++--
+ audit/cycle-1/BUILD-CERT.md                        | 1125 +++++++++++++++--
+ audit/cycle-1/routes-manifest.json                 |  333 ++++-
+ audit/cycle-1/test-output.txt                      | 1309 +++++++++++---------
+ audit/cycle-2/BUILD-CERT.json                      |  355 +++++-
+ audit/cycle-2/BUILD-CERT.md                        |  578 ++++++++-
+ audit/cycle-2/git-log.txt                          |  927 ++++++++++++++
+ audit/cycle-2/loc-report.txt                       |   53 +
+ audit/cycle-2/routes-manifest.json                 |  333 ++++-
+ audit/cycle-2/test-output.txt                      |  857 +++++++++++++
+ docs/campus-lite-load-budget.md                    |    7 +
+ docs/runbooks/obd-ble.md                           |   21 +
+ packages/db/migrations/0006_c1_c6.sql              |  159 +++
+ packages/db/migrations/0007_d1_d11.sql             |  134 ++
+ packages/db/src/schema/campus.ts                   |  119 +-
+ packages/db/src/schema/commerce.ts                 |    1 +
+ packages/db/src/schema/diagnostics.ts              |   33 +
+ packages/db/src/schema/garage.ts                   |   16 +
+ packages/db/src/schema/media.ts                    |    8 +-
+ packages/db/tsconfig.tsbuildinfo                   |    2 +-
+ 53 files changed, 10411 insertions(+), 930 deletions(-)
+
 commit 2d99eecf5f715f2731d5454e3efe0822e0f2918b
 Author: Cursor Agent <cursoragent@cursor.com>
 Date:   Wed Aug 12 16:29:26 2026 +0000
