@@ -11,5 +11,8 @@
 | email_signup | email_signup_log | marketing capture parity | policy TBD |
 | auth_token_hash | auth_tokens.token_hash | email verify / password reset | token expiry |
 | passkey_credential | passkeys.credential_id + public_key | WebAuthn login | until account purge |
-| city_pin | users.city_text (+ spatial consent later) | optional map pin label | user-removable |
+| city_pin | users.city_text | optional map pin label | user-removable |
+| city_pin_lat | users.location_lat | consented approximate city pin latitude; never derived from IP | user-removable |
+| city_pin_lng | users.location_lng | consented approximate city pin longitude; never derived from IP | user-removable |
+| city_pin_consent | users.location_consent_at | records explicit location-pin consent time | user-removable |
 

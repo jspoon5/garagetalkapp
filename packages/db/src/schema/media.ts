@@ -98,6 +98,9 @@ export const podcastEpisodes = pgTable(
     title: text("title").notNull(),
     description: text("description"),
     mediaAssetId: text("media_asset_id"),
+    status: text("status").notNull().default("processing"),
+    audioUrl: text("audio_url"),
+    artworkUrl: text("artwork_url"),
     durationSeconds: integer("duration_seconds"),
     ...timestamps,
     ...softDelete,
@@ -113,6 +116,7 @@ export const podcastComments = pgTable("podcast_comments", {
   userId: uuid("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
+  parentId: uuid("parent_id"),
   body: text("body").notNull(),
   ...timestamps,
   ...softDelete,
@@ -138,13 +142,19 @@ export const posts = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     body: text("body").notNull(),
+    mediaType: text("media_type").notNull().default("text"),
     media: text("media").array().notNull().default([]),
     vehicleId: uuid("vehicle_id").references(() => vehicles.id, { onDelete: "set null" }),
+    sharedPostId: uuid("shared_post_id"),
     visibility: text("visibility").notNull().default("public"),
     ...timestamps,
     ...softDelete,
   },
-  (t) => [index("posts_author_idx").on(t.authorId)],
+  (t) => [
+    index("posts_author_idx").on(t.authorId),
+    index("posts_vehicle_idx").on(t.vehicleId),
+    index("posts_created_idx").on(t.createdAt),
+  ],
 );
 
 export const postComments = pgTable("post_comments", {
@@ -155,6 +165,7 @@ export const postComments = pgTable("post_comments", {
   userId: uuid("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
+  parentId: uuid("parent_id"),
   body: text("body").notNull(),
   ...timestamps,
   ...softDelete,
@@ -172,7 +183,10 @@ export const reactions = pgTable(
     kind: text("kind").notNull(),
     ...timestamps,
   },
-  (t) => [index("reactions_subject_idx").on(t.subjectType, t.subjectId)],
+  (t) => [
+    index("reactions_subject_idx").on(t.subjectType, t.subjectId),
+    uniqueIndex("reactions_user_subject_uidx").on(t.userId, t.subjectType, t.subjectId),
+  ],
 );
 
 export const watchHistory = pgTable(

@@ -1,4 +1,5 @@
 import {
+  boolean,
   id,
   index,
   jsonb,
@@ -97,4 +98,26 @@ export const featureFlags = pgTable(
     ...timestamps,
   },
   (t) => [uniqueIndex("feature_flags_key_uidx").on(t.key)],
+);
+
+export const r2rArticles = pgTable(
+  "r2r_articles",
+  {
+    id: id(),
+    slug: text("slug").notNull(),
+    title: text("title").notNull(),
+    category: text("category").notNull(),
+    summary: text("summary"),
+    bodyMd: text("body_md").notNull(),
+    tags: text("tags").array().notNull().default([]),
+    authorId: uuid("author_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    published: boolean("published").notNull().default(false),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex("r2r_articles_slug_uidx").on(t.slug),
+    index("r2r_articles_category_idx").on(t.category),
+  ],
 );

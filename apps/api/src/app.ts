@@ -3,12 +3,17 @@ import { ZodError } from "zod";
 import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
-import rateLimit from "@fastify/rate-limit";
+import websocket from "@fastify/websocket";
 import type { Database } from "@garagetalk/db";
 import { MemoryEmailClient, type EmailClient } from "@garagetalk/email";
 import { AuthService } from "./services/auth-service.js";
 import { GarageService } from "./services/garage-service.js";
+import { GearHeadService } from "./services/gearhead-service.js";
 import { MediaUploadService } from "./services/media-upload-service.js";
+import { PodcastService } from "./services/podcast-service.js";
+import { createPresenceStore, type PresenceStore } from "./services/presence-store.js";
+import { RoomService } from "./services/room-service.js";
+import { SpatialService } from "./services/spatial-service.js";
 import { VideoService } from "./services/video-service.js";
 import {
   MemoryChallengeStore,
@@ -17,16 +22,24 @@ import {
   type PasskeyVerifyHooks,
 } from "./services/passkey-service.js";
 import { authRoutes } from "./routes/auth.js";
+import { gearHeadRoutes } from "./routes/gearhead.js";
 import { garageRoutes } from "./routes/garage.js";
 import { healthRoutes } from "./routes/health.js";
+import { podcastRoutes } from "./routes/podcasts.js";
+import { roomRoutes } from "./routes/rooms.js";
+import { spatialRoutes } from "./routes/spatial.js";
 import { uploadRoutes } from "./routes/uploads.js";
 import { videoRoutes } from "./routes/videos.js";
 import { streamWebhookRoutes } from "./routes/webhooks-stream.js";
 import { emailAuthRoutes, passkeyRoutes } from "./routes/passkeys.js";
 import { sessionPlugin } from "./plugins/session.js";
 import { csrfPlugin } from "./plugins/csrf.js";
+import { rateLimitRedisPlugin } from "./plugins/rate-limit-redis.js";
 import { buildLogger } from "./logger.js";
 import { registerRouteCollector } from "./routes-manifest.js";
+import { registerA8A10Routes } from "./register-a8-a10.js";
+import { registerB1B2Routes } from "./register-b1-b2.js";
+import { registerB3B8Routes } from "./register-b3-b8.js";
 
 export type BuildAppOptions = {
   db: Database;
@@ -37,12 +50,18 @@ export type BuildAppOptions = {
   passkeyConfig?: PasskeyConfig;
   passkeyVerifyHooks?: PasskeyVerifyHooks;
   video?: VideoService;
+  podcasts?: PodcastService;
+  rooms?: RoomService;
+  spatial?: SpatialService;
+  gearhead?: GearHeadService;
+  presence?: PresenceStore;
+  trustProxy?: boolean;
 };
 
 export async function buildApp(opts: BuildAppOptions) {
   const app = Fastify({
     loggerInstance: buildLogger(),
-    trustProxy: true,
+    trustProxy: opts.trustProxy ?? process.env.NODE_ENV !== "test",
   });
 
   registerRouteCollector(app as never);
@@ -55,10 +74,7 @@ export async function buildApp(opts: BuildAppOptions) {
   await app.register(helmet, {
     contentSecurityPolicy: false,
   });
-  await app.register(rateLimit, {
-    max: 300,
-    timeWindow: "1 minute",
-  });
+  await app.register(websocket);
   await app.register(csrfPlugin, { trustedOrigins: opts.trustedOrigins });
 
   const emailClient = opts.emailClient ?? new MemoryEmailClient();
@@ -69,6 +85,11 @@ export async function buildApp(opts: BuildAppOptions) {
   const garage = new GarageService(opts.db);
   const media = new MediaUploadService(opts.db);
   const video = opts.video ?? new VideoService(opts.db);
+  const podcasts = opts.podcasts ?? new PodcastService(opts.db);
+  const rooms = opts.rooms ?? new RoomService(opts.db);
+  const spatial = opts.spatial ?? new SpatialService(opts.db);
+  const gearhead = opts.gearhead ?? new GearHeadService(opts.db);
+  const presence = opts.presence ?? createPresenceStore();
 
   const passkeyConfig = opts.passkeyConfig ?? {
     rpName: "Garage Talk",
@@ -84,6 +105,7 @@ export async function buildApp(opts: BuildAppOptions) {
   );
 
   await app.register(sessionPlugin, { auth });
+  await app.register(rateLimitRedisPlugin);
   await app.register(healthRoutes, {
     ready: opts.ready ?? (async () => true),
   });
@@ -93,7 +115,21 @@ export async function buildApp(opts: BuildAppOptions) {
   await app.register(garageRoutes, { garage });
   await app.register(uploadRoutes, { media });
   await app.register(videoRoutes, { video });
+  await app.register(podcastRoutes, { podcasts });
+  await app.register(roomRoutes, { rooms, presence });
+  await app.register(spatialRoutes, { spatial, rooms });
+  await app.register(gearHeadRoutes, { gearhead });
   await app.register(streamWebhookRoutes, { video });
+  app.addHook("onClose", async () => {
+    await presence.close();
+  });
+  await registerA8A10Routes(app as never, {
+    db: opts.db,
+    emailClient,
+    appBaseUrl: opts.appBaseUrl ?? "http://localhost:5173",
+  });
+  await registerB1B2Routes(app as never, opts.db);
+  await registerB3B8Routes(app as never, { db: opts.db, emailClient });
 
   app.setErrorHandler((err, req, reply) => {
     const zodErr = err instanceof ZodError ? err : null;

@@ -10,6 +10,7 @@ import {
   text,
   timestamp,
   timestamps,
+  uniqueIndex,
   uuid,
 } from "./common.js";
 import { users } from "./identity.js";
@@ -41,7 +42,10 @@ export const roomMembers = pgTable(
     role: text("role").notNull().default("member"),
     ...timestamps,
   },
-  (t) => [index("room_members_room_idx").on(t.roomId)],
+  (t) => [
+    index("room_members_room_idx").on(t.roomId),
+    uniqueIndex("room_members_room_user_uidx").on(t.roomId, t.userId),
+  ],
 );
 
 export const messages = pgTable(
@@ -71,12 +75,19 @@ export const liveSessions = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     roomName: text("room_name").notNull(),
+    title: text("title"),
     kind: liveKindEnum("kind").notNull().default("stream"),
     scheduledAt: timestamp("scheduled_at", { withTimezone: true }),
+    reminderSentAt: timestamp("reminder_sent_at", { withTimezone: true }),
     startedAt: timestamp("started_at", { withTimezone: true }),
     endedAt: timestamp("ended_at", { withTimezone: true }),
     rtmpEnabled: text("rtmp_enabled").notNull().default("false"),
+    rtmpIngestUrl: text("rtmp_ingest_url"),
+    rtmpStreamKey: text("rtmp_stream_key"),
+    recordingState: text("recording_state").notNull().default("idle"),
     recordingAssetId: text("recording_asset_id"),
+    recordingReplayUrl: text("recording_replay_url"),
+    recordingError: text("recording_error"),
     chapterMarks: jsonb("chapter_marks").$type<unknown[]>().default([]),
     ...timestamps,
   },
@@ -96,7 +107,10 @@ export const liveRoles = pgTable(
     role: liveRoleEnum("role").notNull().default("viewer"),
     ...timestamps,
   },
-  (t) => [index("live_roles_session_idx").on(t.sessionId)],
+  (t) => [
+    index("live_roles_session_idx").on(t.sessionId),
+    uniqueIndex("live_roles_session_user_uidx").on(t.sessionId, t.userId),
+  ],
 );
 
 export const classInteractions = pgTable("class_interactions", {

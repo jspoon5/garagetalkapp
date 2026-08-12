@@ -88,7 +88,7 @@ GearHead AI safety behavior:
 
 ## Garage Talk MVP Screens
 
-The first MVP screen set is sample-data-first and does not require live OpenAI, Stripe, Twilio, Jitsi, or backend room data.
+The first MVP screen set is prototype-first and does not require live OpenAI, Stripe, Twilio, Jitsi, or backend room data.
 
 MVP routes:
 
@@ -100,13 +100,13 @@ MVP routes:
 - `/marketplace` – Parts, tools, local services, creator offers, and smart garage gear placeholders
 - `/garage-profile` – Skills, vehicles/devices/projects, favorite rooms, and creator/social placeholders
 
-Shared sample data is in:
+Shared prototype content is in:
 
 ```text
 client/src/data/garageMvp.ts
 ```
 
-Future work can connect these pages to real APIs incrementally while keeping the sample data as safe fallbacks.
+Future work can connect these pages to real APIs incrementally while keeping the prototype content as safe fallbacks.
 
 ## Notes
 - The application runtime already uses Neon serverless for primary DB operations.

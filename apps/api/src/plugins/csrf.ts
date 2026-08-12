@@ -8,6 +8,7 @@ const plugin: FastifyPluginAsync<{ trustedOrigins: string[] }> = async (app, opt
     if (!MUTATION_METHODS.has(req.method)) return;
     const path = req.url.split("?")[0] ?? req.url;
     if (path.startsWith("/webhooks/")) return;
+    if (path.startsWith("/billing/webhooks/")) return;
     if (process.env.NODE_ENV === "test") return;
 
     const origin = req.headers.origin;

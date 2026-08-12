@@ -96,6 +96,7 @@ export const verificationStatusEnum = pgEnum("verification_status", [
   "unclaimed",
   "pending",
   "verified",
+  "rejected",
 ]);
 
 export const ledgerEntryTypeEnum = pgEnum("ledger_entry_type", [
@@ -110,6 +111,6 @@ export const lessonKindEnum = pgEnum("lesson_kind", ["video", "text", "quiz"]);
 
 export const liveKindEnum = pgEnum("live_kind", ["stream", "class", "office_hours"]);
 
-export const liveRoleEnum = pgEnum("live_role", ["instructor", "student", "mod", "viewer"]);
+export const liveRoleEnum = pgEnum("live_role", ["host", "mod", "viewer"]);
 
 export { sql, uuidv7, pgTable, text, timestamp, uuid, boolean, integer, jsonb, numeric, uniqueIndex, index, primaryKey, foreignKey };

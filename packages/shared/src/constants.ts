@@ -26,3 +26,10 @@ export function partsSearchUrls(partName: string, vehicleLabel: string): Record<
     amazon: `https://www.amazon.com/s?k=${q}`,
   };
 }
+
+export const SUBSCRIPTION_TIER_QUOTAS = {
+  amateur: { aiSearches: 25, liveSessions: 0, listingSlots: 1 },
+  gearhead: { aiSearches: 150, liveSessions: 2, listingSlots: 5 },
+  racing_pro: { aiSearches: 500, liveSessions: 10, listingSlots: 25 },
+  pro: { aiSearches: 2000, liveSessions: 50, listingSlots: 100 },
+} as const;

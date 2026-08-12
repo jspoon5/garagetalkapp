@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Garage Talk">
+  <rect width="512" height="512" rx="112" fill="#0b1220"/>
+  <circle cx="256" cy="256" r="176" fill="#f59e0b"/>
+  <path d="M142 292h228l-32-82c-8-20-23-30-45-30h-74c-22 0-37 10-45 30l-32 82Z" fill="#111827"/>
+  <path d="M170 282h172v42H170z" fill="#111827"/>
+  <circle cx="196" cy="334" r="28" fill="#0b1220"/>
+  <circle cx="316" cy="334" r="28" fill="#0b1220"/>
+  <path d="M211 214h90l16 40H195l16-40Z" fill="#f8fafc"/>
+</svg>

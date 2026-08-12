@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { LanguageSwitcher } from "./components/LanguageSwitcher";
+import { AndroidInstallPrompt, IosAddToHomeScreenInstructions } from "./components/PwaInstallPrompt";
 
 const API = "";
 
@@ -12,7 +14,7 @@ type User = {
 };
 
 export function App() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const [user, setUser] = useState<User | null>(null);
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
@@ -88,16 +90,10 @@ export function App() {
   return (
     <main className="mx-auto flex min-h-screen max-w-lg flex-col gap-6 px-4 py-10">
       <header>
-        <p className="text-sm uppercase tracking-[0.2em] text-amber-400">Garage Talk</p>
+        <p className="text-sm uppercase tracking-[0.2em] text-amber-400">{t("home.brand")}</p>
         <h1 className="mt-2 text-3xl font-semibold">{t("home.title")}</h1>
         <p className="mt-2 text-slate-300">{t("home.subtitle")}</p>
-        <button
-          type="button"
-          className="mt-3 text-sm text-slate-400 underline"
-          onClick={() => i18n.changeLanguage(i18n.language === "en" ? "es" : "en")}
-        >
-          {t("home.language")}
-        </button>
+        <LanguageSwitcher />
       </header>
 
       {user ? (
@@ -220,6 +216,8 @@ export function App() {
           </div>
         </form>
       )}
+      <AndroidInstallPrompt />
+      <IosAddToHomeScreenInstructions />
     </main>
   );
 }

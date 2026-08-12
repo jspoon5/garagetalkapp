@@ -1,3 +1,71 @@
+commit 128c38b9d9b6a5acb0d14bb9ca21541c3363f62f
+Author: Cursor Agent <cursoragent@cursor.com>
+Date:   Wed Aug 12 15:47:45 2026 +0000
+
+    phase(FIX+A3): auditor fixes, passkeys, email auth, reorder, video — cert updated
+    
+    FIX-1..8: regenerate auditor git-log/test-output; live Fastify onRoute routes
+    manifest; Better Auth blocked after 3 drizzle/adapter attempts — keep custom
+    Argon2id sessions + @simplewebauthn passkeys; Playwright signup→deletion
+    smoke; email verify/reset with MemoryEmailClient; vehicle reorder; security
+    checklist PENDING for out-of-scope items. A3: R2/Stream upload pipeline,
+    webhook fixtures, comment threads, heartbeat dedupe, sharp EXIF strip.
+    
+    Co-authored-by: jspoon5 <jspoon5@users.noreply.github.com>
+
+ BUILD-CERT.json                               | 132 ++++---
+ BUILD-CERT.md                                 | 132 +++----
+ apps/api/package.json                         |   4 +-
+ apps/api/src/app.ts                           |  63 +++-
+ apps/api/src/auth-email.test.ts               | 106 ++++++
+ apps/api/src/e2e-server.ts                    |  26 ++
+ apps/api/src/garage.test.ts                   |  47 +++
+ apps/api/src/media-upload.test.ts             | 138 +++++++
+ apps/api/src/passkey.test.ts                  | 139 +++++++
+ apps/api/src/plugins/csrf.ts                  |  23 ++
+ apps/api/src/routes-manifest.ts               |  68 +++-
+ apps/api/src/routes/garage.ts                 |  11 +-
+ apps/api/src/routes/passkeys.ts               |  94 +++++
+ apps/api/src/routes/uploads.ts                |  65 ++++
+ apps/api/src/routes/videos.ts                 | 116 ++++++
+ apps/api/src/routes/webhooks-stream.ts        |  28 ++
+ apps/api/src/services/auth-service.ts         | 148 +++++++-
+ apps/api/src/services/garage-service.ts       |  38 +-
+ apps/api/src/services/media-upload-service.ts | 156 ++++++++
+ apps/api/src/services/passkey-service.ts      | 276 ++++++++++++++
+ apps/api/src/services/video-service.ts        | 391 +++++++++++++++++++
+ apps/api/src/test/pglite.ts                   | 138 +++++++
+ apps/api/src/video.test.ts                    | 217 +++++++++++
+ apps/web/e2e/auth-smoke.spec.ts               |  28 ++
+ apps/web/package.json                         |   3 +
+ apps/web/playwright.config.ts                 |  41 ++
+ apps/web/src/App.tsx                          |  98 ++++-
+ apps/web/src/locales/en.json                  |   4 +
+ apps/web/vite.config.ts                       |   8 +
+ audit/cycle-1/BUILD-CERT.json                 | 132 ++++---
+ audit/cycle-1/BUILD-CERT.md                   | 132 +++----
+ audit/cycle-1/git-log.txt                     | 408 ++++++++++++++++++++
+ audit/cycle-1/routes-manifest.json            | 349 ++++++++++++++---
+ audit/cycle-1/test-output.txt                 | 364 ++++++++++++++++--
+ audit/cycle-2/BUILD-CERT.json                 | 523 ++++++++++++++++++++++++++
+ audit/cycle-2/BUILD-CERT.md                   | 210 +++++++++++
+ audit/cycle-2/routes-manifest.json            | 287 ++++++++++++++
+ docs/data-map.md                              |   4 +
+ package.json                                  |   1 +
+ packages/db/migrations/0001_a3_media.sql      | 121 ++++++
+ packages/db/package.json                      |   2 +-
+ packages/db/src/schema/common.ts              |   6 +
+ packages/db/src/schema/garage.ts              |   1 +
+ packages/db/src/schema/identity.ts            |  18 +
+ packages/db/src/schema/media.ts               |  68 +++-
+ packages/db/tsconfig.tsbuildinfo              |   2 +-
+ packages/email/src/index.test.ts              |  17 +-
+ packages/email/src/index.ts                   |   8 +
+ packages/email/tsconfig.tsbuildinfo           |   2 +-
+ pnpm-lock.yaml                                | 470 +++++++++++++++++++++--
+ scripts/dump-routes.ts                        |  61 +--
+ 51 files changed, 5475 insertions(+), 449 deletions(-)
+
 commit 043cc169f34d38c6e8c9917a58029ec547811e4b
 Author: Cursor Agent <cursoragent@cursor.com>
 Date:   Wed Aug 12 15:00:21 2026 +0000

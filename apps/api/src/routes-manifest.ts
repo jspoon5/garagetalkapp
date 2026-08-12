@@ -18,8 +18,18 @@ const SESSION_PREFIXES = [
   "/auth/password-reset",
   "/auth/passkey",
   "/garage",
+  "/me/location-pin",
+  "/podcasts",
+  "/rooms",
+  "/ai",
   "/videos",
   "/uploads",
+  "/live",
+  "/billing/portal",
+  "/billing/connect",
+  "/billing/tips",
+  "/feed",
+  "/marketplace",
   "/admin",
 ];
 
@@ -32,6 +42,8 @@ const PUBLIC_AUTH = new Set([
   "/auth/password-reset/request",
   "/auth/password-reset/confirm",
   "/auth/verify-email/confirm",
+  "/billing/tiers",
+  "/billing/webhooks/stripe",
   "/healthz",
   "/readyz",
 ]);
@@ -63,7 +75,7 @@ export function registerRouteCollector(app: FastifyInstance): void {
             ? "10/min"
             : "global 300/min";
       const csrf = MUTATION_METHODS.has(String(method))
-        ? url.startsWith("/webhooks/")
+        ? url.startsWith("/webhooks/") || url.startsWith("/billing/webhooks/")
           ? "n/a"
           : "required"
         : "n/a";

@@ -4,6 +4,15 @@ export const emailPayloadSchema = z.object({
   to: z.string().email(),
   subject: z.string().min(1),
   html: z.string().min(1),
+  attachments: z
+    .array(
+      z.object({
+        filename: z.string().min(1),
+        contentType: z.string().min(1),
+        content: z.string().min(1),
+      }),
+    )
+    .optional(),
 });
 
 export type EmailPayload = z.infer<typeof emailPayloadSchema>;

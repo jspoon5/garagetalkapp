@@ -1,8 +1,113 @@
 {
-  "generatedAt": "2026-08-12T15:47:33.939Z",
+  "generatedAt": "2026-08-12T16:29:25.995Z",
   "source": "fastify onRoute hook at boot",
-  "count": 40,
+  "count": 140,
   "routes": [
+    {
+      "method": "GET",
+      "url": "/admin/dashboard",
+      "auth": "admin",
+      "rateLimit": "global 300/min",
+      "csrf": "n/a"
+    },
+    {
+      "method": "GET",
+      "url": "/admin/moderation/reports",
+      "auth": "admin",
+      "rateLimit": "global 300/min",
+      "csrf": "n/a"
+    },
+    {
+      "method": "POST",
+      "url": "/admin/moderation/reports/:id",
+      "auth": "admin",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/admin/r2r/articles",
+      "auth": "admin",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "DELETE",
+      "url": "/admin/r2r/articles/:slug",
+      "auth": "admin",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "PATCH",
+      "url": "/admin/r2r/articles/:slug",
+      "auth": "admin",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "GET",
+      "url": "/admin/settings",
+      "auth": "admin",
+      "rateLimit": "global 300/min",
+      "csrf": "n/a"
+    },
+    {
+      "method": "PUT",
+      "url": "/admin/settings/:key",
+      "auth": "admin",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "GET",
+      "url": "/admin/shops/verification",
+      "auth": "admin",
+      "rateLimit": "global 300/min",
+      "csrf": "n/a"
+    },
+    {
+      "method": "POST",
+      "url": "/admin/shops/verification/:id",
+      "auth": "admin",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "GET",
+      "url": "/admin/users",
+      "auth": "admin",
+      "rateLimit": "global 300/min",
+      "csrf": "n/a"
+    },
+    {
+      "method": "DELETE",
+      "url": "/admin/users/:id",
+      "auth": "admin",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/admin/users/:id/suspend",
+      "auth": "admin",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "PATCH",
+      "url": "/admin/users/:id/tier",
+      "auth": "admin",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/ai/gearhead",
+      "auth": "session",
+      "rateLimit": "{\"max\":20,\"timeWindow\":\"1 minute\"}",
+      "csrf": "required"
+    },
     {
       "method": "POST",
       "url": "/auth/delete-account",
@@ -116,6 +221,111 @@
       "csrf": "required"
     },
     {
+      "method": "POST",
+      "url": "/billing/connect/onboarding",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "GET",
+      "url": "/billing/portal",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "n/a"
+    },
+    {
+      "method": "GET",
+      "url": "/billing/tiers",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "n/a"
+    },
+    {
+      "method": "POST",
+      "url": "/billing/tips",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/billing/webhooks/stripe",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "n/a"
+    },
+    {
+      "method": "GET",
+      "url": "/creator/:id/supporter-badges",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "n/a"
+    },
+    {
+      "method": "GET",
+      "url": "/creator/earnings",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "n/a"
+    },
+    {
+      "method": "POST",
+      "url": "/creator/tips",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "GET",
+      "url": "/feed",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "n/a"
+    },
+    {
+      "method": "POST",
+      "url": "/feed/follows/:id",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/feed/posts",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/feed/posts/:id/comments",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/feed/posts/:id/reactions",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/feed/posts/:id/reports",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/feed/posts/:id/share",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
       "method": "GET",
       "url": "/garage/vehicles",
       "auth": "session",
@@ -144,6 +354,48 @@
       "csrf": "required"
     },
     {
+      "method": "GET",
+      "url": "/garage/vehicles/:vehicleId/service-records",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "n/a"
+    },
+    {
+      "method": "POST",
+      "url": "/garage/vehicles/:vehicleId/service-records",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "DELETE",
+      "url": "/garage/vehicles/:vehicleId/service-records/:recordId",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "PATCH",
+      "url": "/garage/vehicles/:vehicleId/service-records/:recordId",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "GET",
+      "url": "/garage/vehicles/:vehicleId/service-records/public",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "n/a"
+    },
+    {
+      "method": "POST",
+      "url": "/garage/vehicles/:vehicleId/service-reminders",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
       "method": "POST",
       "url": "/garage/vehicles/reorder",
       "auth": "session",
@@ -158,8 +410,456 @@
       "csrf": "n/a"
     },
     {
+      "method": "POST",
+      "url": "/live/sessions",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/live/sessions/:id/recording/egress-complete",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/live/sessions/:id/recording/fail",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/live/sessions/:id/recording/start",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/live/sessions/:id/recording/upload-complete",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/live/sessions/:id/reminders",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/live/sessions/:id/roles",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "GET",
+      "url": "/live/sessions/:id/rtmp",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "n/a"
+    },
+    {
+      "method": "POST",
+      "url": "/live/sessions/:id/token",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "GET",
+      "url": "/marketplace/listings",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "n/a"
+    },
+    {
+      "method": "POST",
+      "url": "/marketplace/listings",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "DELETE",
+      "url": "/marketplace/listings/:id",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "PATCH",
+      "url": "/marketplace/listings/:id",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/marketplace/listings/:id/purchase",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/marketplace/orders/:id/refund",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/marketplace/orders/:id/state",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "GET",
+      "url": "/marketplace/seller/dashboard",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "n/a"
+    },
+    {
+      "method": "DELETE",
+      "url": "/me/location-pin",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "GET",
+      "url": "/me/location-pin",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "n/a"
+    },
+    {
+      "method": "POST",
+      "url": "/me/location-pin",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "GET",
+      "url": "/podcasts/episodes",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "n/a"
+    },
+    {
+      "method": "GET",
+      "url": "/podcasts/episodes/:episodeId/comments",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "n/a"
+    },
+    {
+      "method": "POST",
+      "url": "/podcasts/episodes/:episodeId/comments",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "GET",
+      "url": "/podcasts/episodes/:episodeId/threads",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "n/a"
+    },
+    {
+      "method": "POST",
+      "url": "/podcasts/episodes/:episodeId/threads",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "GET",
+      "url": "/podcasts/episodes/:id",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "n/a"
+    },
+    {
+      "method": "POST",
+      "url": "/podcasts/episodes/:id/ready",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/podcasts/episodes/upload-session",
+      "auth": "session",
+      "rateLimit": "{\"max\":10,\"timeWindow\":\"1 minute\"}",
+      "csrf": "required"
+    },
+    {
+      "method": "GET",
+      "url": "/podcasts/shows",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "n/a"
+    },
+    {
+      "method": "POST",
+      "url": "/podcasts/shows",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "GET",
+      "url": "/podcasts/shows/:id",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "n/a"
+    },
+    {
+      "method": "GET",
+      "url": "/r2r/articles",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "n/a"
+    },
+    {
+      "method": "GET",
+      "url": "/r2r/corpus/:slug",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "n/a"
+    },
+    {
       "method": "GET",
       "url": "/readyz",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "n/a"
+    },
+    {
+      "method": "GET",
+      "url": "/rooms",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "n/a"
+    },
+    {
+      "method": "POST",
+      "url": "/rooms",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "DELETE",
+      "url": "/rooms/:id",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "GET",
+      "url": "/rooms/:id",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "n/a"
+    },
+    {
+      "method": "PATCH",
+      "url": "/rooms/:id",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/rooms/:id/join",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "GET",
+      "url": "/rooms/:id/messages",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "n/a"
+    },
+    {
+      "method": "POST",
+      "url": "/rooms/:id/messages",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "GET",
+      "url": "/rooms/:id/presence",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "n/a"
+    },
+    {
+      "method": "GET",
+      "url": "/rooms/:id/ws",
+      "auth": "session",
+      "rateLimit": "global 300/min",
+      "csrf": "n/a"
+    },
+    {
+      "method": "POST",
+      "url": "/shops",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "PATCH",
+      "url": "/shops/:id",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/shops/:id/availability/exceptions",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/shops/:id/availability/rules",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/shops/:id/reviews/recompute",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "GET",
+      "url": "/shops/:id/services",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "n/a"
+    },
+    {
+      "method": "POST",
+      "url": "/shops/:id/services",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/shops/:id/verification",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "GET",
+      "url": "/shops/:slug",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "n/a"
+    },
+    {
+      "method": "POST",
+      "url": "/shops/bookings",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/shops/bookings/:id/cancel",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/shops/bookings/:id/complete",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/shops/bookings/:id/confirm",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/shops/bookings/:id/no-show",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/shops/bookings/reminders/run",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/shops/reviews",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/shops/reviews/:id/appeal",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/shops/reviews/:id/owner-response",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/shops/reviews/:id/report",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "POST",
+      "url": "/shops/verification/:id/appeal",
+      "auth": "public",
+      "rateLimit": "global 300/min",
+      "csrf": "required"
+    },
+    {
+      "method": "GET",
+      "url": "/spatial/rooms",
       "auth": "public",
       "rateLimit": "global 300/min",
       "csrf": "n/a"

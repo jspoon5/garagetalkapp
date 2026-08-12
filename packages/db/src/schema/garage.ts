@@ -50,10 +50,12 @@ export const serviceRecords = pgTable(
     mileage: integer("mileage"),
     kind: text("kind").notNull(),
     title: text("title").notNull(),
+    work: text("work"),
     notes: text("notes"),
     parts: jsonb("parts").$type<unknown[]>().default([]),
     costCents: integer("cost_cents"),
     receiptMedia: text("receipt_media").array().notNull().default([]),
+    sharedFields: text("shared_fields").array().notNull().default([]),
     attestedByShopId: uuid("attested_by_shop_id"),
     attestation: jsonb("attestation").$type<{
       signedAt: string;
