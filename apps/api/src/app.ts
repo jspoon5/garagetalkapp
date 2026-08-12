@@ -5,7 +5,9 @@ import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
 import type { Database } from "@garagetalk/db";
 import { AuthService } from "./services/auth-service.js";
+import { GarageService } from "./services/garage-service.js";
 import { authRoutes } from "./routes/auth.js";
+import { garageRoutes } from "./routes/garage.js";
 import { healthRoutes } from "./routes/health.js";
 import { sessionPlugin } from "./plugins/session.js";
 import { buildLogger } from "./logger.js";
@@ -39,11 +41,13 @@ export async function buildApp(opts: BuildAppOptions) {
   });
 
   const auth = new AuthService(opts.db);
+  const garage = new GarageService(opts.db);
   await app.register(sessionPlugin, { auth });
   await app.register(healthRoutes, {
     ready: opts.ready ?? (async () => true),
   });
   await app.register(authRoutes, { auth });
+  await app.register(garageRoutes, { garage });
 
   app.setErrorHandler((err, req, reply) => {
     const error = err as Error & { name?: string };

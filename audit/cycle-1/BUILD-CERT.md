@@ -1,12 +1,12 @@
 # GARAGE TALK BUILD CERTIFICATE
-Build started: 2026-08-12T14:24:34.761Z   Last updated: 2026-08-12T14:30:16.147Z
+Build started: 2026-08-12T14:24:34.761Z   Last updated: 2026-08-12T14:31:36.893Z
 Spec version: v3   Agent decisions log: media_provider=cloudflare_stream, livekit_hosting=livekit_cloud, test_database=pglite, auth_implementation=drizzle_argon2id_sessions_plus_better_auth_dep
 
 ## PHASE LEDGER
 | Phase | Status | Evidence ref | Commit | Notes |
 |-------|--------|--------------|--------|-------|
 | A1 Foundation + auth | PARTIAL | EV-A1 | 43cd87c | |
-| A2 Garage | NOT_STARTED | EV-A2 |  | |
+| A2 Garage | PARTIAL | EV-A2 | 68a2c93 | |
 | A3 Video platform | NOT_STARTED | EV-A3 |  | |
 | A4 Podcasts | NOT_STARTED | EV-A4 |  | |
 | A5 Chat rooms + presence | NOT_STARTED | EV-A5 |  | |
@@ -78,7 +78,38 @@ RUN  v2.1.9 /workspace/apps/api
 ```
 - Gap: Playwright smoke not yet wired; staging deploy not available in this environment; §2.4 items 3–13 only partially implemented (sessions/passwords/rate-limit/headers/deletion/export present; Redis OTP passkeys admin moderation CSRF CSP nonce R2 quarantine pending later phases). Better Auth package installed but A1 ships Drizzle Argon2id session auth pending full adapter bridge.
 ### EV-A2
-- (no evidence yet)
+- Acceptance criterion: "create/edit/delete/reorder vehicles; photos upload via presigned flow with EXIF stripped."
+- Result: PARTIAL
+- Command: `pnpm --filter @garagetalk/api test`
+- Output:
+```
+{"level":30,"time":1786545079271,"pid":9450,"hostname":"cursor","reqId":"req-8","req":{"method":"GET","url":"/readyz","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+{"level":30,"time":1786545079271,"pid":9450,"hostname":"cursor","reqId":"req-8","res":{"statusCode":200},"responseTime":0.2609189999998307,"msg":"request completed"}
+ ✓ src/auth.test.ts (2 tests) 1616ms
+{"level":30,"time":1786545079334,"pid":9451,"hostname":"cursor","reqId":"req-1","res":{"statusCode":200},"responseTime":150.61083099999996,"msg":"request completed"}
+{"level":30,"time":1786545079335,"pid":9451,"hostname":"cursor","reqId":"req-2","req":{"method":"POST","url":"/garage/vehicles","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+{"level":30,"time":1786545079343,"pid":9451,"hostname":"cursor","reqId":"req-2","res":{"statusCode":201},"responseTime":7.849713000000065,"msg":"request completed"}
+{"level":30,"time":1786545079343,"pid":9451,"hostname":"cursor","reqId":"req-3","req":{"method":"GET","url":"/garage/vehicles","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+{"level":30,"time":1786545079347,"pid":9451,"hostname":"cursor","reqId":"req-3","res":{"statusCode":200},"responseTime":3.8596859999997832,"msg":"request completed"}
+{"level":30,"time":1786545079348,"pid":9451,"hostname":"cursor","reqId":"req-4","req":{"method":"PATCH","url":"/garage/vehicles/019ff662-842d-7159-931c-fd1e7c78a785","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+ ✓ src/auth-service.test.ts (1 test) 1772ms
+{"level":30,"time":1786545079352,"pid":9451,"hostname":"cursor","reqId":"req-4","res":{"statusCode":200},"responseTime":4.399038999999902,"msg":"request completed"}
+{"level":30,"time":1786545079353,"pid":9451,"hostname":"cursor","reqId":"req-5","req":{"method":"POST","url":"/garage/vehicles","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+{"level":30,"time":1786545079357,"pid":9451,"hostname":"cursor","reqId":"req-5","res":{"statusCode":201},"responseTime":4.379178000000138,"msg":"request completed"}
+{"level":30,"time":1786545079358,"pid":9451,"hostname":"cursor","reqId":"req-6","req":{"method":"GET","url":"/garage/vehicles","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+{"level":30,"time":1786545079361,"pid":9451,"hostname":"cursor","reqId":"req-6","res":{"statusCode":200},"responseTime":3.0327259999999114,"msg":"request completed"}
+{"level":30,"time":1786545079361,"pid":9451,"hostname":"cursor","reqId":"req-7","req":{"method":"DELETE","url":"/garage/vehicles/019ff662-842d-7159-931c-fd1e7c78a785","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+{"level":30,"time":1786545079365,"pid":9451,"hostname":"cursor","reqId":"req-7","res":{"statusCode":200},"responseTime":3.2847360000000663,"msg":"request completed"}
+{"level":30,"time":1786545079365,"pid":9451,"hostname":"cursor","reqId":"req-8","req":{"method":"GET","url":"/garage/vehicles","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+{"level":30,"time":1786545079369,"pid":9451,"hostname":"cursor","reqId":"req-8","res":{"statusCode":200},"responseTime":3.690998000000036,"msg":"request completed"}
+ ✓ src/garage.test.ts (1 test) 1678ms
+
+ Test Files  3 passed (3)
+      Tests  4 passed (4)
+   Start at  14:31:17
+   Duration  2.37s (transform 174ms, setup 0ms, collect 1.42s, tests 5.07s, environment 0ms, prepare 155ms)
+```
+- Gap: Vehicle CRUD + primary flag tested via HTTP. Reorder endpoint not yet added. Presigned R2 photo upload + sharp EXIF strip deferred (R2 env not configured); photos field accepts URL arrays only for now.
 ### EV-A3
 - (no evidence yet)
 ### EV-A4
@@ -156,6 +187,7 @@ RUN  v2.1.9 /workspace/apps/api
 | apps/api/src/services/auth-service.ts | Better Auth adapter not fully wired; custom Argon2id+Postgres sessions implement §2.4.1–2 for A1 | Better Auth drizzle adapter peer wants drizzle-orm ^0.45; schema bridge deferred to keep A1 moving | A1 |
 | apps/api (redis rate limits) | In-process @fastify/rate-limit instead of Redis token buckets | Redis not required for A1 local/PGlite proof; Upstash/Fly Redis lands with presence A5 | A5 |
 | apps/web Playwright | No Playwright signup→deletion e2e yet | ENV_LIMITED browser automation deferred; HTTP inject + AuthService tests cover loop | A1 |
+| apps/api/src/services/garage-service.ts | Photo URLs accepted but no R2 presign + sharp EXIF strip pipeline | R2 credentials not in env; upload pipeline scheduled with media A3 | A3 |
 
 ## BLOCKED
 | Phase | Blocker | Full error | Attempts made | Suggested human action |
@@ -187,4 +219,4 @@ RUN  v2.1.9 /workspace/apps/api
 
 ## FINAL ATTESTATION
 I attest every PASS above is backed by pasted command output, no stub exists outside DEFERRED-STUBS, and no acceptance criterion was weakened or reinterpreted.
-Total phases: 37  PASS: 0  PARTIAL: 1  BLOCKED: 0  ENV_LIMITED: 0  NOT_STARTED: 36
+Total phases: 37  PASS: 0  PARTIAL: 2  BLOCKED: 0  ENV_LIMITED: 0  NOT_STARTED: 35

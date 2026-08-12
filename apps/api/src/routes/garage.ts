@@ -1,0 +1,36 @@
+import type { FastifyPluginAsync } from "fastify";
+import type { GarageService } from "../services/garage-service.js";
+import { vehicleInputSchema } from "../services/garage-service.js";
+
+export const garageRoutes: FastifyPluginAsync<{ garage: GarageService }> = async (app, opts) => {
+  const garage = opts.garage;
+
+  app.get("/garage/vehicles", async (req, reply) => {
+    if (!req.user) return reply.code(401).send({ error: "unauthorized" });
+    return { vehicles: await garage.list(req.user.id) };
+  });
+
+  app.post("/garage/vehicles", async (req, reply) => {
+    if (!req.user) return reply.code(401).send({ error: "unauthorized" });
+    const body = vehicleInputSchema.parse(req.body);
+    const vehicle = await garage.create(req.user.id, body);
+    return reply.code(201).send({ vehicle });
+  });
+
+  app.patch("/garage/vehicles/:id", async (req, reply) => {
+    if (!req.user) return reply.code(401).send({ error: "unauthorized" });
+    const { id } = req.params as { id: string };
+    const body = vehicleInputSchema.partial().parse(req.body ?? {});
+    const vehicle = await garage.update(req.user.id, id, body);
+    if (!vehicle) return reply.code(404).send({ error: "not_found" });
+    return { vehicle };
+  });
+
+  app.delete("/garage/vehicles/:id", async (req, reply) => {
+    if (!req.user) return reply.code(401).send({ error: "unauthorized" });
+    const { id } = req.params as { id: string };
+    const vehicle = await garage.softDelete(req.user.id, id);
+    if (!vehicle) return reply.code(404).send({ error: "not_found" });
+    return { ok: true };
+  });
+};
