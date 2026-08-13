@@ -3,9 +3,19 @@ import { images } from "../images";
 
 export const vehicleFilters = ["All", "Cars", "Trucks", "Motorcycles"] as const;
 
-export function VehicleTile({ image, title, subtitle }: { image: string; title: string; subtitle: string }) {
+export function VehicleTile({
+  image,
+  title,
+  subtitle,
+  onClick,
+}: {
+  image: string;
+  title: string;
+  subtitle: string;
+  onClick?: () => void;
+}) {
   return (
-    <button type="button" className="vehicle-tile">
+    <button type="button" className="vehicle-tile" onClick={onClick}>
       <img src={image} alt={`${title} community`} loading="lazy" decoding="async" />
       <div className="tile-shade" />
       <div>
@@ -16,14 +26,26 @@ export function VehicleTile({ image, title, subtitle }: { image: string; title: 
   );
 }
 
-export function SectionHeading({ eyebrow, title, action }: { eyebrow: string; title: string; action: string }) {
+export function SectionHeading({
+  eyebrow,
+  title,
+  action,
+  onAction,
+}: {
+  eyebrow: string;
+  title: string;
+  action: string;
+  onAction?: () => void;
+}) {
   return (
     <div className="section-heading">
       <div>
         <span>{eyebrow}</span>
         <h2>{title}</h2>
       </div>
-      <button type="button">{action}</button>
+      <button type="button" onClick={onAction}>
+        {action}
+      </button>
     </div>
   );
 }

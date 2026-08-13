@@ -13,6 +13,10 @@ const idParamSchema = z.object({ id: z.string().uuid() });
 export const liveRoutes: FastifyPluginAsync<{ live: LiveService }> = async (app, opts) => {
   const live = opts.live;
 
+  app.get("/live/sessions", async () => {
+    return { sessions: await live.listSessions() };
+  });
+
   app.post("/live/sessions", async (req, reply) => {
     if (!req.user) return reply.code(401).send({ error: "unauthorized" });
     const body = liveSessionInputSchema.parse(req.body);

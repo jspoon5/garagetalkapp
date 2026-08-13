@@ -91,6 +91,14 @@ export function BellIcon(props: IconProps) {
   );
 }
 
+export function ChevronLeftIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M9.8 2.4 4.7 7.5 9.8 12.6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </Icon>
+  );
+}
+
 export function ChevronRightIcon(props: IconProps) {
   return (
     <Icon {...props}>

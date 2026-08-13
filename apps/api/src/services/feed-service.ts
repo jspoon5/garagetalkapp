@@ -5,6 +5,7 @@ import {
   posts,
   reactions,
   reports,
+  users,
   vehicles,
   type Database,
 } from "@garagetalk/db";
@@ -66,20 +67,32 @@ export class FeedService {
     return post!;
   }
 
-  async listFeed(userId: string): Promise<FeedPost[]> {
-    const followed = await this.db
-      .select({ id: follows.followeeId })
-      .from(follows)
-      .where(eq(follows.followerId, userId));
+  async listFeed(userId: string | null): Promise<Array<FeedPost & { authorUsername: string }>> {
+    const followed = userId
+      ? await this.db
+          .select({ id: follows.followeeId })
+          .from(follows)
+          .where(eq(follows.followerId, userId))
+      : [];
     const followedIds = new Set(followed.map((row) => row.id));
     const rows = await this.db
       .select()
       .from(posts)
-      .where(isNull(posts.deletedAt))
+      .where(userId ? isNull(posts.deletedAt) : and(isNull(posts.deletedAt), eq(posts.visibility, "public")))
       .orderBy(desc(posts.createdAt))
       .limit(100);
+    const authorIds = [...new Set(rows.map((row) => row.authorId))];
+    const authors =
+      authorIds.length === 0
+        ? []
+        : await this.db
+            .select({ id: users.id, username: users.username })
+            .from(users)
+            .where(inArray(users.id, authorIds));
+    const names = new Map(authors.map((author) => [author.id, author.username]));
     return rows.map((post) => ({
       ...post,
+      authorUsername: names.get(post.authorId) ?? "gearhead",
       source: followedIds.has(post.authorId) ? "followed" : "discovery",
     }));
   }

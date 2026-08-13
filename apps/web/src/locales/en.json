@@ -28,7 +28,8 @@
     "exportData": "Export my data",
     "deleteAccount": "Delete my account",
     "registerFailed": "Could not register",
-    "loginFailed": "Invalid credentials"
+    "loginFailed": "Invalid credentials",
+    "signOut": "Sign out"
   },
   "pwa": {
     "androidTitle": "Install Garage Talk",

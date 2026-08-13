@@ -1,8 +1,10 @@
-import { and, asc, desc, eq, isNull, lt } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, lt } from "drizzle-orm";
 import type { Database } from "@garagetalk/db";
-import { chatRooms, messages, roomMembers } from "@garagetalk/db";
+import { chatRooms, messages, roomMembers, users } from "@garagetalk/db";
 import { uuidv7 } from "uuidv7";
 import { z } from "zod";
+
+export const COMMUNITY_ROOM_TITLES = ["Car Garage", "Truck Bay", "Motorcycle Bench"] as const;
 
 const ROOM_KINDS = ["topic", "spatial", "pit_crew", "class"] as const;
 
@@ -55,6 +57,20 @@ export class RoomService {
     if (!room) throw new Error("failed_to_create_room");
     await this.join(ownerId, room.id, "owner");
     return room;
+  }
+
+  async ensureCommunityRooms() {
+    const existing = await this.list();
+    const titles = new Set(existing.map((room) => room.title));
+    for (const title of COMMUNITY_ROOM_TITLES) {
+      if (titles.has(title)) continue;
+      await this.db.insert(chatRooms).values({
+        id: uuidv7(),
+        title,
+        kind: "topic",
+        ownerId: null,
+      });
+    }
   }
 
   list() {
@@ -143,15 +159,27 @@ export class RoomService {
       .where(where)
       .orderBy(desc(messages.createdAt))
       .limit(parsed.limit);
-    return rows.reverse();
+    return this.withAuthors(rows.reverse());
   }
 
   async firstMessages(roomId: string, limit = 20) {
-    return this.db
+    const rows = await this.db
       .select()
       .from(messages)
       .where(and(eq(messages.roomId, roomId), isNull(messages.deletedAt)))
       .orderBy(asc(messages.createdAt))
       .limit(limit);
+    return this.withAuthors(rows);
+  }
+
+  private async withAuthors<T extends { authorId: string }>(rows: T[]) {
+    const ids = [...new Set(rows.map((row) => row.authorId))];
+    if (ids.length === 0) return rows.map((row) => ({ ...row, authorUsername: "gearhead" }));
+    const authors = await this.db
+      .select({ id: users.id, username: users.username })
+      .from(users)
+      .where(inArray(users.id, ids));
+    const names = new Map(authors.map((author) => [author.id, author.username]));
+    return rows.map((row) => ({ ...row, authorUsername: names.get(row.authorId) ?? "gearhead" }));
   }
 }

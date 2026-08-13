@@ -1,24 +1,28 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DotsHorizontalIcon, PersonIcon, VideoIcon } from "../icons";
 import { LanguageSwitcher } from "../components/LanguageSwitcher";
 import { AndroidInstallPrompt, IosAddToHomeScreenInstructions } from "../components/PwaInstallPrompt";
 import { Carousel } from "../components/Carousel";
+import { apiGet, apiSend, type User, type Vehicle } from "../api";
+import { roomImage } from "../bays";
 import { images, SectionHeading, VehicleTile } from "./shared";
 
-export type User = {
-  id: string;
-  email: string;
-  username: string;
-  bio: string | null;
-  cityText: string | null;
-};
+export type { User };
 
-const API = "";
-
-export function GarageScreen({ user, setUser }: { user: User | null; setUser: (user: User | null) => void }) {
+export function GarageScreen({
+  user,
+  setUser,
+  onOpenVehicleBay,
+  onGoLive,
+}: {
+  user: User | null;
+  setUser: (user: User | null) => void;
+  onOpenVehicleBay: (type: string) => void;
+  onGoLive: () => void;
+}) {
   return user ? (
-    <SignedInGarage user={user} setUser={setUser} />
+    <SignedInGarage user={user} setUser={setUser} onOpenVehicleBay={onOpenVehicleBay} onGoLive={onGoLive} />
   ) : (
     <SignedOutGarage setUser={setUser} />
   );
@@ -34,34 +38,22 @@ function SignedOutGarage({ setUser }: { setUser: (user: User) => void }) {
 
   async function register() {
     setError(null);
-    const res = await fetch(`${API}/auth/register`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, username, password }),
-    });
-    if (!res.ok) {
+    try {
+      const data = await apiSend<{ user: User }>("/auth/register", "POST", { email, username, password });
+      setUser(data.user);
+    } catch {
       setError(t("auth.registerFailed"));
-      return;
     }
-    const data = (await res.json()) as { user: User };
-    setUser(data.user);
   }
 
   async function login() {
     setError(null);
-    const res = await fetch(`${API}/auth/login`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
-    });
-    if (!res.ok) {
+    try {
+      const data = await apiSend<{ user: User }>("/auth/login", "POST", { username, password });
+      setUser(data.user);
+    } catch {
       setError(t("auth.loginFailed"));
-      return;
     }
-    const data = (await res.json()) as { user: User };
-    setUser(data.user);
   }
 
   return (
@@ -177,37 +169,83 @@ function SignedOutGarage({ setUser }: { setUser: (user: User) => void }) {
   );
 }
 
-function SignedInGarage({ user, setUser }: { user: User; setUser: (user: User | null) => void }) {
+function SignedInGarage({
+  user,
+  setUser,
+  onOpenVehicleBay,
+  onGoLive,
+}: {
+  user: User;
+  setUser: (user: User | null) => void;
+  onOpenVehicleBay: (type: string) => void;
+  onGoLive: () => void;
+}) {
   const { t } = useTranslation();
   const [bio, setBio] = useState(user.bio ?? "");
   const [cityText, setCityText] = useState(user.cityText ?? "");
   const [exportData, setExportData] = useState<string | null>(null);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [make, setMake] = useState("");
+  const [model, setModel] = useState("");
+  const [year, setYear] = useState(`${new Date().getFullYear()}`);
+  const [type, setType] = useState("car");
+  const [fuelType, setFuelType] = useState("gas");
+  const [nickname, setNickname] = useState("");
+  const [vehicleError, setVehicleError] = useState<string | null>(null);
+
+  async function loadVehicles() {
+    const data = await apiGet<{ vehicles: Vehicle[] }>("/garage/vehicles");
+    setVehicles(data.vehicles);
+  }
+
+  useEffect(() => {
+    void loadVehicles().catch(() => undefined);
+  }, []);
 
   async function saveProfile() {
-    const res = await fetch(`${API}/auth/profile`, {
-      method: "PATCH",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ bio: bio || null, cityText: cityText || null }),
+    const data = await apiSend<{ user: User }>("/auth/profile", "PATCH", {
+      bio: bio || null,
+      cityText: cityText || null,
     });
-    if (res.ok) {
-      const data = (await res.json()) as { user: User };
-      setUser(data.user);
-    }
+    setUser(data.user);
   }
 
   async function exportAccount() {
-    const res = await fetch(`${API}/auth/export`, { credentials: "include" });
-    if (res.ok) {
-      const data = await res.json();
-      setExportData(JSON.stringify(data));
-    }
+    const data = await apiGet<unknown>("/auth/export");
+    setExportData(JSON.stringify(data));
   }
 
   async function deleteAccount() {
-    await fetch(`${API}/auth/delete-account`, { method: "POST", credentials: "include" });
+    await apiSend("/auth/delete-account", "POST");
     setUser(null);
     setExportData(null);
+  }
+
+  async function addVehicle() {
+    const parsedYear = Number(year);
+    if (!make.trim() || !model.trim() || !Number.isFinite(parsedYear)) {
+      setVehicleError("Add make, model, and year.");
+      return;
+    }
+    setVehicleError(null);
+    await apiSend("/garage/vehicles", "POST", {
+      type,
+      fuelType,
+      make: make.trim(),
+      model: model.trim(),
+      year: parsedYear,
+      nickname: nickname.trim() || null,
+      isPrimary: vehicles.length === 0,
+    });
+    setMake("");
+    setModel("");
+    setNickname("");
+    await loadVehicles();
+  }
+
+  async function removeVehicle(id: string) {
+    await apiSend(`/garage/vehicles/${id}`, "DELETE");
+    await loadVehicles();
   }
 
   return (
@@ -215,7 +253,12 @@ function SignedInGarage({ user, setUser }: { user: User; setUser: (user: User | 
       <section className="profile-hero">
         <img src={images.truck} alt={`${user.username}'s virtual garage`} decoding="async" />
         <div className="profile-shade" />
-        <button type="button" className="profile-menu" aria-label="Profile menu">
+        <button
+          type="button"
+          className="profile-menu"
+          aria-label="Edit garage"
+          onClick={() => document.querySelector<HTMLInputElement>("[data-testid=profile-bio]")?.focus()}
+        >
           <DotsHorizontalIcon />
         </button>
         <div className="profile-identity">
@@ -223,7 +266,7 @@ function SignedInGarage({ user, setUser }: { user: User; setUser: (user: User | 
             <PersonIcon />
           </div>
           <div>
-            <span>FOUNDER GARAGE</span>
+            <span>MY GARAGE</span>
             <h1>{user.username}’s Garage</h1>
             <p>{t("home.signedIn", { name: user.username })}</p>
           </div>
@@ -231,38 +274,89 @@ function SignedInGarage({ user, setUser }: { user: User; setUser: (user: User | 
       </section>
       <div className="profile-stats">
         <div>
-          <strong>14</strong>
+          <strong>{vehicles.length}</strong>
           <span>Builds</span>
         </div>
         <div>
-          <strong>2.4K</strong>
-          <span>Followers</span>
+          <strong>{vehicles.filter((vehicle) => vehicle.isPrimary).length}</strong>
+          <span>Primary</span>
         </div>
         <div>
-          <strong>8</strong>
-          <span>Rooms</span>
+          <strong>{user.cityText ? "Pinned" : "—"}</strong>
+          <span>City</span>
         </div>
       </div>
       <div className="profile-actions">
-        <button type="button">Edit garage</button>
-        <button type="button">
+        <button type="button" onClick={() => document.querySelector<HTMLInputElement>("[data-testid=profile-bio]")?.focus()}>
+          Edit garage
+        </button>
+        <button type="button" onClick={onGoLive}>
           <VideoIcon /> Go live
         </button>
       </div>
-      <SectionHeading eyebrow="My machines" title="Vehicles & projects" action="Manage" />
+      <SectionHeading eyebrow="My machines" title="Vehicles & projects" action="Add" onAction={() => document.getElementById("add-vehicle")?.scrollIntoView()} />
       <Carousel ariaLabel="Vehicles and projects" className="garage-carousel" contentClassName="garage-carousel-track">
-        <VehicleTile image={images.truck} title="Daily Driver" subtitle="Maintenance log" />
-        <VehicleTile image={images.car} title="Garage Talk Build" subtitle="Project showcase" />
-        <VehicleTile image={images.motorcycle} title="Bike Bench" subtitle="Saved project" />
+        {vehicles.map((vehicle) => (
+          <VehicleTile
+            key={vehicle.id}
+            image={vehicle.photos[0] ?? roomImage(vehicle.type)}
+            title={vehicle.nickname || `${vehicle.year} ${vehicle.make}`}
+            subtitle={`${vehicle.model} · tap to open bay`}
+            onClick={() => onOpenVehicleBay(vehicle.type)}
+          />
+        ))}
       </Carousel>
-      <section className="skills-card">
-        <span>SKILLS & INTERESTS</span>
-        <div>
-          {["Automotive", "Right to Repair", "Smart Garage", "Creator Live"].map((skill) => (
-            <b key={skill}>{skill}</b>
-          ))}
-        </div>
-      </section>
+      {vehicles.length === 0 ? <p className="empty-state">Add a vehicle to unlock GearHead context and fitment badges.</p> : null}
+      {vehicles.map((vehicle) => (
+        <button key={`${vehicle.id}-del`} type="button" className="sheet-close" onClick={() => void removeVehicle(vehicle.id)}>
+          Remove {vehicle.nickname || vehicle.model}
+        </button>
+      ))}
+      <form
+        id="add-vehicle"
+        className="auth-card"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void addVehicle();
+        }}
+      >
+        <span>ADD A MACHINE</span>
+        <label>
+          Type
+          <select value={type} onChange={(event) => setType(event.target.value)}>
+            <option value="car">Car</option>
+            <option value="truck">Truck</option>
+            <option value="motorcycle">Motorcycle</option>
+          </select>
+        </label>
+        <label>
+          Fuel
+          <select value={fuelType} onChange={(event) => setFuelType(event.target.value)}>
+            <option value="gas">Gas</option>
+            <option value="diesel">Diesel</option>
+            <option value="hybrid">Hybrid</option>
+            <option value="electric">Electric</option>
+          </select>
+        </label>
+        <label>
+          Year
+          <input value={year} onChange={(event) => setYear(event.target.value)} inputMode="numeric" required />
+        </label>
+        <label>
+          Make
+          <input value={make} onChange={(event) => setMake(event.target.value)} required />
+        </label>
+        <label>
+          Model
+          <input value={model} onChange={(event) => setModel(event.target.value)} required />
+        </label>
+        <label>
+          Nickname
+          <input value={nickname} onChange={(event) => setNickname(event.target.value)} />
+        </label>
+        {vehicleError ? <p className="auth-error">{vehicleError}</p> : null}
+        <button type="submit">Save vehicle</button>
+      </form>
       <form
         className="auth-card"
         onSubmit={(event) => {
@@ -288,6 +382,15 @@ function SignedInGarage({ user, setUser }: { user: User; setUser: (user: User | 
           </button>
           <button type="button" className="danger" data-testid="delete-account" onClick={() => void deleteAccount()}>
             {t("auth.deleteAccount")}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              void apiSend("/auth/logout", "POST");
+              setUser(null);
+            }}
+          >
+            {t("auth.signOut")}
           </button>
         </div>
         {exportData ? (

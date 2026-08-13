@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import type { Database } from "@garagetalk/db";
 import { liveRoles, liveSessions, users } from "@garagetalk/db";
 import type { EmailClient } from "@garagetalk/email";
@@ -96,6 +96,15 @@ export class LiveService {
     opts: { emailClient?: EmailClient } = {},
   ) {
     this.emailClient = opts.emailClient ?? new MemoryEmailClient();
+  }
+
+  async listSessions() {
+    return this.db
+      .select()
+      .from(liveSessions)
+      .where(isNull(liveSessions.endedAt))
+      .orderBy(desc(liveSessions.createdAt))
+      .limit(20);
   }
 
   async createSession(hostId: string, input: LiveSessionInput) {

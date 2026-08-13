@@ -54,6 +54,7 @@ export const roomRoutes: FastifyPluginAsync<{
 
   app.get("/rooms", async (req) => {
     roomListQuerySchema.parse(req.query);
+    await rooms.ensureCommunityRooms();
     return { rooms: await rooms.list() };
   });
 

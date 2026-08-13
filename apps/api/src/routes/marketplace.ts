@@ -17,9 +17,8 @@ export const marketplaceRoutes: FastifyPluginAsync<{ marketplace: MarketplaceSer
 ) => {
   const marketplace = opts.marketplace;
 
-  app.get("/marketplace/listings", async (req, reply) => {
-    if (!req.user) return reply.code(401).send({ error: "unauthorized" });
-    return marketplace.searchListings(req.user.id, marketplaceSearchSchema.parse(req.query));
+  app.get("/marketplace/listings", async (req) => {
+    return marketplace.searchListings(req.user?.id ?? null, marketplaceSearchSchema.parse(req.query));
   });
 
   app.post("/marketplace/listings", async (req, reply) => {

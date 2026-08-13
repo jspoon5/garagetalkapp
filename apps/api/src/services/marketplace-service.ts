@@ -119,7 +119,7 @@ export class MarketplaceService {
     return listing ?? null;
   }
 
-  async searchListings(buyerId: string, query: z.infer<typeof marketplaceSearchSchema>) {
+  async searchListings(buyerId: string | null, query: z.infer<typeof marketplaceSearchSchema>) {
     const parsed = marketplaceSearchSchema.parse(query);
     const base = and(eq(listings.status, "active"), isNull(listings.deletedAt));
     const textFilter = parsed.q
@@ -136,10 +136,12 @@ export class MarketplaceService {
         (!parsed.kind || row.kind === parsed.kind) &&
         (!parsed.condition || row.condition === parsed.condition),
     );
-    const garage = await this.db
-      .select()
-      .from(vehicles)
-      .where(and(eq(vehicles.userId, buyerId), isNull(vehicles.deletedAt)));
+    const garage = buyerId
+      ? await this.db
+          .select()
+          .from(vehicles)
+          .where(and(eq(vehicles.userId, buyerId), isNull(vehicles.deletedAt)))
+      : [];
     return { listings: filtered.map((row) => badge(row, garage)), facets: facets(filtered) };
   }
 

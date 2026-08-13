@@ -14,9 +14,8 @@ const shareInputSchema = z.object({ body: z.string().max(1_000).default("") });
 export const feedRoutes: FastifyPluginAsync<{ feed: FeedService }> = async (app, opts) => {
   const feed = opts.feed;
 
-  app.get("/feed", async (req, reply) => {
-    if (!req.user) return reply.code(401).send({ error: "unauthorized" });
-    return { posts: await feed.listFeed(req.user.id) };
+  app.get("/feed", async (req) => {
+    return { posts: await feed.listFeed(req.user?.id ?? null) };
   });
 
   app.post("/feed/follows/:id", async (req, reply) => {

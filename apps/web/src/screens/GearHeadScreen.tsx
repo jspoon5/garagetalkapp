@@ -1,20 +1,72 @@
+import { useEffect, useRef, useState } from "react";
 import { CameraIcon, GearIcon, PaperPlaneIcon } from "../icons";
 import { Carousel } from "../components/Carousel";
-import { images } from "./shared";
+import { ApiError, apiGet, apiSend, type GearHeadResult, type Vehicle } from "../api";
+import { formatGearHead, gearHeadReply } from "../bays";
+import { images } from "../images";
+
+type ChatTurn = { role: "ai" | "user"; text: string };
+
+const prompts = ["Cranks but won’t start", "Engine light is on", "Truck won’t tow smoothly"];
 
 export function GearHeadScreen({
-  question,
-  setQuestion,
-  answer,
-  setAnswer,
-  submitQuestion,
+  signedIn,
+  onNeedAccount,
 }: {
-  question: string;
-  setQuestion: (value: string) => void;
-  answer: boolean;
-  setAnswer: (value: boolean) => void;
-  submitQuestion: () => void;
+  signedIn: boolean;
+  onNeedAccount: () => void;
 }) {
+  const [question, setQuestion] = useState("");
+  const [vehicleId, setVehicleId] = useState("");
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [turns, setTurns] = useState<ChatTurn[]>([
+    { role: "ai", text: "Hey — what vehicle are we looking at, and what symptoms are you seeing?" },
+  ]);
+  const [photoNote, setPhotoNote] = useState(false);
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!signedIn) return;
+    void apiGet<{ vehicles: Vehicle[] }>("/garage/vehicles")
+      .then((data) => {
+        setVehicles(data.vehicles);
+        const primary = data.vehicles.find((vehicle) => vehicle.isPrimary) ?? data.vehicles[0];
+        if (primary) setVehicleId(primary.id);
+      })
+      .catch(() => undefined);
+  }, [signedIn]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
+  }, [turns]);
+
+  async function ask(text: string) {
+    const body = text.trim();
+    if (!body) return;
+    if (!signedIn) {
+      onNeedAccount();
+      return;
+    }
+    setQuestion("");
+    setTurns((current) => [...current, { role: "user", text: body }]);
+    try {
+      const result = await apiSend<GearHeadResult>("/ai/gearhead", "POST", {
+        message: body,
+        vehicleId: vehicleId || undefined,
+      });
+      setTurns((current) => [...current, { role: "ai", text: formatGearHead(result) }]);
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 402) {
+        setTurns((current) => [
+          ...current,
+          { role: "ai", text: "You’re at this month’s GearHead quota. Upgrade later, or use a first-step check for now." },
+        ]);
+        return;
+      }
+      setTurns((current) => [...current, { role: "ai", text: gearHeadReply(body) }]);
+    }
+  }
+
   return (
     <>
       <section className="ai-hero">
@@ -24,60 +76,62 @@ export function GearHeadScreen({
           <GearIcon />
         </div>
         <div className="ai-title">
-          <span>NEBULA AI POWERED</span>
+          <span>GEARHEAD AI</span>
           <h1>Your garage copilot.</h1>
           <p>Safer first steps before you turn a wrench.</p>
         </div>
       </section>
-      <div className="chat-thread">
-        <div className="message ai-message">
-          <div className="mini-ai">
-            <GearIcon />
-          </div>
-          <p>Hey — what vehicle are we looking at, and what symptoms are you seeing?</p>
-        </div>
-        {question ? (
-          <div className="message user-message">
-            <p>{question}</p>
-          </div>
-        ) : null}
-        {answer ? (
-          <div className="message ai-message">
-            <div className="mini-ai">
-              <GearIcon />
-            </div>
-            <p>
-              Start safely: park on level ground, set the brake, and check battery voltage and terminal condition. Then
-              scan for stored codes before replacing parts.
-            </p>
-          </div>
-        ) : null}
-      </div>
-      {!answer ? (
-        <Carousel ariaLabel="Suggested diagnostic questions" className="prompt-carousel" contentClassName="prompt-carousel-track">
-          {["Cranks but won’t start", "Engine light is on", "Truck won’t tow smoothly"].map((prompt) => (
-            <button key={prompt} type="button" onClick={() => setQuestion(prompt)}>
-              {prompt}
-            </button>
-          ))}
-        </Carousel>
+      {vehicles.length > 0 ? (
+        <label className="inline-field">
+          Vehicle
+          <select value={vehicleId} onChange={(event) => setVehicleId(event.target.value)}>
+            <option value="">General / no vehicle</option>
+            {vehicles.map((vehicle) => (
+              <option key={vehicle.id} value={vehicle.id}>
+                {vehicle.year} {vehicle.make} {vehicle.model}
+              </option>
+            ))}
+          </select>
+        </label>
       ) : null}
+      <div className="chat-thread">
+        {turns.map((turn, index) =>
+          turn.role === "ai" ? (
+            <div className="message ai-message" key={`${turn.role}-${index}`}>
+              <div className="mini-ai">
+                <GearIcon />
+              </div>
+              <p>{turn.text}</p>
+            </div>
+          ) : (
+            <div className="message user-message" key={`${turn.role}-${index}`}>
+              <p>{turn.text}</p>
+            </div>
+          ),
+        )}
+        <div ref={bottomRef} />
+      </div>
+      <Carousel ariaLabel="Suggested diagnostic questions" className="prompt-carousel" contentClassName="prompt-carousel-track">
+        {prompts.map((prompt) => (
+          <button key={prompt} type="button" onClick={() => void ask(prompt)}>
+            {prompt}
+          </button>
+        ))}
+      </Carousel>
+      {photoNote ? <p className="safety-note">Photo attach lands in the next pass — describe the leak, light, or noise for now.</p> : null}
       <form
         className="ai-composer"
         onSubmit={(event) => {
           event.preventDefault();
-          submitQuestion();
+          void ask(question);
         }}
       >
-        <button type="button" aria-label="Add a photo">
+        <button type="button" aria-label="Add a photo" onClick={() => setPhotoNote(true)}>
           <CameraIcon />
         </button>
         <input
           value={question}
-          onChange={(event) => {
-            setQuestion(event.target.value);
-            setAnswer(false);
-          }}
+          onChange={(event) => setQuestion(event.target.value)}
           placeholder="Describe the vehicle problem..."
           autoComplete="off"
         />
