@@ -21,6 +21,9 @@
     "db:migrate": "pnpm --filter @garagetalk/db migrate",
     "db:seed": "pnpm --filter @garagetalk/db seed"
   },
+  "pnpm": {
+    "onlyBuiltDependencies": ["argon2", "esbuild", "sharp"]
+  },
   "devDependencies": {
     "@playwright/test": "1.50.1",
     "@types/node": "^22.10.0",

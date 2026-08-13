@@ -1,4 +1,4 @@
-node_modules/
+﻿node_modules/
 dist/
 build/
 .turbo/
@@ -16,6 +16,8 @@ vite.config.ts.*
 .vscode/
 *.swp
 *.swo
+*.tsbuildinfo
 apps/web/dev-dist/
 playwright-report/
 test-results/
+

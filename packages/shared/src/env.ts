@@ -15,7 +15,8 @@ export const envSchema = z.object({
   DATABASE_URL: nonPlaceholder(10),
   DIRECT_DATABASE_URL: nonPlaceholder(10).optional(),
   REDIS_URL: z.string().min(1).default("redis://127.0.0.1:6379"),
-  SESSION_SECRET: z.string().min(64),
+  // Render generateValue is base64(256-bit) ≈ 44 chars; require at least that.
+  SESSION_SECRET: z.string().min(32),
   AUTH_TRUSTED_ORIGINS: z.string().default("http://localhost:5173"),
   R2_ACCOUNT_ID: z.string().optional(),
   R2_ACCESS_KEY_ID: z.string().optional(),
@@ -69,8 +70,8 @@ export function loadEnv(
         throw new Error(`Production refuses to start: missing/placeholder ${key}`);
       }
     }
-    if (env.SESSION_SECRET.length < 64) {
-      throw new Error("Production refuses to start: SESSION_SECRET must be >= 64 chars");
+    if (env.SESSION_SECRET.length < 32) {
+      throw new Error("Production refuses to start: SESSION_SECRET must be >= 32 chars");
     }
   }
   return env;

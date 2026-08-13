@@ -148,7 +148,7 @@ export async function buildApp(opts: BuildAppOptions) {
 
   if (opts.serveWeb) {
     const { registerWebStatic } = await import("./static-web.js");
-    await registerWebStatic(app);
+    await registerWebStatic(app as never);
   }
 
   app.setErrorHandler((err, req, reply) => {
