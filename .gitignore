@@ -20,4 +20,5 @@ vite.config.ts.*
 apps/web/dev-dist/
 playwright-report/
 test-results/
+.tmp-partner-design/
 

@@ -1,8 +1,8 @@
 {
   "home": {
     "brand": "Garage Talk",
-    "title": "Build. Diagnose. Learn.",
-    "subtitle": "AI-powered automotive social platform — PWA first.",
+    "title": "Arréglalo. Constrúyelo. Háblalo.",
+    "subtitle": "Garajes reales, constructores reales y GearHead AI en el bolsillo.",
     "signedIn": "Signed in as {{name}}"
   },
   "i18n": {

@@ -1,223 +1,157 @@
-import { useState } from "react";
-import { useTranslation } from "react-i18next";
-import { LanguageSwitcher } from "./components/LanguageSwitcher";
-import { AndroidInstallPrompt, IosAddToHomeScreenInstructions } from "./components/PwaInstallPrompt";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { BellIcon, ChatBubbleIcon, GearIcon, HomeIcon, MagnifyingGlassIcon, PersonIcon } from "./icons";
+import { GearHeadScreen } from "./screens/GearHeadScreen";
+import { GarageScreen, type User } from "./screens/GarageScreen";
+import { HomeScreen } from "./screens/HomeScreen";
+import { MarketplaceScreen } from "./screens/MarketplaceScreen";
+import { RoomsScreen } from "./screens/RoomsScreen";
 
-const API = "";
+export type Screen = "home" | "rooms" | "gearhead" | "market" | "profile";
 
-type User = {
-  id: string;
-  email: string;
-  username: string;
-  bio: string | null;
-  cityText: string | null;
+type ExtendedNavigator = Navigator & {
+  connection?: { saveData?: boolean };
+  deviceMemory?: number;
 };
 
+const tabs: Array<{ id: Screen; label: string; icon: typeof HomeIcon }> = [
+  { id: "home", label: "Home", icon: HomeIcon },
+  { id: "rooms", label: "Rooms", icon: ChatBubbleIcon },
+  { id: "gearhead", label: "GearHead", icon: GearIcon },
+  { id: "market", label: "Market", icon: MagnifyingGlassIcon },
+  { id: "profile", label: "Garage", icon: PersonIcon },
+];
+
 export function App() {
-  const { t } = useTranslation();
+  const appRef = useRef<HTMLDivElement>(null);
+  const [layoutClasses, setLayoutClasses] = useState("phone-compact");
+  const [screen, setScreen] = useState<Screen>("home");
+  const [vehicleFilter, setVehicleFilter] = useState("All");
+  const [liked, setLiked] = useState(false);
+  const [question, setQuestion] = useState("");
+  const [answer, setAnswer] = useState(false);
   const [user, setUser] = useState<User | null>(null);
-  const [email, setEmail] = useState("");
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [bio, setBio] = useState("");
-  const [cityText, setCityText] = useState("");
-  const [exportData, setExportData] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
-  async function register() {
-    setError(null);
-    const res = await fetch(`${API}/auth/register`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, username, password }),
-    });
-    if (!res.ok) {
-      setError(t("auth.registerFailed"));
-      return;
-    }
-    const data = (await res.json()) as { user: User };
-    setUser(data.user);
-    setBio(data.user.bio ?? "");
-    setCityText(data.user.cityText ?? "");
-  }
+  const title = useMemo(
+    () =>
+      ({
+        home: "Garage Talk",
+        rooms: "Garage Rooms",
+        gearhead: "GearHead AI",
+        market: "Marketplace",
+        profile: "My Garage",
+      })[screen],
+    [screen],
+  );
 
-  async function login() {
-    setError(null);
-    const res = await fetch(`${API}/auth/login`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
-    if (!res.ok) {
-      setError(t("auth.loginFailed"));
-      return;
-    }
-    const data = (await res.json()) as { user: User };
-    setUser(data.user);
-    setBio(data.user.bio ?? "");
-    setCityText(data.user.cityText ?? "");
-  }
+  const submitQuestion = () => {
+    if (!question.trim()) return;
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    setAnswer(true);
+  };
 
-  async function saveProfile() {
-    const res = await fetch(`${API}/auth/profile`, {
-      method: "PATCH",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ bio: bio || null, cityText: cityText || null }),
-    });
-    if (res.ok) {
-      const data = (await res.json()) as { user: User };
-      setUser(data.user);
-    }
-  }
+  const navigate = (next: Screen) => {
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    if (next === "rooms" || next === "market") setVehicleFilter("All");
+    setScreen(next);
+  };
 
-  async function exportAccount() {
-    const res = await fetch(`${API}/auth/export`, { credentials: "include" });
-    if (res.ok) {
-      const data = await res.json();
-      setExportData(JSON.stringify(data));
-    }
-  }
+  useEffect(() => {
+    const app = appRef.current;
+    if (!app) return;
 
-  async function deleteAccount() {
-    await fetch(`${API}/auth/delete-account`, { method: "POST", credentials: "include" });
-    setUser(null);
-    setExportData(null);
-  }
+    const updateLayout = () => {
+      const width = app.clientWidth;
+      const height = app.clientHeight;
+      const deviceNavigator = navigator as ExtendedNavigator;
+      const classes: string[] = [];
+
+      if (width <= 359) classes.push("phone-narrow");
+      else if (width <= 399) classes.push("phone-compact");
+      else classes.push("phone-roomy");
+
+      if (height <= 740) classes.push("phone-short");
+      if (width > height) classes.push("phone-landscape");
+      if (
+        deviceNavigator.connection?.saveData ||
+        (deviceNavigator.deviceMemory !== undefined && deviceNavigator.deviceMemory <= 4) ||
+        (navigator.hardwareConcurrency !== undefined && navigator.hardwareConcurrency <= 4)
+      ) {
+        classes.push("phone-efficient");
+      }
+
+      setLayoutClasses(classes.join(" "));
+    };
+
+    updateLayout();
+    const resizeObserver = "ResizeObserver" in window ? new ResizeObserver(updateLayout) : null;
+    resizeObserver?.observe(app);
+    window.addEventListener("resize", updateLayout, { passive: true });
+
+    return () => {
+      resizeObserver?.disconnect();
+      window.removeEventListener("resize", updateLayout);
+    };
+  }, []);
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-lg flex-col gap-6 px-4 py-10">
-      <header>
-        <p className="text-sm uppercase tracking-[0.2em] text-amber-400">{t("home.brand")}</p>
-        <h1 className="mt-2 text-3xl font-semibold">{t("home.title")}</h1>
-        <p className="mt-2 text-slate-300">{t("home.subtitle")}</p>
-        <LanguageSwitcher />
+    <div ref={appRef} className={`gt-app ${layoutClasses}`} data-layout={layoutClasses}>
+      <nav className="gt-nav" aria-label="Garage Talk navigation">
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          const active = screen === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              className={active ? "active" : ""}
+              data-testid={`nav-${tab.id}`}
+              onClick={() => navigate(tab.id)}
+              aria-current={active ? "page" : undefined}
+            >
+              <Icon />
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
+      </nav>
+
+      <header className="gt-topbar">
+        <div className="brand-mark" aria-hidden="true">
+          <GearIcon />
+        </div>
+        <div className="brand-copy">
+          <span>{title}</span>
+          <small>Built for every gearhead</small>
+        </div>
+        <button type="button" className="icon-button" aria-label="Notifications">
+          <BellIcon />
+        </button>
       </header>
 
-      {user ? (
-        <section className="rounded-xl bg-slate-900/80 p-5" aria-live="polite">
-          <h2 className="text-xl">{t("home.signedIn", { name: user.username })}</h2>
-          <p className="mt-2 text-slate-300">{user.email}</p>
-          <label className="mt-4 flex flex-col gap-1 text-sm">
-            {t("auth.bio")}
-            <input
-              data-testid="profile-bio"
-              className="rounded border border-slate-700 bg-slate-950 px-3 py-2"
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
+      <div key={screen} className="gt-scroll">
+        <main className="gt-content">
+          {screen === "home" ? (
+            <HomeScreen
+              liked={liked}
+              onLike={() => setLiked((value) => !value)}
+              onOpenRooms={() => navigate("rooms")}
+              onOpenGearHead={() => navigate("gearhead")}
             />
-          </label>
-          <label className="mt-2 flex flex-col gap-1 text-sm">
-            {t("auth.city")}
-            <input
-              data-testid="profile-city"
-              className="rounded border border-slate-700 bg-slate-950 px-3 py-2"
-              value={cityText}
-              onChange={(e) => setCityText(e.target.value)}
-            />
-          </label>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button
-              type="button"
-              data-testid="profile-save"
-              className="rounded bg-amber-500 px-4 py-2 font-medium text-slate-950"
-              onClick={() => void saveProfile()}
-            >
-              {t("auth.saveProfile")}
-            </button>
-            <button
-              type="button"
-              data-testid="export-data"
-              className="rounded border border-slate-600 px-4 py-2"
-              onClick={() => void exportAccount()}
-            >
-              {t("auth.exportData")}
-            </button>
-            <button
-              type="button"
-              data-testid="delete-account"
-              className="rounded bg-red-700 px-4 py-2"
-              onClick={() => void deleteAccount()}
-            >
-              {t("auth.deleteAccount")}
-            </button>
-          </div>
-          {exportData ? (
-            <pre
-              data-testid="export-output"
-              className="mt-4 max-h-40 overflow-auto rounded bg-slate-950 p-3 text-xs"
-            >
-              {exportData}
-            </pre>
           ) : null}
-        </section>
-      ) : (
-        <form
-          className="flex flex-col gap-3 rounded-xl bg-slate-900/80 p-5"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void register();
-          }}
-        >
-          <label className="flex flex-col gap-1 text-sm">
-            {t("auth.email")}
-            <input
-              data-testid="auth-email"
-              className="rounded border border-slate-700 bg-slate-950 px-3 py-2"
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
+          {screen === "rooms" ? <RoomsScreen filter={vehicleFilter} setFilter={setVehicleFilter} /> : null}
+          {screen === "gearhead" ? (
+            <GearHeadScreen
+              question={question}
+              setQuestion={setQuestion}
+              answer={answer}
+              setAnswer={setAnswer}
+              submitQuestion={submitQuestion}
             />
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            {t("auth.username")}
-            <input
-              data-testid="auth-username"
-              className="rounded border border-slate-700 bg-slate-950 px-3 py-2"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            {t("auth.password")}
-            <input
-              data-testid="auth-password"
-              className="rounded border border-slate-700 bg-slate-950 px-3 py-2"
-              type="password"
-              autoComplete="new-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={10}
-            />
-          </label>
-          {error ? <p className="text-sm text-red-400">{error}</p> : null}
-          <div className="flex gap-2">
-            <button
-              type="submit"
-              data-testid="auth-register"
-              className="rounded bg-amber-500 px-4 py-2 font-medium text-slate-950"
-            >
-              {t("auth.register")}
-            </button>
-            <button
-              type="button"
-              data-testid="auth-login"
-              className="rounded border border-slate-600 px-4 py-2"
-              onClick={() => void login()}
-            >
-              {t("auth.login")}
-            </button>
-          </div>
-        </form>
-      )}
-      <AndroidInstallPrompt />
-      <IosAddToHomeScreenInstructions />
-    </main>
+          ) : null}
+          {screen === "market" ? <MarketplaceScreen filter={vehicleFilter} setFilter={setVehicleFilter} /> : null}
+          {screen === "profile" ? <GarageScreen user={user} setUser={setUser} /> : null}
+        </main>
+      </div>
+    </div>
   );
 }

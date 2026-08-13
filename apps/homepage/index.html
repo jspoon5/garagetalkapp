@@ -6,34 +6,119 @@
     <title>GarageTalk</title>
     <meta
       name="description"
-      content="GarageTalk — the shop floor network for gearheads, garages, and live talk."
+      content="GarageTalk — real garages, real builders, and GearHead AI. Cars, trucks, motorcycles, live rooms, and marketplace."
     />
+    <meta name="theme-color" content="#08111d" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@400;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <div class="backdrop" aria-hidden="true"></div>
-    <main class="hero">
-      <p class="brand">GarageTalk</p>
-      <h1 class="headline">Where the garage comes alive.</h1>
-      <p class="lede">
-        Live rooms, shop talk, and gearhead culture — built for the bay, not the
-        boardroom.
-      </p>
-      <div class="cta-row">
-        <a class="cta primary" href="https://garagetalk-app.onrender.com">
-          Open the app
-        </a>
-        <a class="cta ghost" href="https://garagetalk-app.onrender.com">
-          Launch PWA
-        </a>
+    <header class="site-header">
+      <a class="logo" href="/">Garage Talk</a>
+      <nav class="site-nav" aria-label="Primary">
+        <a href="#lanes">Lanes</a>
+        <a href="#live">Live</a>
+        <a href="#market">Market</a>
+        <a class="nav-cta" href="https://garagetalk-app.onrender.com">Open the app</a>
+      </nav>
+    </header>
+
+    <section class="hero">
+      <img
+        class="hero-photo"
+        src="https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=1600&q=88"
+        alt="Blue performance car in a dark garage"
+      />
+      <div class="hero-shade"></div>
+      <div class="hero-copy">
+        <p class="eyebrow"><i></i> Live community</p>
+        <h1>Fix it. Build it.<br />Talk about it.</h1>
+        <p class="lede">
+          Real garages, real builders, and GearHead AI in your pocket — built for cars, trucks, and motorcycles.
+        </p>
+        <div class="cta-row">
+          <a class="cta primary" href="https://garagetalk-app.onrender.com">Enter the garage</a>
+          <a class="cta ghost" href="https://garagetalk-app.onrender.com">Launch PWA</a>
+        </div>
       </div>
-    </main>
+    </section>
+
+    <section id="lanes" class="section">
+      <div class="section-head">
+        <span>Pick your lane</span>
+        <h2>What are you working on?</h2>
+      </div>
+      <div class="lane-grid">
+        <article class="lane-card">
+          <img src="https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=1200&q=88" alt="Cars community" />
+          <div>
+            <strong>Cars</strong>
+            <span>Diagnostics, classics & daily drivers</span>
+          </div>
+        </article>
+        <article class="lane-card">
+          <img src="https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=1200&q=88" alt="Trucks community" />
+          <div>
+            <strong>Trucks</strong>
+            <span>Diesel, towing & off-road builds</span>
+          </div>
+        </article>
+        <article class="lane-card">
+          <img src="https://images.unsplash.com/photo-1558981806-ec527fa84c39?auto=format&fit=crop&w=1200&q=88" alt="Motorcycles community" />
+          <div>
+            <strong>Motorcycles</strong>
+            <span>Repairs, custom bikes & pre-ride safety</span>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="live" class="section split">
+      <div class="live-card">
+        <img src="https://images.unsplash.com/photo-1558981806-ec527fa84c39?auto=format&fit=crop&w=1200&q=88" alt="Motorcycle livestream" />
+        <span class="live-badge">LIVE</span>
+      </div>
+      <div class="split-copy">
+        <span>Happening now</span>
+        <h2>Live from the bays</h2>
+        <p>Saturday Bike Clinic with MotoMia — carb rebuild and tuning, plus GearHead first-step plans before you turn a wrench.</p>
+        <a class="cta primary" href="https://garagetalk-app.onrender.com">See the schedule</a>
+      </div>
+    </section>
+
+    <section id="market" class="section market">
+      <div class="section-head">
+        <span>GearHead marketplace</span>
+        <h2>Parts, tools & trusted local help.</h2>
+      </div>
+      <div class="market-grid">
+        <article>
+          <img src="https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?auto=format&fit=crop&w=1200&q=88" alt="OBD-II kit" />
+          <b>OBD-II diagnostic starter kit</b>
+          <small>Cadiyoss Garage · $149</small>
+        </article>
+        <article>
+          <img src="https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=1200&q=88" alt="Recovery gear" />
+          <b>Heavy-duty recovery gear set</b>
+          <small>Truck Bay Supply · $289</small>
+        </article>
+        <article>
+          <img src="https://images.unsplash.com/photo-1558981806-ec527fa84c39?auto=format&fit=crop&w=1200&q=88" alt="Rider tool roll" />
+          <b>Rider tool roll & torque set</b>
+          <small>MotoMia · $84</small>
+        </article>
+      </div>
+    </section>
+
+    <footer class="site-footer">
+      <p>Garage Talk — built for every gearhead.</p>
+      <a href="https://garagetalk-app.onrender.com">Open the app</a>
+    </footer>
     <script src="./main.js"></script>
   </body>
 </html>

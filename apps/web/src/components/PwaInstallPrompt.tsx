@@ -27,17 +27,11 @@ export function AndroidInstallPrompt() {
   }
 
   return (
-    <section className="rounded-xl bg-slate-900/80 p-5">
-      <h2 className="text-lg font-semibold">{t("pwa.androidTitle")}</h2>
-      <p className="mt-2 text-sm text-slate-300">
-        {promptEvent ? t("pwa.androidBody") : t("pwa.androidUnavailable")}
-      </p>
+    <section className="pwa-card">
+      <h2>{t("pwa.androidTitle")}</h2>
+      <p>{promptEvent ? t("pwa.androidBody") : t("pwa.androidUnavailable")}</p>
       {promptEvent ? (
-        <button
-          type="button"
-          className="mt-3 rounded bg-amber-500 px-4 py-2 font-medium text-slate-950"
-          onClick={() => void install()}
-        >
+        <button type="button" onClick={() => void install()}>
           {t("pwa.androidInstall")}
         </button>
       ) : null}
@@ -48,9 +42,9 @@ export function AndroidInstallPrompt() {
 export function IosAddToHomeScreenInstructions() {
   const { t } = useTranslation();
   return (
-    <section className="rounded-xl bg-slate-900/80 p-5">
-      <h2 className="text-lg font-semibold">{t("pwa.iosTitle")}</h2>
-      <p className="mt-2 text-sm text-slate-300">{t("pwa.iosSteps")}</p>
+    <section className="pwa-card">
+      <h2>{t("pwa.iosTitle")}</h2>
+      <p>{t("pwa.iosSteps")}</p>
     </section>
   );
 }

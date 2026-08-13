@@ -6,10 +6,9 @@ export function LanguageSwitcher() {
   const current = canonicalLanguage(i18n.resolvedLanguage ?? i18n.language) ?? "en";
 
   return (
-    <label className="mt-3 flex flex-col gap-1 text-sm text-slate-300">
+    <label className="language-switcher">
       <span>{t("i18n.languageLabel")}</span>
       <select
-        className="rounded border border-slate-700 bg-slate-950 px-3 py-2"
         value={current}
         onChange={(event) => void i18n.changeLanguage(event.target.value as SupportedLanguage)}
       >

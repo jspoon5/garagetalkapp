@@ -7,6 +7,7 @@ const username = `e2euser${Date.now().toString().slice(-6)}`;
 test.describe("auth smoke", () => {
   test("signup → profile → export → deletion", async ({ page }) => {
     await page.goto("/");
+    await page.getByTestId("nav-profile").click();
 
     await page.getByTestId("auth-email").fill(email);
     await page.getByTestId("auth-username").fill(username);
