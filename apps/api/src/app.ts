@@ -62,6 +62,8 @@ export type BuildAppOptions = {
   trustProxy?: boolean;
   nhtsa?: NhtsaClient;
   diagnosticsProvider?: DiagnosticProvider;
+  /** Serve apps/web/dist when present (set true in production entrypoint). */
+  serveWeb?: boolean;
 };
 
 export async function buildApp(opts: BuildAppOptions) {
@@ -143,6 +145,11 @@ export async function buildApp(opts: BuildAppOptions) {
     diagnostics: opts.diagnosticsProvider,
   });
   await registerD1D11Routes(app as never, opts.db);
+
+  if (opts.serveWeb) {
+    const { registerWebStatic } = await import("./static-web.js");
+    await registerWebStatic(app);
+  }
 
   app.setErrorHandler((err, req, reply) => {
     const zodErr = err instanceof ZodError ? err : null;

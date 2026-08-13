@@ -5,9 +5,22 @@ import { buildApp } from "./app.js";
 async function main() {
   const env = loadEnv(process.env);
   const { db, pool } = createDb(env.DATABASE_URL);
+  const appBaseUrl = env.APP_BASE_URL;
+  const appHost = new URL(appBaseUrl).hostname;
+  const trustedOrigins = env.AUTH_TRUSTED_ORIGINS.split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
   const app = await buildApp({
     db,
-    trustedOrigins: env.AUTH_TRUSTED_ORIGINS.split(",").map((s) => s.trim()),
+    trustedOrigins,
+    appBaseUrl,
+    serveWeb: true,
+    passkeyConfig: {
+      rpName: "Garage Talk",
+      rpID: appHost,
+      origin: appBaseUrl,
+    },
     ready: async () => {
       try {
         await pool.query("select 1");

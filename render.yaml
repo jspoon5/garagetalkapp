@@ -1,20 +1,19 @@
 # https://render.com/schema/render.yaml.json
+# GarageTalk v3: marketing homepage (static) + app (API + PWA on one Node service).
 projects:
   - name: garagetalk
     environments:
       - name: production
         services:
-          # Static sites: no plan/region (schema rejects them; CDN free tier).
-          # staticPublishPath is relative to the repo root.
           - type: web
             name: garagetalk-homepage
             runtime: static
             buildCommand: "true"
-            staticPublishPath: legacy/homepage
+            staticPublishPath: apps/homepage
             autoDeployTrigger: commit
             buildFilter:
               paths:
-                - legacy/homepage/**
+                - apps/homepage/**
             routes:
               - type: rewrite
                 source: /*
@@ -25,23 +24,42 @@ projects:
             runtime: node
             plan: starter
             region: oregon
-            rootDir: legacy/app
-            # Keep vite/esbuild available even when NODE_ENV=production.
-            buildCommand: NPM_CONFIG_PRODUCTION=false npm ci && npm run build
-            startCommand: npm start
-            healthCheckPath: /api/health
+            # Monorepo root (pnpm workspaces).
+            buildCommand: corepack enable && corepack prepare pnpm@10.33.3 --activate && pnpm install --frozen-lockfile && pnpm --filter @garagetalk/web... build && pnpm --filter @garagetalk/api... build
+            startCommand: node packages/db/dist/migrate.js && node apps/api/dist/index.js
+            healthCheckPath: /healthz
             autoDeployTrigger: commit
             buildFilter:
               paths:
-                - legacy/app/**
+                - apps/api/**
+                - apps/web/**
+                - packages/**
+                - package.json
+                - pnpm-lock.yaml
+                - pnpm-workspace.yaml
+                - turbo.json
+                - tsconfig.base.json
             envVars:
               - key: NODE_VERSION
                 value: "22"
               - key: NODE_ENV
                 value: production
+              - key: APP_BASE_URL
+                value: https://garagetalk-app.onrender.com
+              - key: AUTH_TRUSTED_ORIGINS
+                value: https://garagetalk-app.onrender.com,https://garagetalk-homepage.onrender.com
               - key: DATABASE_URL
                 fromDatabase:
                   name: garagetalk-db
+                  property: connectionString
+              - key: DIRECT_DATABASE_URL
+                fromDatabase:
+                  name: garagetalk-db
+                  property: connectionString
+              - key: REDIS_URL
+                fromService:
+                  name: garagetalk-redis
+                  type: keyvalue
                   property: connectionString
               - key: SESSION_SECRET
                 generateValue: true
@@ -49,22 +67,30 @@ projects:
                 sync: false
               - key: ADMIN_PASSWORD
                 sync: false
-              - key: AI_INTEGRATIONS_OPENAI_API_KEY
+              - key: AI_API_KEY
                 sync: false
-              - key: AI_INTEGRATIONS_OPENAI_BASE_URL
-                sync: false
-              - key: GEARHEAD_AI_MODEL
+              - key: AI_BASE_URL
                 sync: false
               - key: STRIPE_SECRET_KEY
                 sync: false
-              - key: STRIPE_PUBLISHABLE_KEY
+              - key: STRIPE_WEBHOOK_SECRET
+                sync: false
+              - key: RESEND_API_KEY
                 sync: false
               - key: TWILIO_ACCOUNT_SID
                 sync: false
               - key: TWILIO_AUTH_TOKEN
                 sync: false
-              - key: TWILIO_PHONE_NUMBER
+              - key: TWILIO_VERIFY_SID
                 sync: false
+
+          - type: keyvalue
+            name: garagetalk-redis
+            plan: starter
+            maxmemoryPolicy: allkeys-lru
+            ipAllowList:
+              - source: 0.0.0.0/0
+                description: everywhere
 
         databases:
           - name: garagetalk-db
