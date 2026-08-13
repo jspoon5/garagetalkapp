@@ -50,11 +50,11 @@ projects:
                 value: https://garagetalk-app.onrender.com,https://garagetalk-homepage.onrender.com
               - key: DATABASE_URL
                 fromDatabase:
-                  name: garagetalk-db
+                  name: garagetalk-db-v3
                   property: connectionString
               - key: DIRECT_DATABASE_URL
                 fromDatabase:
-                  name: garagetalk-db
+                  name: garagetalk-db-v3
                   property: connectionString
               - key: REDIS_URL
                 fromService:
@@ -93,7 +93,8 @@ projects:
                 description: everywhere
 
         databases:
-          - name: garagetalk-db
+          # Fresh v3 schema (legacy garagetalk-db left in place for rollback).
+          - name: garagetalk-db-v3
             plan: basic-256mb
             region: oregon
             postgresMajorVersion: "16"

@@ -40,7 +40,7 @@ Blueprint (`render.yaml`) provisions:
 |---------|------|-----|
 | `garagetalk-homepage` | Marketing static site | https://garagetalk-homepage.onrender.com |
 | `garagetalk-app` | Fastify API + PWA | https://garagetalk-app.onrender.com |
-| `garagetalk-db` | Postgres 16 | (internal) |
+| `garagetalk-db-v3` | Postgres 16 (v3 schema) | (internal) |
 | `garagetalk-redis` | Key Value (rate limit / presence) | (internal) |
 
 App health: `GET https://garagetalk-app.onrender.com/healthz` → `{"ok":true}`
