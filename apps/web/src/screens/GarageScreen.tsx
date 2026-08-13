@@ -26,6 +26,7 @@ export function GarageScreen({ user, setUser }: { user: User | null; setUser: (u
 
 function SignedOutGarage({ setUser }: { setUser: (user: User) => void }) {
   const { t } = useTranslation();
+  const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -53,7 +54,7 @@ function SignedOutGarage({ setUser }: { setUser: (user: User) => void }) {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ username, password }),
     });
     if (!res.ok) {
       setError(t("auth.loginFailed"));
@@ -74,8 +75,8 @@ function SignedOutGarage({ setUser }: { setUser: (user: User) => void }) {
           </div>
           <div>
             <span>YOUR GARAGE</span>
-            <h1>Pull in and sign on.</h1>
-            <p>Create an account to save builds, rooms, and live sessions.</p>
+            <h1>{mode === "login" ? t("auth.loginTitle") : t("auth.registerTitle")}</h1>
+            <p>{mode === "login" ? t("auth.loginSubtitle") : t("auth.registerSubtitle")}</p>
           </div>
         </div>
       </section>
@@ -83,27 +84,32 @@ function SignedOutGarage({ setUser }: { setUser: (user: User) => void }) {
         className="auth-card"
         onSubmit={(event) => {
           event.preventDefault();
-          void register();
+          if (mode === "login") void login();
+          else void register();
         }}
       >
-        <label>
-          {t("auth.email")}
-          <input
-            data-testid="auth-email"
-            type="email"
-            autoComplete="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            required
-          />
-        </label>
+        {mode === "register" ? (
+          <label>
+            {t("auth.email")}
+            <input
+              data-testid="auth-email"
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              required
+            />
+          </label>
+        ) : null}
         <label>
           {t("auth.username")}
           <input
             data-testid="auth-username"
+            autoComplete="username"
             value={username}
             onChange={(event) => setUsername(event.target.value)}
             required
+            minLength={3}
           />
         </label>
         <label>
@@ -111,22 +117,56 @@ function SignedOutGarage({ setUser }: { setUser: (user: User) => void }) {
           <input
             data-testid="auth-password"
             type="password"
-            autoComplete="new-password"
+            autoComplete={mode === "login" ? "current-password" : "new-password"}
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             required
-            minLength={10}
+            minLength={mode === "register" ? 10 : 1}
           />
         </label>
         {error ? <p className="auth-error">{error}</p> : null}
         <div className="auth-actions">
-          <button type="submit" data-testid="auth-register">
-            {t("auth.register")}
-          </button>
-          <button type="button" data-testid="auth-login" onClick={() => void login()}>
-            {t("auth.login")}
-          </button>
+          {mode === "login" ? (
+            <button type="submit" data-testid="auth-login">
+              {t("auth.login")}
+            </button>
+          ) : (
+            <button type="submit" data-testid="auth-register">
+              {t("auth.register")}
+            </button>
+          )}
         </div>
+        <p className="auth-switch">
+          {mode === "login" ? (
+            <>
+              {t("auth.needAccount")}{" "}
+              <button
+                type="button"
+                data-testid="auth-switch-register"
+                onClick={() => {
+                  setError(null);
+                  setMode("register");
+                }}
+              >
+                {t("auth.register")}
+              </button>
+            </>
+          ) : (
+            <>
+              {t("auth.haveAccount")}{" "}
+              <button
+                type="button"
+                data-testid="auth-switch-login"
+                onClick={() => {
+                  setError(null);
+                  setMode("login");
+                }}
+              >
+                {t("auth.login")}
+              </button>
+            </>
+          )}
+        </p>
         <LanguageSwitcher />
       </form>
       <div className="pwa-stack">

@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import argon2 from "argon2";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, or } from "drizzle-orm";
 import type { Database } from "@garagetalk/db";
 import { authTokens, sessions, users } from "@garagetalk/db";
 import {
@@ -96,16 +96,22 @@ export class AuthService {
   }
 
   async login(input: {
-    email: string;
+    username: string;
     password: string;
     userAgent?: string;
     ip?: string;
   }): Promise<{ user: PublicUser; sessionToken: string } | null> {
-    const email = input.email.trim().toLowerCase();
+    const identifier = input.username.trim();
+    if (!identifier) return null;
     const [user] = await this.db
       .select()
       .from(users)
-      .where(and(eq(users.email, email), isNull(users.deletedAt)))
+      .where(
+        and(
+          or(eq(users.username, identifier), eq(users.email, identifier.toLowerCase())),
+          isNull(users.deletedAt),
+        ),
+      )
       .limit(1);
     if (!user?.passwordHash) return null;
 

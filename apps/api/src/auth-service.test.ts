@@ -76,7 +76,7 @@ describe("AuthService", () => {
     const updated = await auth.updateProfile(user.id, { cityText: "Austin" });
     expect(updated?.cityText).toBe("Austin");
 
-    const login = await auth.login({ email: "a@example.com", password: "correct-horse-battery" });
+    const login = await auth.login({ username: "alpha", password: "correct-horse-battery" });
     expect(login?.user.username).toBe("alpha");
 
     await auth.softDeleteAccount(user.id);

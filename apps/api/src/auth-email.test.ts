@@ -92,14 +92,14 @@ describe("auth email flows", () => {
     const loginOld = await app.inject({
       method: "POST",
       url: "/auth/login",
-      payload: { email: "emailflow@example.com", password: "correct-horse-battery" },
+      payload: { username: "emailuser", password: "correct-horse-battery" },
     });
     expect(loginOld.statusCode).toBe(401);
 
     const loginNew = await app.inject({
       method: "POST",
       url: "/auth/login",
-      payload: { email: "emailflow@example.com", password: "new-horse-battery-staple" },
+      payload: { username: "emailuser", password: "new-horse-battery-staple" },
     });
     expect(loginNew.statusCode).toBe(200);
   });

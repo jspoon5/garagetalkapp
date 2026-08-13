@@ -8,6 +8,7 @@ test.describe("auth smoke", () => {
   test("signup → profile → export → deletion", async ({ page }) => {
     await page.goto("/");
     await page.getByTestId("nav-profile").click();
+    await page.getByTestId("auth-switch-register").click();
 
     await page.getByTestId("auth-email").fill(email);
     await page.getByTestId("auth-username").fill(username);
@@ -24,6 +25,7 @@ test.describe("auth smoke", () => {
     await expect(page.getByTestId("export-output")).toContainText(email);
 
     await page.getByTestId("delete-account").click();
-    await expect(page.getByTestId("auth-email")).toBeVisible();
+    await expect(page.getByTestId("auth-username")).toBeVisible();
+    await expect(page.getByTestId("auth-login")).toBeVisible();
   });
 });

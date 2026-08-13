@@ -1037,6 +1037,21 @@ textarea {
   font-size: 12px;
 }
 
+.auth-switch {
+  margin: 14px 0 0;
+  color: var(--gt-muted);
+  font-size: 12px;
+}
+
+.auth-switch button {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--gt-blue-bright);
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .auth-email {
   margin: 0 0 12px;
   color: var(--gt-muted);
