@@ -1,5 +1,7 @@
 import { loadEnv } from "@garagetalk/shared";
 import { createDb } from "@garagetalk/db";
+import { AuthService } from "./services/auth-service.js";
+import { seedHardcodedAmateurTesters } from "./seed-testers.js";
 import { buildApp } from "./app.js";
 
 async function main() {
@@ -30,6 +32,16 @@ async function main() {
       }
     },
   });
+
+  if (process.env.NODE_ENV !== "test") {
+    try {
+      const auth = new AuthService(db, { appBaseUrl });
+      const usernames = await seedHardcodedAmateurTesters(auth);
+      app.log.info({ usernames }, "seeded amateur tester accounts");
+    } catch (err) {
+      app.log.error({ err }, "tester seed failed");
+    }
+  }
 
   const port = Number(process.env.PORT ?? 3000);
   await app.listen({ port, host: "0.0.0.0" });

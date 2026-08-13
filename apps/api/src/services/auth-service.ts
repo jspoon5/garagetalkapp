@@ -70,6 +70,69 @@ export class AuthService {
     this.appBaseUrl = opts.appBaseUrl ?? "http://localhost:5173";
   }
 
+  /**
+   * Create or repair a non-admin amateur tester. If the username or email already
+   * exists, reset the password hash so a known login cannot stay broken.
+   */
+  async ensureAmateurTester(input: {
+    email: string;
+    username: string;
+    password: string;
+  }): Promise<PublicUser> {
+    const email = input.email.trim().toLowerCase();
+    const username = input.username.trim();
+    const [existing] = await this.db
+      .select()
+      .from(users)
+      .where(or(eq(users.username, username), eq(users.email, email)))
+      .limit(1);
+
+    const passwordHash = await argon2.hash(input.password, ARGON2_OPTS);
+    if (!existing) {
+      const [user] = await this.db
+        .insert(users)
+        .values({
+          id: uuidv7(),
+          email,
+          username,
+          passwordHash,
+          roles: ["user"],
+          tier: "amateur",
+        })
+        .returning();
+      if (!user) throw new Error("failed to create tester");
+      return toPublic(user);
+    }
+
+    const passwordOk = existing.passwordHash
+      ? await argon2.verify(existing.passwordHash, input.password).catch(() => false)
+      : false;
+    const alreadyGood =
+      passwordOk &&
+      existing.username === username &&
+      existing.email === email &&
+      existing.tier === "amateur" &&
+      !existing.roles.includes("admin") &&
+      existing.deletedAt == null;
+    if (alreadyGood) return toPublic(existing);
+
+    const [user] = await this.db
+      .update(users)
+      .set({
+        passwordHash,
+        email,
+        username,
+        roles: ["user"],
+        tier: "amateur",
+        deletedAt: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, existing.id))
+      .returning();
+    if (!user) throw new Error("failed to repair tester");
+    return toPublic(user);
+  }
+
   async register(input: {
     email: string;
     username: string;

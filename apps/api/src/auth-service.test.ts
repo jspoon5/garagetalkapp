@@ -83,4 +83,40 @@ describe("AuthService", () => {
     const after = await auth.getUserBySession(sessionToken);
     expect(after).toBeNull();
   });
+
+  it("ensureAmateurTester creates then resets a broken password without admin", async () => {
+    const created = await auth.ensureAmateurTester({
+      email: "tester@garagetalk.app",
+      username: "tester",
+      password: "GarageTalkTest1",
+    });
+    expect(created.username).toBe("tester");
+    expect(created.tier).toBe("amateur");
+    expect(created.email).toBe("tester@garagetalk.app");
+
+    await auth.register({
+      email: "tester2@garagetalk.app",
+      username: "tester2",
+      password: "old-password-that-is-long",
+    });
+    const repaired = await auth.ensureAmateurTester({
+      email: "tester2@garagetalk.app",
+      username: "tester2",
+      password: "GarageTalkTest1",
+    });
+    expect(repaired.tier).toBe("amateur");
+
+    const login = await auth.login({ username: "tester2", password: "GarageTalkTest1" });
+    expect(login?.user.username).toBe("tester2");
+    expect(login?.user.tier).toBe("amateur");
+
+    const again = await auth.ensureAmateurTester({
+      email: "tester@garagetalk.app",
+      username: "tester",
+      password: "GarageTalkTest1",
+    });
+    expect(again.id).toBe(created.id);
+    const firstLogin = await auth.login({ username: "tester", password: "GarageTalkTest1" });
+    expect(firstLogin?.user.id).toBe(created.id);
+  });
 });
