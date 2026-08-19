@@ -75,7 +75,7 @@ export function LiveSessionScreen({
       try {
         const payload = JSON.parse(String(event.data)) as { type: string; gift?: GiftEvent["gift"]; sender?: GiftEvent["sender"] };
         if (payload.type === "live_gift" && payload.gift && payload.sender) {
-          setGiftFlash({ type: "live_gift", sessionId, gift: payload.gift, sender: payload.sender, liveGiftId: "" });
+          setGiftFlash({ type: "live_gift", gift: payload.gift, sender: payload.sender });
           window.setTimeout(() => setGiftFlash(null), 4000);
         }
         if (payload.type === "guest_request" && user.id === session?.hostId) {
