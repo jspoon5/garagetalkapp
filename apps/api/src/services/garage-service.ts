@@ -40,6 +40,15 @@ export class GarageService {
       .orderBy(asc(vehicles.sortOrder), asc(vehicles.createdAt));
   }
 
+  async get(userId: string, vehicleId: string) {
+    const [row] = await this.db
+      .select()
+      .from(vehicles)
+      .where(and(eq(vehicles.id, vehicleId), eq(vehicles.userId, userId), isNull(vehicles.deletedAt)))
+      .limit(1);
+    return row ?? null;
+  }
+
   async create(userId: string, input: VehicleInput) {
     if (input.isPrimary) {
       await this.clearPrimary(userId);

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Carousel } from "../components/Carousel";
 import { images } from "../images";
 
@@ -64,6 +65,59 @@ export function FilterRail({ value, onChange }: { value: string; onChange: (valu
         </button>
       ))}
     </Carousel>
+  );
+}
+
+export function ComposeSheet({
+  eyebrow,
+  title,
+  label,
+  placeholder,
+  submitLabel,
+  value,
+  onChange,
+  onClose,
+  onSubmit,
+  extra,
+}: {
+  eyebrow: string;
+  title: string;
+  label: string;
+  placeholder: string;
+  submitLabel: string;
+  value: string;
+  onChange: (value: string) => void;
+  onClose: () => void;
+  onSubmit: () => void;
+  extra?: ReactNode;
+}) {
+  return (
+    <div className="sheet-scrim" role="presentation" onClick={onClose}>
+      <form
+        className="sheet"
+        role="dialog"
+        aria-labelledby="compose-title"
+        onClick={(event) => event.stopPropagation()}
+        onSubmit={(event) => {
+          event.preventDefault();
+          onSubmit();
+        }}
+      >
+        <span>{eyebrow}</span>
+        <h2 id="compose-title">{title}</h2>
+        <label>
+          {label}
+          <input value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} required />
+        </label>
+        {extra}
+        <button type="submit" className="sell-button sheet-cta">
+          {submitLabel}
+        </button>
+        <button type="button" className="sheet-close" onClick={onClose}>
+          Close
+        </button>
+      </form>
+    </div>
   );
 }
 

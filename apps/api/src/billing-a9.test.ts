@@ -92,6 +92,16 @@ describe("A9 billing and tips", () => {
     expect(portal.statusCode).toBe(200);
     expect(portal.json().portal.mode).toBe("stub");
     expect(portal.json().portal.url).toContain("/billing/portal/stub");
+
+    const checkout = await app.inject({
+      method: "POST",
+      url: "/billing/checkout",
+      headers: { cookie: payerCookie },
+      payload: { tier: "gearhead" },
+    });
+    expect(checkout.statusCode).toBe(200);
+    expect(checkout.json().checkout.mode).toBe("stub");
+    expect(checkout.json().checkout.url).toContain("tier=gearhead");
   });
 
   it("reconciles renewal, downgrade, cancel, and ignores duplicate webhook events", async () => {

@@ -1,7 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { CameraIcon, GearIcon, PaperPlaneIcon } from "../icons";
 import { Carousel } from "../components/Carousel";
-import { ApiError, apiGet, apiSend, type GearHeadResult, type Vehicle } from "../api";
+import {
+  ApiError,
+  apiGet,
+  apiSend,
+  TIER_LABELS,
+  type GearHeadResult,
+  type PaidTier,
+  type UserEntitlement,
+  type Vehicle,
+} from "../api";
 import { formatGearHead, gearHeadReply } from "../bays";
 import { images } from "../images";
 
@@ -19,10 +28,12 @@ export function GearHeadScreen({
   const [question, setQuestion] = useState("");
   const [vehicleId, setVehicleId] = useState("");
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [entitlement, setEntitlement] = useState<UserEntitlement | null>(null);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [turns, setTurns] = useState<ChatTurn[]>([
     { role: "ai", text: "Hey — what vehicle are we looking at, and what symptoms are you seeing?" },
   ]);
-  const [photoNote, setPhotoNote] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -33,6 +44,9 @@ export function GearHeadScreen({
         const primary = data.vehicles.find((vehicle) => vehicle.isPrimary) ?? data.vehicles[0];
         if (primary) setVehicleId(primary.id);
       })
+      .catch(() => undefined);
+    void apiGet<{ entitlement: UserEntitlement }>("/billing/entitlement")
+      .then((data) => setEntitlement(data.entitlement))
       .catch(() => undefined);
   }, [signedIn]);
 
@@ -53,18 +67,64 @@ export function GearHeadScreen({
       const result = await apiSend<GearHeadResult>("/ai/gearhead", "POST", {
         message: body,
         vehicleId: vehicleId || undefined,
+        photoUrl: photoUrl ?? undefined,
       });
+      setPhotoUrl(null);
       setTurns((current) => [...current, { role: "ai", text: formatGearHead(result) }]);
     } catch (error) {
       if (error instanceof ApiError && error.status === 402) {
+        const upgradeTier = error.details?.upgradeTier as PaidTier | undefined;
+        const quota = error.details?.quota as number | undefined;
+        const serverMessage = error.details?.message as string | undefined;
+        const upgradeLabel = upgradeTier ? TIER_LABELS[upgradeTier] : null;
         setTurns((current) => [
           ...current,
-          { role: "ai", text: "You’re at this month’s GearHead quota. Upgrade later, or use a first-step check for now." },
+          {
+            role: "ai",
+            text:
+              serverMessage ??
+              (upgradeLabel
+                ? `You've used all ${quota ?? 10} GearHead questions this month. Upgrade to ${upgradeLabel} for more diagnostics, or wait until your quota resets.`
+                : "You're at this month's GearHead quota. Upgrade your plan or wait for the reset."),
+          },
+        ]);
+        return;
+      }
+      if (error instanceof ApiError && error.status === 403 && error.code === "photos_not_allowed") {
+        setTurns((current) => [
+          ...current,
+          {
+            role: "ai",
+            text: "Photo diagnostics need GearHead or higher. Upgrade to attach bay photos, or describe what you see in text.",
+          },
         ]);
         return;
       }
       setTurns((current) => [...current, { role: "ai", text: gearHeadReply(body) }]);
     }
+  }
+
+  async function startCheckout(tier: PaidTier) {
+    const result = await apiSend<{ checkout: { url?: string | null } }>("/billing/checkout", "POST", { tier });
+    if (result.checkout?.url) window.location.href = result.checkout.url;
+  }
+
+  function onPickPhoto() {
+    if (!signedIn) {
+      onNeedAccount();
+      return;
+    }
+    if (entitlement && !entitlement.photosAllowed) {
+      setTurns((current) => [
+        ...current,
+        {
+          role: "ai",
+          text: "Photo attach is a GearHead perk. Upgrade to send bay photos, or keep describing symptoms in text.",
+        },
+      ]);
+      return;
+    }
+    fileRef.current?.click();
   }
 
   return (
@@ -81,6 +141,20 @@ export function GearHeadScreen({
           <p>Safer first steps before you turn a wrench.</p>
         </div>
       </section>
+      {entitlement ? (
+        <p className="safety-note">
+          {entitlement.tierLabel} plan · {entitlement.aiUsage}/{entitlement.aiQuota} questions this month
+          {entitlement.upgradeTier ? (
+            <>
+              {" "}
+              ·{" "}
+              <button type="button" className="inline-link" onClick={() => void startCheckout(entitlement.upgradeTier!)}>
+                Upgrade to {TIER_LABELS[entitlement.upgradeTier]}
+              </button>
+            </>
+          ) : null}
+        </p>
+      ) : null}
       {vehicles.length > 0 ? (
         <label className="inline-field">
           Vehicle
@@ -118,7 +192,7 @@ export function GearHeadScreen({
           </button>
         ))}
       </Carousel>
-      {photoNote ? <p className="safety-note">Photo attach lands in the next pass — describe the leak, light, or noise for now.</p> : null}
+      {photoUrl ? <p className="safety-note">Photo attached — send your question to analyze it.</p> : null}
       <form
         className="ai-composer"
         onSubmit={(event) => {
@@ -126,7 +200,24 @@ export function GearHeadScreen({
           void ask(question);
         }}
       >
-        <button type="button" aria-label="Add a photo" onClick={() => setPhotoNote(true)}>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          hidden
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (!file) return;
+            setPhotoUrl(URL.createObjectURL(file));
+          }}
+        />
+        <button
+          type="button"
+          aria-label="Add a photo"
+          disabled={Boolean(entitlement && !entitlement.photosAllowed)}
+          onClick={onPickPhoto}
+        >
           <CameraIcon />
         </button>
         <input

@@ -47,7 +47,7 @@ projects:
               - key: APP_BASE_URL
                 value: https://garagetalk-app.onrender.com
               - key: AUTH_TRUSTED_ORIGINS
-                value: https://garagetalk-app.onrender.com,https://garagetalk-homepage.onrender.com
+                value: https://garagetalk-app.onrender.com,https://garagetalk-homepage.onrender.com,https://app.garagetalk.app,https://garagetalk.app,https://www.garagetalk.app
               - key: DATABASE_URL
                 fromDatabase:
                   name: garagetalk-db-v3
@@ -82,6 +82,28 @@ projects:
               - key: TWILIO_AUTH_TOKEN
                 sync: false
               - key: TWILIO_VERIFY_SID
+                sync: false
+              - key: AI_MODEL_BASIC
+                sync: false
+              - key: AI_MODEL_STANDARD
+                sync: false
+              - key: AI_MODEL_ADVANCED
+                sync: false
+              - key: AI_MODEL_MAX
+                sync: false
+              - key: STRIPE_PRICE_GEARHEAD
+                sync: false
+              - key: STRIPE_PRICE_RACING_PRO
+                sync: false
+              - key: STRIPE_PRICE_PRO
+                sync: false
+              - key: LIVEKIT_URL
+                sync: false
+              - key: LIVEKIT_API_KEY
+                sync: false
+              - key: LIVEKIT_API_SECRET
+                sync: false
+              - key: LIVEKIT_RTMP_URL
                 sync: false
 
           - type: keyvalue

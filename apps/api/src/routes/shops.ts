@@ -32,6 +32,8 @@ export const shopRoutes: FastifyPluginAsync<{
     return reply.code(201).send({ shop });
   });
 
+  app.get("/shops", async () => ({ shops: await opts.shops.listShops() }));
+
   app.get("/shops/:slug", async (req, reply) => {
     const { slug } = slugParamSchema.parse(req.params);
     const shop = await opts.shops.getShopBySlug(slug);

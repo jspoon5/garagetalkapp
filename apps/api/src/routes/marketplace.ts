@@ -51,6 +51,19 @@ export const marketplaceRoutes: FastifyPluginAsync<{ marketplace: MarketplaceSer
     return reply.code(201).send(result);
   });
 
+  app.post("/marketplace/listings/:id/favorite", async (req, reply) => {
+    if (!req.user) return reply.code(401).send({ error: "unauthorized" });
+    const { id } = idParamsSchema.parse(req.params);
+    const result = await marketplace.toggleFavorite(req.user.id, id);
+    if (!result) return reply.code(404).send({ error: "not_found" });
+    return result;
+  });
+
+  app.get("/marketplace/saved", async (req, reply) => {
+    if (!req.user) return reply.code(401).send({ error: "unauthorized" });
+    return marketplace.listSaved(req.user.id);
+  });
+
   app.post("/marketplace/orders/:id/state", async (req, reply) => {
     if (!req.user) return reply.code(401).send({ error: "unauthorized" });
     const { id } = idParamsSchema.parse(req.params);

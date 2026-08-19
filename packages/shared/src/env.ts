@@ -27,6 +27,7 @@ export const envSchema = z.object({
   LIVEKIT_URL: z.string().optional(),
   LIVEKIT_API_KEY: z.string().optional(),
   LIVEKIT_API_SECRET: z.string().optional(),
+  LIVEKIT_RTMP_URL: z.string().optional(),
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
   STRIPE_CONNECT_WEBHOOK_SECRET: z.string().optional(),
@@ -35,6 +36,10 @@ export const envSchema = z.object({
   AI_MODEL_FAST: z.string().default("gpt-4o-mini"),
   AI_MODEL_SMART: z.string().default("gpt-4o"),
   AI_MODEL_VISION: z.string().default("gpt-4o"),
+  AI_MODEL_BASIC: z.string().default("gpt-4o-mini"),
+  AI_MODEL_STANDARD: z.string().default("gpt-4o-mini"),
+  AI_MODEL_ADVANCED: z.string().default("gpt-4o"),
+  AI_MODEL_MAX: z.string().default("gpt-4o"),
   RESEND_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().email().optional(),
   TWILIO_ACCOUNT_SID: z.string().optional(),
@@ -86,6 +91,6 @@ export const TIER_QUOTAS: Record<
 > = {
   amateur: { aiSearchesPerMonth: 10, liveFeatures: false, listingSlots: 0 },
   gearhead: { aiSearchesPerMonth: 100, liveFeatures: true, listingSlots: 5 },
-  racing_pro: { aiSearchesPerMonth: 500, liveFeatures: true, listingSlots: 25 },
-  pro: { aiSearchesPerMonth: 2000, liveFeatures: true, listingSlots: 100 },
+  racing_pro: { aiSearchesPerMonth: 400, liveFeatures: true, listingSlots: 25 },
+  pro: { aiSearchesPerMonth: 1000, liveFeatures: true, listingSlots: 100 },
 };

@@ -48,7 +48,7 @@ export default defineConfig({
           {
             urlPattern: ({ url, request }) =>
               request.method === "GET" &&
-              ["/auth", "/feed", "/marketplace", "/videos", "/podcasts", "/rooms", "/live", "/ai"].some((path) =>
+              ["/auth", "/feed", "/marketplace", "/videos", "/podcasts", "/rooms", "/live", "/ai", "/billing", "/shops", "/spatial"].some((path) =>
                 url.pathname.startsWith(path),
               ),
             handler: "StaleWhileRevalidate",
@@ -91,9 +91,15 @@ export default defineConfig({
       "/marketplace": "http://127.0.0.1:3000",
       "/uploads": "http://127.0.0.1:3000",
       "/videos": "http://127.0.0.1:3000",
+      "/podcasts": "http://127.0.0.1:3000",
       "/rooms": { target: "http://127.0.0.1:3000", ws: true },
       "/ai": "http://127.0.0.1:3000",
       "/live": "http://127.0.0.1:3000",
+      "/billing": "http://127.0.0.1:3000",
+      "/shops": "http://127.0.0.1:3000",
+      "/spatial": "http://127.0.0.1:3000",
+      "/me": "http://127.0.0.1:3000",
+      "/diagnostics": "http://127.0.0.1:3000",
       "/webhooks": "http://127.0.0.1:3000",
       "/healthz": "http://127.0.0.1:3000",
       "/readyz": "http://127.0.0.1:3000",

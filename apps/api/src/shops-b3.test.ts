@@ -54,6 +54,10 @@ describe("B3 shops verification", () => {
     expect(created.statusCode).toBe(201);
     const shopId = created.json().shop.id as string;
 
+    const listed = await app.inject({ method: "GET", url: "/shops" });
+    expect(listed.statusCode).toBe(200);
+    expect(listed.json().shops.some((row: { slug: string }) => row.slug === "veteran-wrench")).toBe(true);
+
     const publicBefore = await app.inject({ method: "GET", url: "/shops/veteran-wrench" });
     expect(publicBefore.json().shop.unverified).toBe(true);
     expect(publicBefore.json().shop.badges.veteranOwned).toBe(false);

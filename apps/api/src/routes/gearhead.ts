@@ -1,7 +1,9 @@
 import type { FastifyPluginAsync } from "fastify";
 import {
+  AiConcurrentRequestError,
   gearHeadInputSchema,
   GearHeadService,
+  PhotosNotAllowedError,
   QuotaExceededError,
 } from "../services/gearhead-service.js";
 
@@ -17,7 +19,26 @@ export const gearHeadRoutes: FastifyPluginAsync<{ gearhead: GearHeadService }> =
         return await gearhead.ask(req.user.id, body);
       } catch (err) {
         if (err instanceof QuotaExceededError) {
-          return reply.code(402).send({ error: "ai_quota_exceeded", quota: err.quota });
+          return reply.code(402).send({
+            error: "limit_reached",
+            upgrade_required: err.details.upgradeTier !== null,
+            ...err.details,
+          });
+        }
+        if (err instanceof PhotosNotAllowedError) {
+          return reply.code(403).send({
+            error: "photos_not_allowed",
+            tier: err.effectiveTier,
+            upgradeTier: "gearhead",
+            upgrade_required: true,
+            message: "Photo diagnostics require GearHead or higher. Upgrade to attach photos.",
+          });
+        }
+        if (err instanceof AiConcurrentRequestError) {
+          return reply.code(429).send({
+            error: "ai_request_in_flight",
+            message: "Please wait for your current GearHead question to finish.",
+          });
         }
         if (err instanceof Error && err.message === "vehicle_not_found") {
           return reply.code(404).send({ error: "vehicle_not_found" });

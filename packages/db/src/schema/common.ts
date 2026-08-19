@@ -44,6 +44,13 @@ export const subscriptionStatusEnum = pgEnum("subscription_status", [
   "trialing",
 ]);
 
+export const entitlementProviderEnum = pgEnum("entitlement_provider", [
+  "stripe",
+  "google_play",
+  "apple",
+  "manual",
+]);
+
 export const avatarTypeEnum = pgEnum("avatar_type", ["color", "image", "animated"]);
 
 export const authTokenTypeEnum = pgEnum("auth_token_type", [
@@ -111,6 +118,13 @@ export const lessonKindEnum = pgEnum("lesson_kind", ["video", "text", "quiz"]);
 
 export const liveKindEnum = pgEnum("live_kind", ["stream", "class", "office_hours"]);
 
-export const liveRoleEnum = pgEnum("live_role", ["host", "mod", "viewer"]);
+export const liveRoleEnum = pgEnum("live_role", ["host", "mod", "guest", "viewer"]);
+
+export const guestRequestStatusEnum = pgEnum("guest_request_status", [
+  "pending",
+  "approved",
+  "declined",
+  "expired",
+]);
 
 export { sql, uuidv7, pgTable, text, timestamp, uuid, boolean, integer, jsonb, numeric, uniqueIndex, index, primaryKey, foreignKey };

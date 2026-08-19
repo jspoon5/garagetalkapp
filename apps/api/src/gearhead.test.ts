@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { users } from "@garagetalk/db";
+import { subscriptions, users } from "@garagetalk/db";
+import { uuidv7 } from "uuidv7";
 import { buildApp } from "./app.js";
 import {
   GearHeadService,
@@ -90,13 +91,14 @@ describe("GearHead AI A7", () => {
     expect(civic.json().diagnosis).not.toBe(rav4.json().diagnosis);
     expect(rav4.json().ev_safety_notes).toContain("High-voltage");
     expect(civic.json().parts[0].retailer_links.autozone).toContain("autozone.com");
+    expect(providerInputs.at(-2)?.model).toBeTruthy();
   });
 
-  it("gates requests at the monthly tier quota", async () => {
+  it("gates requests at the monthly tier quota with upgrade hints", async () => {
     const user = await register("gearquota");
     await ctx.db
       .update(users)
-      .set({ aiMonthUsage: 5, aiMonthResetAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) })
+      .set({ aiMonthUsage: 10, aiMonthResetAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) })
       .where(eq(users.id, user.userId));
 
     const res = await app.inject({
@@ -106,7 +108,73 @@ describe("GearHead AI A7", () => {
       payload: { message: "why is my idle rough" },
     });
     expect(res.statusCode).toBe(402);
-    expect(res.json()).toMatchObject({ error: "ai_quota_exceeded", quota: 5 });
+    expect(res.json()).toMatchObject({
+      error: "limit_reached",
+      quota: 10,
+      usage: 10,
+      effectiveTier: "amateur",
+      upgradeTier: "gearhead",
+    });
+    expect(res.json().message).toContain("Upgrade");
+  });
+
+  it("downgrades stored paid tier when subscription is inactive", async () => {
+    const user = await register("geardowngrade");
+    await ctx.db
+      .update(users)
+      .set({
+        tier: "gearhead",
+        tierStatus: "canceled",
+        aiMonthUsage: 10,
+        aiMonthResetAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      })
+      .where(eq(users.id, user.userId));
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/ai/gearhead",
+      headers: { cookie: user.cookie },
+      payload: { message: "rough idle" },
+    });
+    expect(res.statusCode).toBe(402);
+    expect(res.json()).toMatchObject({ quota: 10, effectiveTier: "amateur" });
+  });
+
+  it("honors active subscription records for paid allowance", async () => {
+    const user = await register("gearactive");
+    await ctx.db
+      .update(users)
+      .set({ tier: "gearhead", tierStatus: "active" })
+      .where(eq(users.id, user.userId));
+    await ctx.db.insert(subscriptions).values({
+      id: uuidv7(),
+      userId: user.userId,
+      tier: "gearhead",
+      status: "active",
+      stripeSubscriptionId: "sub_gear_test",
+      currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    });
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/ai/gearhead",
+      headers: { cookie: user.cookie },
+      payload: { message: "battery drain overnight" },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(providerInputs.at(-1)?.maxOutputTokens).toBe(800);
+  });
+
+  it("rejects photo diagnostics on the free tier", async () => {
+    const user = await register("gearphoto");
+    const res = await app.inject({
+      method: "POST",
+      url: "/ai/gearhead",
+      headers: { cookie: user.cookie },
+      payload: { message: "what is this leak", photoUrl: "https://example.com/leak.jpg" },
+    });
+    expect(res.statusCode).toBe(403);
+    expect(res.json()).toMatchObject({ error: "photos_not_allowed", upgradeTier: "gearhead" });
   });
 
   it("escalates hazardous adversarial prompts with zero DIY steps", async () => {

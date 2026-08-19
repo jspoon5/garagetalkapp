@@ -134,6 +134,24 @@ describe("B1 feed", () => {
     expect(posts.some((post) => post.id === postId && post.source === "followed")).toBe(true);
     expect(posts.some((post) => post.source === "discovery")).toBe(true);
     expect(posts.find((post) => post.id === postId)?.vehicleId).toBe(vehicleId);
+
+    const comments = await app.inject({
+      method: "GET",
+      url: `/feed/posts/${postId}/comments`,
+    });
+    expect(comments.statusCode).toBe(200);
+    expect(comments.json().comments[0].body).toBe("Which pads did you use?");
+
+    const like = await app.inject({
+      method: "POST",
+      url: `/feed/posts/${postId}/reactions`,
+      headers: { cookie: aliceCookie },
+      payload: { kind: "like" },
+    });
+    expect(like.statusCode).toBe(201);
+    expect(like.json().reaction.liked).toBe(true);
+    const feedLiked = await app.inject({ method: "GET", url: "/feed", headers: { cookie: aliceCookie } });
+    expect(feedLiked.json().posts.find((post: { id: string }) => post.id === postId).likedByMe).toBe(true);
   });
 
   async function register(email: string, username: string) {

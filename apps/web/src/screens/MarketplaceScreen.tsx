@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { HeartFilledIcon, HeartIcon, PlusIcon } from "../icons";
-import { apiGet, apiSend, formatUsd, type Listing } from "../api";
+import { apiGet, apiSend, checkoutUrl, formatUsd, type Listing } from "../api";
 import { images } from "../images";
 import { FilterRail } from "./shared";
 
@@ -41,7 +41,10 @@ export function MarketplaceScreen({
   useEffect(() => {
     const query = kinds[filter] ?? "";
     void apiGet<{ listings: Listing[] }>(`/marketplace/listings${query ? `?kind=${query}` : ""}`)
-      .then((data) => setListings(data.listings))
+      .then((data) => {
+        setListings(data.listings);
+        setSaved(data.listings.filter((item) => item.saved).map((item) => item.id));
+      })
       .catch(() => setError("Could not load the market."));
   }, [filter]);
 
@@ -73,6 +76,21 @@ export function MarketplaceScreen({
     setListings(data.listings);
   }
 
+  async function toggleSave(listing: Listing) {
+    if (!signedIn) {
+      onNeedAccount();
+      return;
+    }
+    try {
+      const result = await apiSend<{ liked: boolean }>(`/marketplace/listings/${listing.id}/favorite`, "POST");
+      setSaved((current) =>
+        result.liked ? [...current.filter((id) => id !== listing.id), listing.id] : current.filter((id) => id !== listing.id),
+      );
+    } catch {
+      setError("Could not save that listing.");
+    }
+  }
+
   async function buy(listing: Listing) {
     if (!signedIn) {
       onNeedAccount();
@@ -80,7 +98,15 @@ export function MarketplaceScreen({
     }
     setError(null);
     try {
-      await apiSend(`/marketplace/listings/${listing.id}/purchase`, "POST", { shipping: {} });
+      const result = await apiSend<{
+        checkout?: { url?: string | null; mode?: string } | null;
+        payment?: { url?: string | null; mode?: string } | null;
+      }>(`/marketplace/listings/${listing.id}/purchase`, "POST", { shipping: {} });
+      const url = checkoutUrl(result);
+      if (result.checkout?.mode === "stripe" && url) {
+        window.location.assign(url);
+        return;
+      }
       setNotice(`Order placed for ${listing.title}.`);
       setOpenId(null);
     } catch {
@@ -118,11 +144,7 @@ export function MarketplaceScreen({
               type="button"
               className="save-listing"
               aria-label="Save listing"
-              onClick={() =>
-                setSaved((current) =>
-                  current.includes(product.id) ? current.filter((id) => id !== product.id) : [...current, product.id],
-                )
-              }
+              onClick={() => void toggleSave(product)}
             >
               {saved.includes(product.id) ? <HeartFilledIcon /> : <HeartIcon />}
             </button>

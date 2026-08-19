@@ -1,9 +1,11 @@
+import { eq } from "drizzle-orm";
 import { MemoryEmailClient } from "@garagetalk/email";
+import { subscriptions, users } from "@garagetalk/db";
+import { uuidv7 } from "uuidv7";
 import { describe, expect, it, beforeAll, afterAll } from "vitest";
 import { buildApp } from "./app.js";
 import { verifyMockLiveKitToken } from "./services/live-service.js";
 import { createTestDb } from "./test/pglite.js";
-
 function cookieFrom(response: {
   headers: Record<string, string | number | string[] | undefined>;
 }): string {
@@ -15,6 +17,7 @@ describe("A8 live sessions", () => {
   let client: Awaited<ReturnType<typeof createTestDb>>["client"];
   let app: Awaited<ReturnType<typeof buildApp>>;
   let hostCookie: string;
+  let hostId: string;
   let viewerCookie: string;
   let viewerId: string;
   const emailClient = new MemoryEmailClient();
@@ -38,6 +41,20 @@ describe("A8 live sessions", () => {
       },
     });
     hostCookie = cookieFrom(host);
+    hostId = host.json().user.id as string;
+
+    await ctx.db
+      .update(users)
+      .set({ tier: "gearhead", tierStatus: "active" })
+      .where(eq(users.id, hostId));
+    await ctx.db.insert(subscriptions).values({
+      id: uuidv7(),
+      userId: hostId,
+      tier: "gearhead",
+      status: "active",
+      stripeSubscriptionId: "sub_live_host",
+      currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    });
 
     const viewer = await app.inject({
       method: "POST",
@@ -162,5 +179,21 @@ describe("A8 live sessions", () => {
       payload: {},
     });
     expect(invalid.statusCode).toBe(409);
+
+    const liked = await app.inject({
+      method: "POST",
+      url: `/live/sessions/${sessionId}/like`,
+      headers: { cookie: viewerCookie },
+    });
+    expect(liked.statusCode).toBe(200);
+    expect(liked.json().liked).toBe(true);
+    const detail = await app.inject({
+      method: "GET",
+      url: `/live/sessions/${sessionId}`,
+      headers: { cookie: viewerCookie },
+    });
+    expect(detail.statusCode).toBe(200);
+    expect(detail.json().session.likedByMe).toBe(true);
+    expect(detail.json().session.rtmpStreamKey).toBeNull();
   });
 });

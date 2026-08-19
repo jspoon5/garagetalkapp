@@ -1,10 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { formatUsd } from "./api";
+import { checkoutUrl, formatUsd } from "./api";
 import { filterRooms, formatGearHead, preferredRoom, roomLane } from "./bays";
 
 describe("api helpers", () => {
   it("formats whole-dollar prices without cents", () => {
     expect(formatUsd(14900)).toBe("$149");
+  });
+
+  it("prefers checkout.url then payment.url", () => {
+    expect(checkoutUrl({ checkout: { url: "https://pay.test/a" }, payment: { url: "https://pay.test/b" } })).toBe(
+      "https://pay.test/a",
+    );
+    expect(checkoutUrl({ payment: { url: "https://pay.test/b" } })).toBe("https://pay.test/b");
+    expect(checkoutUrl({})).toBeNull();
   });
 });
 

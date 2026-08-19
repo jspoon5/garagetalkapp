@@ -1684,6 +1684,30 @@ textarea {
   }
 }
 
+.stack-heading {
+  margin: 18px 0 8px;
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: 1.35rem;
+  letter-spacing: 0.02em;
+}
+
+.stack-foot {
+  display: none;
+}
+
+.sheet video,
+.auth-card audio,
+.sheet audio {
+  width: 100%;
+  margin: 12px 0;
+  border-radius: 12px;
+  background: #000;
+}
+
+.feed-card .profile-actions {
+  margin-top: 10px;
+}
+
 @media (min-width: 768px) {
   .sheet-scrim {
     align-items: center;
@@ -1714,4 +1738,47 @@ textarea {
   .room-content > span i {
     animation: none;
   }
+}
+
+.livekit-shell {
+  margin: 1rem 0;
+  min-height: 240px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.gift-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+}
+
+.gift-flash {
+  margin: 0.75rem 0;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  background: linear-gradient(90deg, rgba(255, 140, 0, 0.25), rgba(69, 165, 255, 0.2));
+  animation: gift-pop 0.4s ease-out;
+}
+
+@keyframes gift-pop {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+button.inline-link {
+  background: none;
+  border: none;
+  color: var(--accent, #45a5ff);
+  padding: 0;
+  text-decoration: underline;
+  font: inherit;
 }

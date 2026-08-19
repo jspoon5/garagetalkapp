@@ -38,6 +38,11 @@ export const feedRoutes: FastifyPluginAsync<{ feed: FeedService }> = async (app,
     return reply.code(201).send({ reaction });
   });
 
+  app.get("/feed/posts/:id/comments", async (req) => {
+    const { id } = idParamsSchema.parse(req.params);
+    return { comments: await feed.listComments(id) };
+  });
+
   app.post("/feed/posts/:id/comments", async (req, reply) => {
     if (!req.user) return reply.code(401).send({ error: "unauthorized" });
     const { id } = idParamsSchema.parse(req.params);

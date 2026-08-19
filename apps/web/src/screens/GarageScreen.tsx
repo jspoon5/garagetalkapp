@@ -13,16 +13,24 @@ export type { User };
 export function GarageScreen({
   user,
   setUser,
-  onOpenVehicleBay,
+  onOpenVehicle,
   onGoLive,
+  onOpenBilling,
 }: {
   user: User | null;
   setUser: (user: User | null) => void;
-  onOpenVehicleBay: (type: string) => void;
+  onOpenVehicle: (id: string) => void;
   onGoLive: () => void;
+  onOpenBilling: () => void;
 }) {
   return user ? (
-    <SignedInGarage user={user} setUser={setUser} onOpenVehicleBay={onOpenVehicleBay} onGoLive={onGoLive} />
+    <SignedInGarage
+      user={user}
+      setUser={setUser}
+      onOpenVehicle={onOpenVehicle}
+      onGoLive={onGoLive}
+      onOpenBilling={onOpenBilling}
+    />
   ) : (
     <SignedOutGarage setUser={setUser} />
   );
@@ -30,11 +38,22 @@ export function GarageScreen({
 
 function SignedOutGarage({ setUser }: { setUser: (user: User) => void }) {
   const { t } = useTranslation();
-  const [mode, setMode] = useState<"login" | "register">("login");
+  const [mode, setMode] = useState<"login" | "register" | "forgot" | "reset">("login");
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [token, setToken] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const reset = params.get("reset");
+    if (reset) {
+      setToken(reset);
+      setMode("reset");
+    }
+  }, []);
 
   async function register() {
     setError(null);
@@ -56,6 +75,27 @@ function SignedOutGarage({ setUser }: { setUser: (user: User) => void }) {
     }
   }
 
+  async function requestReset() {
+    setError(null);
+    try {
+      await apiSend("/auth/password-reset/request", "POST", { email });
+      setNotice(t("auth.resetSent"));
+    } catch {
+      setError(t("auth.resetFailed"));
+    }
+  }
+
+  async function confirmReset() {
+    setError(null);
+    try {
+      await apiSend("/auth/password-reset/confirm", "POST", { token, password });
+      setNotice(t("auth.resetDone"));
+      setMode("login");
+    } catch {
+      setError(t("auth.resetFailed"));
+    }
+  }
+
   return (
     <>
       <section className="profile-hero">
@@ -67,8 +107,20 @@ function SignedOutGarage({ setUser }: { setUser: (user: User) => void }) {
           </div>
           <div>
             <span>YOUR GARAGE</span>
-            <h1>{mode === "login" ? t("auth.loginTitle") : t("auth.registerTitle")}</h1>
-            <p>{mode === "login" ? t("auth.loginSubtitle") : t("auth.registerSubtitle")}</p>
+            <h1>
+              {mode === "login"
+                ? t("auth.loginTitle")
+                : mode === "register"
+                  ? t("auth.registerTitle")
+                  : t("auth.resetTitle")}
+            </h1>
+            <p>
+              {mode === "login"
+                ? t("auth.loginSubtitle")
+                : mode === "register"
+                  ? t("auth.registerSubtitle")
+                  : t("auth.resetSubtitle")}
+            </p>
           </div>
         </div>
       </section>
@@ -77,10 +129,12 @@ function SignedOutGarage({ setUser }: { setUser: (user: User) => void }) {
         onSubmit={(event) => {
           event.preventDefault();
           if (mode === "login") void login();
-          else void register();
+          else if (mode === "register") void register();
+          else if (mode === "forgot") void requestReset();
+          else void confirmReset();
         }}
       >
-        {mode === "register" ? (
+        {mode === "register" || mode === "forgot" ? (
           <label>
             {t("auth.email")}
             <input
@@ -93,39 +147,65 @@ function SignedOutGarage({ setUser }: { setUser: (user: User) => void }) {
             />
           </label>
         ) : null}
-        <label>
-          {t("auth.username")}
-          <input
-            data-testid="auth-username"
-            autoComplete="username"
-            value={username}
-            onChange={(event) => setUsername(event.target.value)}
-            required
-            minLength={3}
-          />
-        </label>
-        <label>
-          {t("auth.password")}
-          <input
-            data-testid="auth-password"
-            type="password"
-            autoComplete={mode === "login" ? "current-password" : "new-password"}
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            required
-            minLength={mode === "register" ? 10 : 1}
-          />
-        </label>
+        {mode === "login" || mode === "register" ? (
+          <>
+            <label>
+              {t("auth.username")}
+              <input
+                data-testid="auth-username"
+                autoComplete="username"
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+                required
+                minLength={3}
+              />
+            </label>
+            <label>
+              {t("auth.password")}
+              <input
+                data-testid="auth-password"
+                type="password"
+                autoComplete={mode === "login" ? "current-password" : "new-password"}
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                required
+                minLength={mode === "register" ? 10 : 1}
+              />
+            </label>
+          </>
+        ) : null}
+        {mode === "reset" ? (
+          <>
+            <label>
+              {t("auth.resetToken")}
+              <input value={token} onChange={(event) => setToken(event.target.value)} required />
+            </label>
+            <label>
+              {t("auth.password")}
+              <input
+                type="password"
+                autoComplete="new-password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                required
+                minLength={10}
+              />
+            </label>
+          </>
+        ) : null}
         {error ? <p className="auth-error">{error}</p> : null}
+        {notice ? <p className="empty-state">{notice}</p> : null}
         <div className="auth-actions">
           {mode === "login" ? (
             <button type="submit" data-testid="auth-login">
               {t("auth.login")}
             </button>
-          ) : (
+          ) : mode === "register" ? (
             <button type="submit" data-testid="auth-register">
               {t("auth.register")}
             </button>
+          ) : (
+            <button type="submit">{mode === "forgot" ? t("auth.sendReset") : t("auth.confirmReset")}</button>
           )}
         </div>
         <p className="auth-switch">
@@ -141,6 +221,17 @@ function SignedOutGarage({ setUser }: { setUser: (user: User) => void }) {
                 }}
               >
                 {t("auth.register")}
+              </button>
+              {" · "}
+              <button
+                type="button"
+                onClick={() => {
+                  setError(null);
+                  setNotice(null);
+                  setMode("forgot");
+                }}
+              >
+                {t("auth.forgot")}
               </button>
             </>
           ) : (
@@ -172,13 +263,15 @@ function SignedOutGarage({ setUser }: { setUser: (user: User) => void }) {
 function SignedInGarage({
   user,
   setUser,
-  onOpenVehicleBay,
+  onOpenVehicle,
   onGoLive,
+  onOpenBilling,
 }: {
   user: User;
   setUser: (user: User | null) => void;
-  onOpenVehicleBay: (type: string) => void;
+  onOpenVehicle: (id: string) => void;
   onGoLive: () => void;
+  onOpenBilling: () => void;
 }) {
   const { t } = useTranslation();
   const [bio, setBio] = useState(user.bio ?? "");
@@ -293,6 +386,9 @@ function SignedInGarage({
         <button type="button" onClick={onGoLive}>
           <VideoIcon /> Go live
         </button>
+        <button type="button" onClick={onOpenBilling}>
+          Subscribe
+        </button>
       </div>
       <SectionHeading eyebrow="My machines" title="Vehicles & projects" action="Add" onAction={() => document.getElementById("add-vehicle")?.scrollIntoView()} />
       <Carousel ariaLabel="Vehicles and projects" className="garage-carousel" contentClassName="garage-carousel-track">
@@ -301,8 +397,8 @@ function SignedInGarage({
             key={vehicle.id}
             image={vehicle.photos[0] ?? roomImage(vehicle.type)}
             title={vehicle.nickname || `${vehicle.year} ${vehicle.make}`}
-            subtitle={`${vehicle.model} · tap to open bay`}
-            onClick={() => onOpenVehicleBay(vehicle.type)}
+            subtitle={`${vehicle.model} · open build`}
+            onClick={() => onOpenVehicle(vehicle.id)}
           />
         ))}
       </Carousel>

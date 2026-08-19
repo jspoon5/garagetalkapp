@@ -8,44 +8,74 @@ import {
 import type { DiagnosticOutput } from "@garagetalk/ai";
 import type { Database } from "@garagetalk/db";
 import { users, vehicles } from "@garagetalk/db";
+import {
+  estimateTokenUsage,
+  nextUpgradeTier,
+  planModelName,
+  type AiPlanId,
+  type AiMemoryLevel,
+} from "@garagetalk/shared";
 import { z } from "zod";
+import { EntitlementService } from "./entitlement-service.js";
 
 export const gearHeadInputSchema = z.object({
   vehicleId: z.string().uuid().optional(),
   message: z.string().min(1).max(4000),
+  /** Client may request photo analysis; server rejects when plan disallows photos. */
+  photoUrl: z.string().url().optional(),
 });
 
-type Tier = (typeof users.$inferSelect)["tier"];
 type Vehicle = typeof vehicles.$inferSelect;
 type ProviderPart = { name: string; retailer_links?: Record<string, string> };
 type ProviderOutput = Omit<DiagnosticOutput, "parts"> & { parts: ProviderPart[] };
-
-export const AI_TIER_QUOTAS: Record<Tier, number> = {
-  amateur: 5,
-  gearhead: 50,
-  racing_pro: 200,
-  pro: 500,
-};
 
 export type GearHeadProviderInput = {
   systemPrompt: string;
   prompt: string;
   vehicleLabel: string;
   message: string;
+  model: string;
+  maxOutputTokens: number;
+  memoryLevel: AiMemoryLevel;
+  photoUrl?: string;
 };
 
 export type GearHeadProvider = {
   generate(input: GearHeadProviderInput): Promise<ProviderOutput>;
 };
 
+export type QuotaExceededDetails = {
+  quota: number;
+  usage: number;
+  tier: AiPlanId;
+  effectiveTier: AiPlanId;
+  upgradeTier: Exclude<AiPlanId, "amateur"> | null;
+  resetAt: Date;
+  message: string;
+};
+
 export class QuotaExceededError extends Error {
-  constructor(readonly quota: number) {
+  constructor(readonly details: QuotaExceededDetails) {
     super("ai_quota_exceeded");
+  }
+}
+
+export class PhotosNotAllowedError extends Error {
+  constructor(readonly effectiveTier: AiPlanId) {
+    super("ai_photos_not_allowed");
+  }
+}
+
+export class AiConcurrentRequestError extends Error {
+  constructor() {
+    super("ai_request_in_flight");
   }
 }
 
 const hazardousPattern =
   /\b(airbag|srs|high voltage|hv battery|disable brake|brake line|steering rack|fuel leak|gas tank|bypass|defeat|weld frame|structural|explosive)\b/i;
+
+const inFlight = new Set<string>();
 
 function nextReset(now: Date): Date {
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1, 0, 0, 0));
@@ -73,17 +103,37 @@ class DefaultGearHeadProvider implements GearHeadProvider {
 
 export class GearHeadService {
   private readonly provider: GearHeadProvider;
+  private readonly entitlements: EntitlementService;
 
   constructor(
     private readonly db: Database,
     provider: GearHeadProvider = new DefaultGearHeadProvider(),
+    entitlements?: EntitlementService,
   ) {
     this.provider = provider;
+    this.entitlements = entitlements ?? new EntitlementService(db);
   }
 
   async ask(userId: string, input: z.infer<typeof gearHeadInputSchema>): Promise<DiagnosticOutput> {
+    if (inFlight.has(userId)) throw new AiConcurrentRequestError();
+    inFlight.add(userId);
+    try {
+      return await this.askInner(userId, input);
+    } finally {
+      inFlight.delete(userId);
+    }
+  }
+
+  private async askInner(userId: string, input: z.infer<typeof gearHeadInputSchema>): Promise<DiagnosticOutput> {
     const parsed = gearHeadInputSchema.parse(input);
-    const user = await this.consumeQuota(userId);
+    const entitlement = await this.entitlements.resolveForUser(userId);
+    if (!entitlement) throw new Error("user_not_found");
+
+    if (parsed.photoUrl && !entitlement.plan.photosAllowed) {
+      throw new PhotosNotAllowedError(entitlement.effectiveTier);
+    }
+
+    const user = await this.consumeQuota(entitlement);
     const vehicle = parsed.vehicleId ? await this.getVehicle(userId, parsed.vehicleId) : null;
     if (parsed.vehicleId && !vehicle) throw new Error("vehicle_not_found");
 
@@ -104,31 +154,55 @@ export class GearHeadService {
 
 Respond with JSON matching the GearHead diagnostic output schema.`;
 
+    const model = planModelName(entitlement.plan);
     const output = await this.provider.generate({
       systemPrompt: SAFETY_SYSTEM_PROMPT,
       prompt,
       vehicleLabel: label,
       message: parsed.message,
+      model,
+      maxOutputTokens: entitlement.plan.maxOutputTokens,
+      memoryLevel: entitlement.plan.memoryLevel,
+      photoUrl: parsed.photoUrl,
     });
-    return this.normalize(output, label, needsEvNotes(vehicle, parsed.message), user.tier);
+
+    const tokenEstimate = estimateTokenUsage(parsed.message) + estimateTokenUsage(output.diagnosis);
+    void tokenEstimate;
+
+    return this.normalize(output, label, needsEvNotes(vehicle, parsed.message), entitlement.effectiveTier);
   }
 
-  private async consumeQuota(userId: string) {
-    const [user] = await this.db.select().from(users).where(eq(users.id, userId)).limit(1);
-    if (!user) throw new Error("user_not_found");
+  private async consumeQuota(entitlement: NonNullable<Awaited<ReturnType<EntitlementService["resolveForUser"]>>>) {
+    const { user, effectiveTier, plan } = entitlement;
     const now = new Date();
     const shouldReset = !user.aiMonthResetAt || user.aiMonthResetAt.getTime() <= now.getTime();
     const currentUsage = shouldReset ? 0 : user.aiMonthUsage;
-    const quota = AI_TIER_QUOTAS[user.tier];
-    if (currentUsage >= quota) throw new QuotaExceededError(quota);
+    const quota = plan.monthlyQuestions;
+    const resetAt = shouldReset ? nextReset(now) : user.aiMonthResetAt ?? nextReset(now);
+
+    if (currentUsage >= quota) {
+      throw new QuotaExceededError({
+        quota,
+        usage: currentUsage,
+        tier: entitlement.storedTier,
+        effectiveTier,
+        upgradeTier: nextUpgradeTier(effectiveTier),
+        resetAt,
+        message:
+          effectiveTier === "amateur"
+            ? "You've used all free GearHead questions this month. Upgrade to GearHead for more diagnostics."
+            : "You've reached your monthly GearHead allowance. Upgrade for a higher tier or wait until your quota resets.",
+      });
+    }
+
     const [updated] = await this.db
       .update(users)
       .set({
         aiMonthUsage: currentUsage + 1,
-        aiMonthResetAt: shouldReset ? nextReset(now) : user.aiMonthResetAt,
+        aiMonthResetAt: shouldReset ? resetAt : user.aiMonthResetAt,
         updatedAt: now,
       })
-      .where(eq(users.id, userId))
+      .where(eq(users.id, user.id))
       .returning();
     return updated ?? user;
   }
@@ -146,7 +220,7 @@ Respond with JSON matching the GearHead diagnostic output schema.`;
     output: ProviderOutput,
     label: string,
     includeEvNotes: boolean,
-    tier: Tier,
+    tier: AiPlanId,
   ): DiagnosticOutput {
     const withLinks: DiagnosticOutput = {
       diagnosis: output.diagnosis,
@@ -176,3 +250,11 @@ Respond with JSON matching the GearHead diagnostic output schema.`;
     };
   }
 }
+
+/** @deprecated Use AI_PLANS from @garagetalk/shared */
+export const AI_TIER_QUOTAS = {
+  amateur: 10,
+  gearhead: 100,
+  racing_pro: 400,
+  pro: 1000,
+} as const;

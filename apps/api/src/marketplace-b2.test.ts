@@ -151,6 +151,31 @@ describe("B2 marketplace", () => {
     });
     expect(dashboard.statusCode).toBe(200);
     expect(dashboard.json().totals.feeCents).toBe(1_235);
+
+    const favorite = await app.inject({
+      method: "POST",
+      url: `/marketplace/listings/${listingId}/favorite`,
+      headers: { cookie: buyerCookie },
+    });
+    expect(favorite.statusCode).toBe(200);
+    expect(favorite.json().liked).toBe(true);
+    const saved = await app.inject({
+      method: "GET",
+      url: "/marketplace/saved",
+      headers: { cookie: buyerCookie },
+    });
+    expect(saved.json().listings.some((row: { id: string }) => row.id === listingId)).toBe(true);
+    await app.inject({
+      method: "POST",
+      url: `/marketplace/listings/${listingId}/favorite`,
+      headers: { cookie: buyerCookie },
+    });
+    const savedAgain = await app.inject({
+      method: "GET",
+      url: "/marketplace/saved",
+      headers: { cookie: buyerCookie },
+    });
+    expect(savedAgain.json().listings).toHaveLength(0);
   });
 
   async function register(email: string, username: string) {

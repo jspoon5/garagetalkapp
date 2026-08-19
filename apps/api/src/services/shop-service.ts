@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import type { Database } from "@garagetalk/db";
 import {
   bookings,
@@ -88,6 +88,16 @@ export class ShopService {
       })
       .returning();
     return shop ? decorateShop(shop) : null;
+  }
+
+  async listShops() {
+    const rows = await this.db
+      .select()
+      .from(shops)
+      .where(isNull(shops.deletedAt))
+      .orderBy(desc(shops.createdAt))
+      .limit(50);
+    return rows.map(decorateShop);
   }
 
   async getShopBySlug(slug: string) {

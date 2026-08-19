@@ -11,6 +11,14 @@ export const garageRoutes: FastifyPluginAsync<{ garage: GarageService }> = async
     return { vehicles: await garage.list(req.user.id) };
   });
 
+  app.get("/garage/vehicles/:id", async (req, reply) => {
+    if (!req.user) return reply.code(401).send({ error: "unauthorized" });
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+    const vehicle = await garage.get(req.user.id, id);
+    if (!vehicle) return reply.code(404).send({ error: "not_found" });
+    return { vehicle };
+  });
+
   app.post("/garage/vehicles", async (req, reply) => {
     if (!req.user) return reply.code(401).send({ error: "unauthorized" });
     const body = vehicleInputSchema.parse(req.body);

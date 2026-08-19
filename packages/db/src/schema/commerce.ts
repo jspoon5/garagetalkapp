@@ -1,6 +1,7 @@
 import {
   boolean,
   bookingStatusEnum,
+  entitlementProviderEnum,
   id,
   index,
   integer,
@@ -47,6 +48,29 @@ export const subscriptions = pgTable(
     ...timestamps,
   },
   (t) => [index("subscriptions_user_idx").on(t.userId)],
+);
+
+/** Unified entitlement row — Stripe today; Google Play / Apple later. Migrate from `subscriptions`. */
+export const entitlements = pgTable(
+  "entitlements",
+  {
+    id: id(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    provider: entitlementProviderEnum("provider").notNull(),
+    providerSubscriptionId: text("provider_subscription_id"),
+    tier: subscriptionTierEnum("tier").notNull(),
+    status: subscriptionStatusEnum("status").notNull().default("active"),
+    currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
+    aiMonthlyAllowance: integer("ai_monthly_allowance").notNull(),
+    featureFlags: jsonb("feature_flags").$type<Record<string, boolean>>().notNull().default({}),
+    ...timestamps,
+  },
+  (t) => [
+    index("entitlements_user_idx").on(t.userId),
+    uniqueIndex("entitlements_provider_sub_uidx").on(t.provider, t.providerSubscriptionId),
+  ],
 );
 
 export const tips = pgTable("tips", {

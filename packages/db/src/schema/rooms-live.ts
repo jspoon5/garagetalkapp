@@ -1,4 +1,5 @@
 import {
+  guestRequestStatusEnum,
   id,
   index,
   jsonb,
@@ -110,6 +111,28 @@ export const liveRoles = pgTable(
   (t) => [
     index("live_roles_session_idx").on(t.sessionId),
     uniqueIndex("live_roles_session_user_uidx").on(t.sessionId, t.userId),
+  ],
+);
+
+export const liveGuestRequests = pgTable(
+  "live_guest_requests",
+  {
+    id: id(),
+    sessionId: uuid("session_id")
+      .notNull()
+      .references(() => liveSessions.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    message: text("message"),
+    status: guestRequestStatusEnum("status").notNull().default("pending"),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    decidedById: uuid("decided_by_id").references(() => users.id, { onDelete: "set null" }),
+    ...timestamps,
+  },
+  (t) => [
+    index("live_guest_requests_session_idx").on(t.sessionId),
+    uniqueIndex("live_guest_requests_session_user_uidx").on(t.sessionId, t.userId),
   ],
 );
 

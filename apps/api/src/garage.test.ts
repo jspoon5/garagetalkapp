@@ -151,5 +151,13 @@ describe("garage vehicles", () => {
     const reordered = vehicles.filter((v) => v.id === idA || v.id === idB);
     expect(reordered[0]?.make).toBe("Toyota");
     expect(reordered[1]?.make).toBe("Ford");
+
+    const one = await app.inject({
+      method: "GET",
+      url: `/garage/vehicles/${idA}`,
+      headers: { cookie },
+    });
+    expect(one.statusCode).toBe(200);
+    expect(one.json().vehicle.make).toBe("Toyota");
   });
 });

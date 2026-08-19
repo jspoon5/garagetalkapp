@@ -4,6 +4,7 @@ export * from "./garage.js";
 export * from "./media.js";
 export * from "./rooms-live.js";
 export * from "./commerce.js";
+export * from "./gifting.js";
 export * from "./diagnostics.js";
 export * from "./campus.js";
 export * from "./platform.js";

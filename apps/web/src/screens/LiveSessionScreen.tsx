@@ -1,0 +1,286 @@
+import { useEffect, useState } from "react";
+import { HeartFilledIcon, HeartIcon } from "../icons";
+import { LiveKitSession, liveSessionSocketUrl } from "../components/LiveKitSession";
+import { apiGet, apiSend, checkoutUrl, formatUsd, type GiftCatalogItem, type LiveSession, type User } from "../api";
+import { images } from "./shared";
+
+type GiftEvent = {
+  type: "live_gift";
+  gift: { name: string; slug: string; animationKey: string; coinCost: number };
+  sender: { username: string };
+};
+
+export function LiveSessionScreen({
+  sessionId,
+  user,
+  onNeedAccount,
+  onJoinBay,
+  onTip,
+}: {
+  sessionId: string;
+  user: User | null;
+  onNeedAccount: () => void;
+  onJoinBay: () => void;
+  onTip: (hostId: string) => void;
+}) {
+  const [session, setSession] = useState<LiveSession | null>(null);
+  const [livekitUrl, setLivekitUrl] = useState<string | null>(null);
+  const [rtmp, setRtmp] = useState<{ url: string | null; key: string | null } | null>(null);
+  const [gifts, setGifts] = useState<GiftCatalogItem[]>([]);
+  const [walletCoins, setWalletCoins] = useState<number | null>(null);
+  const [giftFlash, setGiftFlash] = useState<GiftEvent | null>(null);
+  const [guestRequests, setGuestRequests] = useState<
+    Array<{ id: string; username: string; message: string | null }>
+  >([]);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [showCoins, setShowCoins] = useState(false);
+
+  async function load() {
+    const data = await apiGet<{ session: LiveSession; livekitUrl?: string | null }>(
+      `/live/sessions/${sessionId}`,
+    );
+    setSession(data.session);
+    setLivekitUrl(data.livekitUrl ?? null);
+    if (user && user.id === data.session.hostId) {
+      const ingest = await apiGet<{ rtmp: { url: string | null; key: string | null } }>(
+        `/live/sessions/${sessionId}/rtmp`,
+      ).catch(() => null);
+      if (ingest) setRtmp(ingest.rtmp);
+      const pending = await apiGet<{ requests: typeof guestRequests }>(
+        `/live/sessions/${sessionId}/guest-requests`,
+      ).catch(() => null);
+      if (pending) setGuestRequests(pending.requests);
+    }
+  }
+
+  useEffect(() => {
+    void load().catch(() => setError("Could not load this live session."));
+    void apiGet<{ gifts: GiftCatalogItem[] }>("/gifts/catalog")
+      .then((data) => setGifts(data.gifts))
+      .catch(() => undefined);
+  }, [sessionId, user?.id]);
+
+  useEffect(() => {
+    if (!user) return;
+    void apiGet<{ balanceCoins: number }>("/wallet")
+      .then((data) => setWalletCoins(data.balanceCoins))
+      .catch(() => undefined);
+  }, [user?.id, showCoins]);
+
+  useEffect(() => {
+    if (!user) return;
+    const socket = new WebSocket(liveSessionSocketUrl(sessionId));
+    socket.onmessage = (event) => {
+      try {
+        const payload = JSON.parse(String(event.data)) as { type: string; gift?: GiftEvent["gift"]; sender?: GiftEvent["sender"] };
+        if (payload.type === "live_gift" && payload.gift && payload.sender) {
+          setGiftFlash({ type: "live_gift", sessionId, gift: payload.gift, sender: payload.sender, liveGiftId: "" });
+          window.setTimeout(() => setGiftFlash(null), 4000);
+        }
+        if (payload.type === "guest_request" && user.id === session?.hostId) {
+          void load().catch(() => undefined);
+        }
+      } catch {
+        // ignore malformed frames
+      }
+    };
+    return () => socket.close();
+  }, [sessionId, user?.id, session?.hostId]);
+
+  async function like() {
+    if (!user) {
+      onNeedAccount();
+      return;
+    }
+    const result = await apiSend<{ liked: boolean; likeCount: number }>(`/live/sessions/${sessionId}/like`, "POST");
+    setSession((current) =>
+      current ? { ...current, likedByMe: result.liked, likeCount: result.likeCount } : current,
+    );
+  }
+
+  async function sendGift(slug: string) {
+    if (!user) {
+      onNeedAccount();
+      return;
+    }
+    const idempotencyKey = `gift_${sessionId}_${user.id}_${slug}_${Date.now()}`;
+    try {
+      await apiSend(`/live/sessions/${sessionId}/gifts`, "POST", { giftSlug: slug, idempotencyKey });
+      const wallet = await apiGet<{ balanceCoins: number }>("/wallet");
+      setWalletCoins(wallet.balanceCoins);
+      setNotice("Gift sent!");
+    } catch {
+      setNotice("Not enough coins — buy a pack to keep cheering.");
+      setShowCoins(true);
+    }
+  }
+
+  async function buyCoins(packId: "pack_100" | "pack_500") {
+    const result = await apiSend<{ checkout: { url?: string | null } }>("/coins/checkout", "POST", { packId });
+    const url = checkoutUrl(result);
+    if (url) window.location.href = url;
+  }
+
+  async function decideGuest(requestId: string, approve: boolean) {
+    await apiSend(`/live/sessions/${sessionId}/guest-requests/decide`, "POST", { requestId, approve });
+    setGuestRequests((current) => current.filter((row) => row.id !== requestId));
+    setNotice(approve ? "Guest approved — they can publish now." : "Guest request declined.");
+  }
+
+  async function requestGuestSpot() {
+    if (!user) {
+      onNeedAccount();
+      return;
+    }
+    await apiSend(`/live/sessions/${sessionId}/guest-requests`, "POST", { message: "Ready to join on cam" });
+    setNotice("Guest request sent to the host.");
+  }
+
+  async function goLive() {
+    if (!user || !session) return;
+    await apiSend(`/live/sessions/${sessionId}/start`, "POST");
+    await load();
+  }
+
+  if (!session) return <p className="empty-state">{error ?? "Loading the bay…"}</p>;
+
+  const live = Boolean(session.startedAt) && !session.endedAt;
+  const isHost = user?.id === session.hostId;
+
+  return (
+    <>
+      <article className="live-card">
+        <div className="live-thumb">
+          <img src={images.motorcycle} alt="" decoding="async" />
+          <span className="live-badge">{live ? "LIVE" : session.recordingState === "ready" ? "REPLAY" : "STANDBY"}</span>
+        </div>
+        <div className="live-card-body">
+          <div className="live-copy">
+            <strong>{session.title ?? session.roomName}</strong>
+            <span>
+              {session.kind} · {session.likeCount ?? 0} hearts
+              {walletCoins !== null ? ` · ${walletCoins} coins` : ""}
+            </span>
+          </div>
+          <button type="button" className="heart-button" onClick={() => void like()} aria-label="Like live session">
+            {session.likedByMe ? <HeartFilledIcon /> : <HeartIcon />}
+          </button>
+        </div>
+      </article>
+
+      {giftFlash ? (
+        <div className="gift-flash" data-animation={giftFlash.gift.animationKey}>
+          {giftFlash.sender.username} sent {giftFlash.gift.name} ({giftFlash.gift.coinCost} coins)
+        </div>
+      ) : null}
+
+      {user && live ? (
+        <LiveKitSession sessionId={sessionId} userId={user.id} isHost={isHost} />
+      ) : (
+        <p className="empty-state">
+          {livekitUrl
+            ? "Sign in and wait for the host to go live for in-app video."
+            : "Mock LiveKit mode — set LIVEKIT_URL for real WebRTC. RTMP ingest still works for OBS."}
+        </p>
+      )}
+
+      {error ? <p className="auth-error">{error}</p> : null}
+      {notice ? <p className="empty-state">{notice}</p> : null}
+
+      {isHost && !live ? (
+        <button type="button" className="sell-button" onClick={() => void goLive()}>
+          Go live in app
+        </button>
+      ) : null}
+
+      {user && gifts.length > 0 ? (
+        <div className="auth-card">
+          <span>SEND A GIFT</span>
+          <div className="gift-grid">
+            {gifts.map((gift) => (
+              <button key={gift.slug} type="button" onClick={() => void sendGift(gift.slug)}>
+                {gift.name} · {gift.coinCost}
+              </button>
+            ))}
+          </div>
+          <button type="button" onClick={() => setShowCoins((value) => !value)}>
+            Buy coins
+          </button>
+          {showCoins ? (
+            <div className="profile-actions">
+              <button type="button" onClick={() => void buyCoins("pack_100")}>
+                100 coins · {formatUsd(499)}
+              </button>
+              <button type="button" onClick={() => void buyCoins("pack_500")}>
+                500 coins · {formatUsd(1999)}
+              </button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {isHost && guestRequests.length > 0 ? (
+        <div className="auth-card">
+          <span>GUEST REQUESTS</span>
+          {guestRequests.map((request) => (
+            <div key={request.id} className="profile-actions">
+              <span>
+                {request.username}
+                {request.message ? ` — ${request.message}` : ""}
+              </span>
+              <button type="button" onClick={() => void decideGuest(request.id, true)}>
+                Approve
+              </button>
+              <button type="button" onClick={() => void decideGuest(request.id, false)}>
+                Decline
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {user && !isHost && live ? (
+        <button type="button" onClick={() => void requestGuestSpot()}>
+          Request guest spot
+        </button>
+      ) : null}
+
+      {isHost && rtmp ? (
+        <div className="auth-card">
+          <span>HOST INGEST</span>
+          <p>OBS / RTMP fallback when LiveKit Cloud egress is configured.</p>
+          <label>
+            URL
+            <input readOnly value={rtmp.url ?? ""} />
+          </label>
+          <label>
+            Stream key
+            <input readOnly value={rtmp.key ?? ""} />
+          </label>
+        </div>
+      ) : null}
+
+      {session.recordingReplayUrl ? (
+        <a className="sell-button" href={session.recordingReplayUrl}>
+          Open replay
+        </a>
+      ) : null}
+
+      <div className="profile-actions">
+        <button type="button" onClick={onJoinBay}>
+          Join the bay
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            if (!user) onNeedAccount();
+            else onTip(session.hostId);
+          }}
+        >
+          Tip the host
+        </button>
+      </div>
+    </>
+  );
+}

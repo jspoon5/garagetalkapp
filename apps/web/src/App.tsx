@@ -1,15 +1,48 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BellIcon, ChatBubbleIcon, ChevronLeftIcon, GearIcon, HomeIcon, MagnifyingGlassIcon, PersonIcon } from "./icons";
-import { apiGet, apiSend, type ChatRoom, type FeedPost, type LiveSession, type User } from "./api";
+import {
+  apiGet,
+  apiSend,
+  checkoutUrl,
+  type ChatRoom,
+  type FeedPost,
+  type LiveSession,
+  type User,
+} from "./api";
 import { preferredRoom, roomImage, roomLane, type Lane } from "./bays";
 import { BayScreen } from "./screens/BayScreen";
 import { GearHeadScreen } from "./screens/GearHeadScreen";
 import { GarageScreen } from "./screens/GarageScreen";
 import { HomeScreen } from "./screens/HomeScreen";
+import {
+  BillingScreen,
+  PodcastsScreen,
+  PostThreadScreen,
+  SearchScreen,
+  ShopsScreen,
+  VideosScreen,
+} from "./screens/HubScreens";
+import { LiveSessionScreen } from "./screens/LiveSessionScreen";
 import { MarketplaceScreen } from "./screens/MarketplaceScreen";
 import { RoomsScreen } from "./screens/RoomsScreen";
+import { ComposeSheet } from "./screens/shared";
+import { VehicleScreen } from "./screens/VehicleScreen";
 
 export type Screen = "home" | "rooms" | "gearhead" | "market" | "profile";
+
+type Overlay =
+  | { kind: "vehicle"; id: string }
+  | { kind: "live"; id: string }
+  | { kind: "videos" }
+  | { kind: "podcasts" }
+  | { kind: "shops" }
+  | { kind: "search" }
+  | { kind: "billing" }
+  | { kind: "post"; id: string }
+  | { kind: "compose" }
+  | { kind: "createRoom" }
+  | { kind: "goLive" }
+  | { kind: "tip"; toUserId: string };
 
 type ExtendedNavigator = Navigator & {
   connection?: { saveData?: boolean };
@@ -24,24 +57,43 @@ const tabs: Array<{ id: Screen; label: string; icon: typeof HomeIcon }> = [
   { id: "profile", label: "Garage", icon: PersonIcon },
 ];
 
+const overlayTitles: Record<Overlay["kind"], string> = {
+  vehicle: "Vehicle",
+  live: "Live session",
+  videos: "Videos",
+  podcasts: "Podcasts",
+  shops: "Shops",
+  search: "Search",
+  billing: "Subscribe",
+  post: "Post",
+  compose: "New post",
+  createRoom: "New bay",
+  goLive: "Go live",
+  tip: "Tip",
+};
+
 export function App() {
   const appRef = useRef<HTMLDivElement>(null);
   const [layoutClasses, setLayoutClasses] = useState("phone-compact");
   const [screen, setScreen] = useState<Screen>("home");
   const [roomId, setRoomId] = useState<string | null>(null);
+  const [overlay, setOverlay] = useState<Overlay | null>(null);
   const [pendingRoom, setPendingRoom] = useState<{ id: string; from: Screen } | null>(null);
   const [noticesOpen, setNoticesOpen] = useState(false);
   const [vehicleFilter, setVehicleFilter] = useState("All");
-  const [liked, setLiked] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [lives, setLives] = useState<LiveSession[]>([]);
   const [liveNote, setLiveNote] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
+  const [tipAmount, setTipAmount] = useState("500");
 
   const activeRoom = rooms.find((room) => room.id === roomId) ?? null;
+  const activePost = overlay?.kind === "post" ? (posts.find((post) => post.id === overlay.id) ?? null) : null;
 
   const title = useMemo(() => {
+    if (overlay) return overlayTitles[overlay.kind];
     if (activeRoom) return activeRoom.title;
     return {
       home: "Garage Talk",
@@ -50,11 +102,12 @@ export function App() {
       market: "Marketplace",
       profile: "My Garage",
     }[screen];
-  }, [activeRoom, screen]);
+  }, [activeRoom, overlay, screen]);
 
   const navigate = (next: Screen) => {
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
     setRoomId(null);
+    setOverlay(null);
     setNoticesOpen(false);
     setPendingRoom(null);
     if (next === "rooms" || next === "market") setVehicleFilter("All");
@@ -64,12 +117,14 @@ export function App() {
   const goSignIn = (returnRoom?: string | null) => {
     if (returnRoom) setPendingRoom({ id: returnRoom, from: screen });
     setRoomId(null);
+    setOverlay(null);
     setNoticesOpen(false);
     setScreen("profile");
   };
 
   const enterRoom = (id: string) => {
     setNoticesOpen(false);
+    setOverlay(null);
     setRoomId(id);
   };
 
@@ -77,6 +132,14 @@ export function App() {
     const room = preferredRoom(rooms, lane);
     if (room) enterRoom(room.id);
     else navigate("rooms");
+  };
+
+  const goBack = () => {
+    if (overlay) {
+      setOverlay(null);
+      return;
+    }
+    setRoomId(null);
   };
 
   async function refresh() {
@@ -98,6 +161,10 @@ export function App() {
       })
       .catch(() => undefined);
     void refresh().catch(() => undefined);
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("billing") === "success" || params.get("tip") === "success" || params.get("market") === "success") {
+      setLiveNote("Payment completed — Stripe will reconcile the webhook shortly.");
+    }
   }, []);
 
   useEffect(() => {
@@ -146,16 +213,43 @@ export function App() {
     };
   }, []);
 
-  async function likePost(postId?: string) {
-    if (!postId) {
-      setLiked((value) => !value);
+  async function likePost(postId: string) {
+    if (!user) {
+      goSignIn();
+      return;
+    }
+    const result = await apiSend<{ reaction: { liked?: boolean } }>(`/feed/posts/${postId}/reactions`, "POST", {
+      kind: "like",
+    });
+    setPosts((current) =>
+      current.map((post) =>
+        post.id === postId
+          ? {
+              ...post,
+              likedByMe: result.reaction.liked ?? !post.likedByMe,
+              likeCount: Math.max(0, (post.likeCount ?? 0) + (result.reaction.liked === false ? -1 : 1)),
+            }
+          : post,
+      ),
+    );
+  }
+
+  async function likeLive() {
+    const session = lives[0];
+    if (!session) {
+      enterLane("Motorcycles");
       return;
     }
     if (!user) {
       goSignIn();
       return;
     }
-    await apiSend(`/feed/posts/${postId}/reactions`, "POST", { kind: "like" });
+    const result = await apiSend<{ liked: boolean; likeCount: number }>(`/live/sessions/${session.id}/like`, "POST");
+    setLives((current) =>
+      current.map((item) =>
+        item.id === session.id ? { ...item, likedByMe: result.liked, likeCount: result.likeCount } : item,
+      ),
+    );
   }
 
   async function composePost(body: string) {
@@ -163,9 +257,15 @@ export function App() {
       goSignIn();
       return;
     }
-    const text = body.trim() || window.prompt("What’s in the garage?")?.trim();
-    if (!text) return;
+    const text = body.trim();
+    if (!text) {
+      setDraft("");
+      setOverlay({ kind: "compose" });
+      return;
+    }
     await apiSend("/feed/posts", "POST", { body: text });
+    setOverlay(null);
+    setDraft("");
     await refresh();
   }
 
@@ -174,9 +274,15 @@ export function App() {
       goSignIn();
       return;
     }
-    const title = window.prompt("Name this bay");
-    if (!title?.trim()) return;
-    const data = await apiSend<{ room: ChatRoom }>("/rooms", "POST", { title: title.trim(), kind: "topic" });
+    const titleText = draft.trim();
+    if (!titleText) {
+      setDraft("");
+      setOverlay({ kind: "createRoom" });
+      return;
+    }
+    const data = await apiSend<{ room: ChatRoom }>("/rooms", "POST", { title: titleText, kind: "topic" });
+    setOverlay(null);
+    setDraft("");
     await refresh();
     enterRoom(data.room.id);
   }
@@ -186,15 +292,37 @@ export function App() {
       goSignIn();
       return;
     }
+    const titleText = draft.trim() || `${user.username} live`;
     const roomName = `bay_${user.username.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 24) || "live"}`;
     const data = await apiSend<{ session: LiveSession; rtmp: { url: string; key: string } }>("/live/sessions", "POST", {
       roomName,
-      title: `${user.username} live`,
+      title: titleText,
       kind: "stream",
     });
-    setLiveNote(`OBS ingest: ${data.rtmp.url} key ${data.rtmp.key}`);
+    setLiveNote(`OBS ingest: ${data.rtmp.url}`);
+    setDraft("");
     await refresh();
-    enterLane("Motorcycles");
+    setOverlay({ kind: "live", id: data.session.id });
+  }
+
+  async function sendTip(toUserId: string) {
+    if (!user) {
+      goSignIn();
+      return;
+    }
+    const cents = Number(tipAmount);
+    if (!Number.isFinite(cents) || cents < 100) return;
+    const data = await apiSend<{ checkout?: { url?: string | null; mode?: string } | null }>("/billing/tips", "POST", {
+      toUserId,
+      amountCents: Math.round(cents),
+    });
+    const url = checkoutUrl(data);
+    if (data.checkout?.mode === "stripe" && url) {
+      window.location.assign(url);
+      return;
+    }
+    setLiveNote("Tip sent.");
+    setOverlay(null);
   }
 
   const notices = [
@@ -202,7 +330,7 @@ export function App() {
       id: session.id,
       title: session.title ?? session.roomName,
       body: `${session.kind} is on the board.`,
-      onClick: () => enterLane(roomLane(session.title ?? session.roomName)),
+      onClick: () => setOverlay({ kind: "live", id: session.id }),
     })),
     ...rooms.slice(0, 2).map((room) => ({
       id: room.id,
@@ -217,7 +345,7 @@ export function App() {
       <nav className="gt-nav" aria-label="Garage Talk navigation">
         {tabs.map((tab) => {
           const Icon = tab.icon;
-          const active = screen === tab.id;
+          const active = screen === tab.id && !roomId && !overlay;
           return (
             <button
               key={tab.id}
@@ -235,8 +363,8 @@ export function App() {
       </nav>
 
       <header className="gt-topbar">
-        {roomId ? (
-          <button type="button" className="icon-button" aria-label="Back" onClick={() => setRoomId(null)}>
+        {roomId || overlay ? (
+          <button type="button" className="icon-button" aria-label="Back" onClick={goBack}>
             <ChevronLeftIcon />
           </button>
         ) : (
@@ -246,7 +374,9 @@ export function App() {
         )}
         <div className="brand-copy">
           <span>{title}</span>
-          <small>{roomId ? "Live bay · back returns you where you came from" : "Built for every gearhead"}</small>
+          <small>
+            {overlay || roomId ? "Live bay · back returns you where you came from" : "Built for every gearhead"}
+          </small>
         </div>
         <button
           type="button"
@@ -258,7 +388,14 @@ export function App() {
         </button>
       </header>
 
-      <div key={roomId ?? screen} className="gt-scroll">
+      <div
+        key={
+          overlay && overlay.kind !== "compose" && overlay.kind !== "createRoom" && overlay.kind !== "goLive" && overlay.kind !== "tip"
+            ? `${overlay.kind}${"id" in overlay ? overlay.id : ""}`
+            : (roomId ?? screen)
+        }
+        className="gt-scroll"
+      >
         <main className="gt-content">
           {liveNote ? <p className="empty-state">{liveNote}</p> : null}
           {noticesOpen ? (
@@ -276,6 +413,38 @@ export function App() {
               ))}
               {notices.length === 0 ? <p className="empty-state">Nothing on the board yet.</p> : null}
             </section>
+          ) : overlay?.kind === "vehicle" ? (
+            <VehicleScreen vehicleId={overlay.id} onOpenBay={(type) => enterLane(roomLane(type))} />
+          ) : overlay?.kind === "live" ? (
+            <LiveSessionScreen
+              sessionId={overlay.id}
+              user={user}
+              onNeedAccount={() => goSignIn()}
+              onJoinBay={() => enterLane("Motorcycles")}
+              onTip={(hostId) => setOverlay({ kind: "tip", toUserId: hostId })}
+            />
+          ) : overlay?.kind === "videos" ? (
+            <VideosScreen signedIn={Boolean(user)} onNeedAccount={() => goSignIn()} />
+          ) : overlay?.kind === "podcasts" ? (
+            <PodcastsScreen />
+          ) : overlay?.kind === "shops" ? (
+            <ShopsScreen user={user} onNeedAccount={() => goSignIn()} />
+          ) : overlay?.kind === "search" ? (
+            <SearchScreen
+              rooms={rooms}
+              onEnterRoom={enterRoom}
+              onOpenListing={() => navigate("market")}
+              onOpenPost={(id) => setOverlay({ kind: "post", id })}
+            />
+          ) : overlay?.kind === "billing" ? (
+            <BillingScreen user={user} onNeedAccount={() => goSignIn()} />
+          ) : overlay?.kind === "post" && activePost ? (
+            <PostThreadScreen
+              post={activePost}
+              signedIn={Boolean(user)}
+              onNeedAccount={() => goSignIn()}
+              onLike={(id) => void likePost(id)}
+            />
           ) : roomId && activeRoom ? (
             <BayScreen
               roomId={activeRoom.id}
@@ -289,12 +458,19 @@ export function App() {
               rooms={rooms}
               posts={posts}
               live={lives[0] ?? null}
-              liked={liked}
               onLike={(postId) => void likePost(postId)}
+              onLikeLive={() => void likeLive()}
               onEnterRoom={enterRoom}
               onOpenRooms={() => navigate("rooms")}
               onOpenGearHead={() => navigate("gearhead")}
-              onOpenLive={() => enterLane("Motorcycles")}
+              onOpenLive={() =>
+                lives[0] ? setOverlay({ kind: "live", id: lives[0].id }) : enterLane("Motorcycles")
+              }
+              onOpenSearch={() => setOverlay({ kind: "search" })}
+              onOpenVideos={() => setOverlay({ kind: "videos" })}
+              onOpenPodcasts={() => setOverlay({ kind: "podcasts" })}
+              onOpenShops={() => setOverlay({ kind: "shops" })}
+              onOpenPost={(id) => setOverlay({ kind: "post", id })}
               onCompose={(body) => void composePost(body)}
               signedIn={Boolean(user)}
             />
@@ -320,12 +496,69 @@ export function App() {
             <GarageScreen
               user={user}
               setUser={setUser}
-              onOpenVehicleBay={(type) => enterLane(roomLane(type))}
-              onGoLive={() => void goLive()}
+              onOpenVehicle={(id) => setOverlay({ kind: "vehicle", id })}
+              onGoLive={() => {
+                setDraft("");
+                setOverlay({ kind: "goLive" });
+              }}
+              onOpenBilling={() => setOverlay({ kind: "billing" })}
             />
           )}
         </main>
       </div>
+
+      {overlay?.kind === "compose" ? (
+        <ComposeSheet
+          eyebrow="THE LOT"
+          title="What’s in the garage?"
+          label="Post"
+          placeholder="Drop a wrench note"
+          submitLabel="Publish"
+          value={draft}
+          onChange={setDraft}
+          onClose={() => setOverlay(null)}
+          onSubmit={() => void composePost(draft)}
+        />
+      ) : null}
+      {overlay?.kind === "createRoom" ? (
+        <ComposeSheet
+          eyebrow="NEW BAY"
+          title="Name this bay"
+          label="Title"
+          placeholder="Car Garage"
+          submitLabel="Open bay"
+          value={draft}
+          onChange={setDraft}
+          onClose={() => setOverlay(null)}
+          onSubmit={() => void createRoom()}
+        />
+      ) : null}
+      {overlay?.kind === "goLive" ? (
+        <ComposeSheet
+          eyebrow="GO LIVE"
+          title="Name the session"
+          label="Title"
+          placeholder={`${user?.username ?? "You"} live`}
+          submitLabel="Create session"
+          value={draft}
+          onChange={setDraft}
+          onClose={() => setOverlay(null)}
+          onSubmit={() => void goLive()}
+        />
+      ) : null}
+      {overlay?.kind === "tip" ? (
+        <ComposeSheet
+          eyebrow="TIP"
+          title="Send a tip"
+          label="Amount (cents)"
+          placeholder="500"
+          submitLabel="Tip"
+          value={tipAmount}
+          onChange={setTipAmount}
+          onClose={() => setOverlay(null)}
+          onSubmit={() => void sendTip(overlay.toUserId)}
+        />
+      ) : null}
     </div>
   );
 }

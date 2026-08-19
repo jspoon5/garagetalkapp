@@ -3,12 +3,16 @@ import {
   creatorLedgers,
   listings,
   orders,
+  reactions,
   serviceRecords,
   vehicles,
   type Database,
 } from "@garagetalk/db";
+import Stripe from "stripe";
 import { uuidv7 } from "uuidv7";
 import { z } from "zod";
+import { stripeFromEnv } from "./billing-service.js";
+import { reactionIdsForUser, toggleReaction } from "./reaction-store.js";
 
 const listingKindSchema = z.enum(["part", "vehicle", "tool", "accessory", "service"]);
 const orderStateSchema = z.enum(["pending", "paid", "shipped", "delivered", "disputed", "refunded"]);
@@ -142,7 +146,42 @@ export class MarketplaceService {
           .from(vehicles)
           .where(and(eq(vehicles.userId, buyerId), isNull(vehicles.deletedAt)))
       : [];
-    return { listings: filtered.map((row) => badge(row, garage)), facets: facets(filtered) };
+    const savedIds = buyerId
+      ? await reactionIdsForUser(
+          this.db,
+          buyerId,
+          "listing",
+          filtered.map((row) => row.id),
+        )
+      : new Set<string>();
+    return {
+      listings: filtered.map((row) => ({ ...badge(row, garage), saved: savedIds.has(row.id) })),
+      facets: facets(filtered),
+    };
+  }
+
+  async toggleFavorite(userId: string, listingId: string) {
+    const [listing] = await this.db
+      .select({ id: listings.id })
+      .from(listings)
+      .where(and(eq(listings.id, listingId), eq(listings.status, "active"), isNull(listings.deletedAt)))
+      .limit(1);
+    if (!listing) return null;
+    return toggleReaction(this.db, userId, "listing", listingId, "save");
+  }
+
+  async listSaved(userId: string) {
+    const saved = await this.db
+      .select({ subjectId: reactions.subjectId })
+      .from(reactions)
+      .where(and(eq(reactions.userId, userId), eq(reactions.subjectType, "listing")));
+    const ids = saved.map((row) => row.subjectId);
+    if (ids.length === 0) return { listings: [] as Array<ReturnType<typeof badge> & { saved: boolean }> };
+    const rows = await this.db
+      .select()
+      .from(listings)
+      .where(and(inArray(listings.id, ids), isNull(listings.deletedAt)));
+    return { listings: rows.map((row) => ({ ...badge(row, []), saved: true })) };
   }
 
   async sellerDashboard(sellerId: string) {
@@ -177,8 +216,10 @@ export class MarketplaceService {
     const feeCents = platformFee(listing.priceCents);
     const sellerNetCents = listing.priceCents - feeCents;
     const orderId = uuidv7();
-    const paymentIntent = `pi_market_${orderId.replace(/-/g, "").slice(0, 18)}`;
-    const balanceAfter = (await this.lastBalance(listing.sellerId)) + sellerNetCents;
+    const stripe = stripeFromEnv();
+    const paymentIntent = stripe ? `pi_pending_${orderId.replace(/-/g, "").slice(0, 12)}` : `pi_market_${orderId.replace(/-/g, "").slice(0, 18)}`;
+    const markPaid = !stripe;
+
     await this.db.transaction(async (tx) => {
       await tx.insert(orders).values({
         id: orderId,
@@ -189,29 +230,65 @@ export class MarketplaceService {
         feeCents,
         sellerNetCents,
         stripePaymentIntent: paymentIntent,
-        state: "pending",
+        state: markPaid ? "paid" : "pending",
         shipping: parsed.shipping,
       });
-      await tx.update(orders).set({ state: "paid", updatedAt: new Date() }).where(eq(orders.id, orderId));
-      await tx.insert(creatorLedgers).values({
-        id: uuidv7(),
-        userId: listing.sellerId,
-        entryType: "course_sale",
-        amountCents: sellerNetCents,
-        grossAmountCents: listing.priceCents,
-        applicationFeeCents: feeCents,
-        subjectType: "marketplace_order",
-        subjectId: orderId,
-        stripePaymentIntent: paymentIntent,
-        balanceAfter,
-      });
+      if (markPaid) {
+        const balanceAfter = (await this.lastBalance(listing.sellerId)) + sellerNetCents;
+        await tx.insert(creatorLedgers).values({
+          id: uuidv7(),
+          userId: listing.sellerId,
+          entryType: "course_sale",
+          amountCents: sellerNetCents,
+          grossAmountCents: listing.priceCents,
+          applicationFeeCents: feeCents,
+          subjectType: "marketplace_order",
+          subjectId: orderId,
+          stripePaymentIntent: paymentIntent,
+          balanceAfter,
+        });
+      }
     });
     const [order] = await this.db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+    if (stripe) {
+      const base = process.env.APP_BASE_URL ?? "http://localhost:5173";
+      const session = await stripe.checkout.sessions.create({
+        mode: "payment",
+        line_items: [
+          {
+            quantity: 1,
+            price_data: {
+              currency: "usd",
+              unit_amount: listing.priceCents,
+              product_data: { name: listing.title, description: listing.description ?? "Garage Talk marketplace" },
+            },
+          },
+        ],
+        success_url: `${base}/?market=success`,
+        cancel_url: `${base}/?market=cancel`,
+        metadata: { type: "marketplace", orderId, listingId, buyerId },
+        integration_identifier: `gt_mkt_${orderId.replace(/-/g, "").slice(0, 8)}`,
+      } as Stripe.Checkout.SessionCreateParams);
+      return {
+        order: order!,
+        feeCents,
+        sellerNetCents,
+        payment: {
+          mode: "stripe" as const,
+          destinationCharge: true,
+          paymentIntent,
+          applicationFeeCents: feeCents,
+          url: session.url,
+        },
+        checkout: { url: session.url, mode: "stripe" as const },
+      };
+    }
     return {
       order: order!,
       feeCents,
       sellerNetCents,
-      payment: { mode: "stub", destinationCharge: true, paymentIntent, applicationFeeCents: feeCents },
+      payment: { mode: "stub" as const, destinationCharge: true, paymentIntent, applicationFeeCents: feeCents },
+      checkout: null,
     };
   }
 

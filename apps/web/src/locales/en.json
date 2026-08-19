@@ -29,6 +29,15 @@
     "deleteAccount": "Delete my account",
     "registerFailed": "Could not register",
     "loginFailed": "Invalid credentials",
+    "resetTitle": "Reset your password.",
+    "resetSubtitle": "We’ll email a reset link if that address is on file.",
+    "forgot": "Forgot password?",
+    "sendReset": "Send reset link",
+    "confirmReset": "Set new password",
+    "resetToken": "Reset token",
+    "resetSent": "If that email is on file, a reset link is on the way.",
+    "resetDone": "Password updated. Sign in with the new one.",
+    "resetFailed": "Could not reset that password",
     "signOut": "Sign out"
   },
   "pwa": {

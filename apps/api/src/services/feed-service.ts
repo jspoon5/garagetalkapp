@@ -11,6 +11,7 @@ import {
 } from "@garagetalk/db";
 import { uuidv7 } from "uuidv7";
 import { z } from "zod";
+import { reactionCounts, reactionIdsForUser, toggleReaction } from "./reaction-store.js";
 
 const mediaTypeSchema = z.enum(["text", "photo", "video"]);
 
@@ -90,15 +91,24 @@ export class FeedService {
             .from(users)
             .where(inArray(users.id, authorIds));
     const names = new Map(authors.map((author) => [author.id, author.username]));
+    const ids = rows.map((post) => post.id);
+    const counts = await reactionCounts(this.db, "post", ids);
+    const liked = userId ? await reactionIdsForUser(this.db, userId, "post", ids) : new Set<string>();
     return rows.map((post) => ({
       ...post,
       authorUsername: names.get(post.authorId) ?? "gearhead",
       source: followedIds.has(post.authorId) ? "followed" : "discovery",
+      likeCount: counts.get(post.id) ?? 0,
+      likedByMe: liked.has(post.id),
     }));
   }
 
   async react(userId: string, postId: string, input: z.infer<typeof feedReactionInputSchema>) {
     const parsed = feedReactionInputSchema.parse(input);
+    if (parsed.kind === "like") {
+      const toggled = await toggleReaction(this.db, userId, "post", postId, "like");
+      return { id: toggled.reactionId, liked: toggled.liked, kind: "like" as const };
+    }
     await this.db
       .delete(reactions)
       .where(
@@ -119,6 +129,21 @@ export class FeedService {
       })
       .returning();
     return reaction!;
+  }
+
+  async listComments(postId: string) {
+    const rows = await this.db
+      .select()
+      .from(postComments)
+      .where(and(eq(postComments.postId, postId), isNull(postComments.deletedAt)))
+      .orderBy(desc(postComments.createdAt));
+    const userIds = [...new Set(rows.map((row) => row.userId))];
+    const authors =
+      userIds.length === 0
+        ? []
+        : await this.db.select({ id: users.id, username: users.username }).from(users).where(inArray(users.id, userIds));
+    const names = new Map(authors.map((author) => [author.id, author.username]));
+    return rows.map((row) => ({ ...row, authorUsername: names.get(row.userId) ?? "gearhead" }));
   }
 
   async comment(userId: string, postId: string, input: z.infer<typeof feedCommentInputSchema>) {

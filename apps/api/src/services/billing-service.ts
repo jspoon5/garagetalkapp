@@ -1,17 +1,31 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { and, desc, eq } from "drizzle-orm";
 import type { Database } from "@garagetalk/db";
-import { creatorLedgers, subscriptions, tips, users, webhookEvents } from "@garagetalk/db";
-import { SUBSCRIPTION_TIER_QUOTAS, type SubscriptionTier } from "@garagetalk/shared";
+import {
+  creatorLedgers,
+  creatorPayoutAccounts,
+  orders,
+  subscriptions,
+  tips,
+  users,
+  webhookEvents,
+} from "@garagetalk/db";
+import { SUBSCRIPTION_TIER_QUOTAS, TIER_PRICES, type PaidTier, type SubscriptionTier } from "@garagetalk/shared";
 import Stripe from "stripe";
 import { uuidv7 } from "uuidv7";
 import { z } from "zod";
+import { EntitlementService } from "./entitlement-service.js";
+import type { GiftService } from "./gift-service.js";
 
 export const tipInputSchema = z.object({
   toUserId: z.string().uuid(),
   amountCents: z.number().int().min(100).max(100_000),
   subjectType: z.string().min(1).max(80).nullable().optional(),
   subjectId: z.string().uuid().nullable().optional(),
+});
+
+export const checkoutTierSchema = z.object({
+  tier: z.enum(["gearhead", "racing_pro", "pro"]),
 });
 
 export const stripeEventSchema = z.object({
@@ -45,6 +59,25 @@ const DEFAULT_FEE_BPS = 1000;
 
 function isTier(value: string | undefined): value is SubscriptionTier {
   return TIER_VALUES.some((tier) => tier === value);
+}
+
+function integrationIdentifier(prefix: string): string {
+  const alphabet = "abcdefghijklmnopqrstuvwxyz";
+  let suffix = "";
+  for (let i = 0; i < 8; i++) suffix += alphabet[Math.floor(Math.random() * alphabet.length)]!;
+  return `${prefix}_${suffix}`;
+}
+
+export function stripeFromEnv(): Stripe | null {
+  if (process.env.NODE_ENV === "test") return null;
+  const secretKey = process.env.STRIPE_SECRET_KEY;
+  return secretKey ? new Stripe(secretKey) : null;
+}
+
+function envPriceId(tier: PaidTier): string | undefined {
+  const key = `STRIPE_PRICE_${tier.toUpperCase()}`;
+  const value = process.env[key];
+  return value && value.length > 0 ? value : undefined;
 }
 
 function safeEqual(a: string, b: string): boolean {
@@ -83,23 +116,83 @@ export function verifyStripeWebhookSignature(
 }
 
 export class BillingService {
-  constructor(private readonly db: Database) {}
+  private readonly entitlements: EntitlementService;
+
+  constructor(
+    private readonly db: Database,
+    private readonly gifts?: GiftService,
+  ) {
+    this.entitlements = new EntitlementService(db);
+  }
+
+  async getEntitlement(userId: string) {
+    const resolved = await this.entitlements.resolveForUser(userId);
+    if (!resolved) return null;
+    return this.entitlements.toPublic(resolved);
+  }
 
   listTiers() {
     return SUBSCRIPTION_TIER_QUOTAS;
   }
 
+  async createSubscriptionCheckout(
+    userId: string,
+    tier: PaidTier,
+    successUrl: string,
+    cancelUrl: string,
+  ) {
+    const [user] = await this.db.select().from(users).where(eq(users.id, userId)).limit(1);
+    if (!user) return null;
+    const stripe = stripeFromEnv();
+    const tierInfo = TIER_PRICES[tier];
+    if (!stripe) {
+      return {
+        url: `${cancelUrl.replace(/\/$/, "")}/billing/checkout/stub?tier=${tier}&user=${userId}`,
+        sessionId: `cs_stub_${userId.slice(0, 8)}`,
+        mode: "stub" as const,
+      };
+    }
+    const customerId = await this.ensureCustomer(stripe, user);
+    const priceId = envPriceId(tier);
+    const session = await stripe.checkout.sessions.create({
+      customer: customerId,
+      mode: "subscription",
+      line_items: priceId
+        ? [{ price: priceId, quantity: 1 }]
+        : [
+            {
+              quantity: 1,
+              price_data: {
+                currency: "usd",
+                unit_amount: tierInfo.amountCents,
+                recurring: { interval: "month" },
+                product_data: {
+                  name: tierInfo.name,
+                  description: `Monthly Garage Talk ${tierInfo.name}`,
+                },
+              },
+            },
+          ],
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      client_reference_id: userId,
+      metadata: { userId, tier, type: "subscription" },
+      subscription_data: { metadata: { userId, tier } },
+      integration_identifier: integrationIdentifier("gt_sub"),
+    } as Stripe.Checkout.SessionCreateParams);
+    return { url: session.url, sessionId: session.id, mode: "stripe" as const };
+  }
+
   async createPortalUrl(userId: string, returnUrl: string) {
     const [user] = await this.db.select().from(users).where(eq(users.id, userId)).limit(1);
     if (!user) return null;
-    const secretKey = process.env.STRIPE_SECRET_KEY;
-    if (!secretKey || !user.stripeCustomerId) {
+    const stripe = stripeFromEnv();
+    if (!stripe || !user.stripeCustomerId) {
       return {
         url: `${returnUrl.replace(/\/$/, "")}/billing/portal/stub?user=${userId}`,
         mode: "stub" as const,
       };
     }
-    const stripe = new Stripe(secretKey);
     const session = await stripe.billingPortal.sessions.create({
       customer: user.stripeCustomerId,
       return_url: returnUrl,
@@ -123,6 +216,8 @@ export class BillingService {
     let reconciled = false;
     if (event.type.startsWith("customer.subscription.")) {
       reconciled = await this.reconcileSubscription(event.type, event.data.object);
+    } else if (event.type === "checkout.session.completed") {
+      reconciled = await this.fulfillCheckout(event.data.object);
     }
 
     await this.db.insert(webhookEvents).values({
@@ -136,16 +231,100 @@ export class BillingService {
   }
 
   async createConnectOnboardingLink(userId: string, returnUrl: string) {
+    const stripe = stripeFromEnv();
+    const [user] = await this.db.select().from(users).where(eq(users.id, userId)).limit(1);
+    if (!user) return null;
+
+    if (stripe) {
+      const [accountRow] = await this.db
+        .select()
+        .from(creatorPayoutAccounts)
+        .where(eq(creatorPayoutAccounts.userId, userId))
+        .limit(1);
+      let accountId = accountRow?.stripeConnectAccountId ?? null;
+      if (!accountId) {
+        const account = await stripe.accounts.create({
+          type: "express",
+          email: user.email,
+          metadata: { userId },
+        });
+        accountId = account.id;
+        if (accountRow) {
+          await this.db
+            .update(creatorPayoutAccounts)
+            .set({ stripeConnectAccountId: accountId, updatedAt: new Date() })
+            .where(eq(creatorPayoutAccounts.id, accountRow.id));
+        } else {
+          await this.db.insert(creatorPayoutAccounts).values({
+            id: uuidv7(),
+            userId,
+            stripeConnectAccountId: accountId,
+          });
+        }
+      }
+      const link = await stripe.accountLinks.create({
+        account: accountId,
+        refresh_url: returnUrl,
+        return_url: returnUrl,
+        type: "account_onboarding",
+      });
+      return { url: link.url, mode: "stripe" as const };
+    }
+
     return {
       url: `${returnUrl.replace(/\/$/, "")}/billing/connect/stub?user=${userId}`,
       mode: "stub" as const,
     };
   }
 
-  async createTip(fromUserId: string, input: z.infer<typeof tipInputSchema>) {
+  async createTip(fromUserId: string, input: z.infer<typeof tipInputSchema>, urls?: { successUrl: string; cancelUrl: string }) {
     const parsed = tipInputSchema.parse(input);
     const feeCents = Math.floor((parsed.amountCents * DEFAULT_FEE_BPS + 5000) / 10_000);
     const netCents = parsed.amountCents - feeCents;
+    const stripe = stripeFromEnv();
+    if (stripe && urls) {
+      const [fromUser] = await this.db.select().from(users).where(eq(users.id, fromUserId)).limit(1);
+      const [toUser] = await this.db.select().from(users).where(eq(users.id, parsed.toUserId)).limit(1);
+      if (!fromUser || !toUser || fromUserId === parsed.toUserId) {
+        return { tip: null, ledger: null, feeCents, netCents, checkout: null as { url: string; mode: "stripe" } | null };
+      }
+      const customerId = await this.ensureCustomer(stripe, fromUser);
+      const session = await stripe.checkout.sessions.create({
+        customer: customerId,
+        mode: "payment",
+        line_items: [
+          {
+            quantity: 1,
+            price_data: {
+              currency: "usd",
+              unit_amount: parsed.amountCents,
+              product_data: {
+                name: `Tip for ${toUser.username}`,
+                description: `Garage Talk tip from ${fromUser.username}`,
+              },
+            },
+          },
+        ],
+        success_url: urls.successUrl,
+        cancel_url: urls.cancelUrl,
+        metadata: {
+          type: "tip",
+          fromUserId,
+          toUserId: parsed.toUserId,
+          amountCents: String(parsed.amountCents),
+          subjectType: parsed.subjectType ?? "",
+          subjectId: parsed.subjectId ?? "",
+        },
+        integration_identifier: integrationIdentifier("gt_tip"),
+      } as Stripe.Checkout.SessionCreateParams);
+      return {
+        tip: null,
+        ledger: null,
+        feeCents,
+        netCents,
+        checkout: { url: session.url, mode: "stripe" as const },
+      };
+    }
     const [lastLedger] = await this.db
       .select()
       .from(creatorLedgers)
@@ -186,7 +365,110 @@ export class BillingService {
       })
       .returning();
 
-    return { tip: tip ?? null, ledger: ledger ?? null, feeCents, netCents };
+    return { tip: tip ?? null, ledger: ledger ?? null, feeCents, netCents, checkout: null };
+  }
+
+  private async ensureCustomer(
+    stripe: Stripe,
+    user: typeof users.$inferSelect,
+  ): Promise<string> {
+    if (user.stripeCustomerId) {
+      try {
+        await stripe.customers.retrieve(user.stripeCustomerId);
+        return user.stripeCustomerId;
+      } catch {
+        // Customer missing in this Stripe environment — create a new one.
+      }
+    }
+    const customer = await stripe.customers.create({
+      email: user.email,
+      metadata: { userId: user.id, username: user.username },
+    });
+    await this.db
+      .update(users)
+      .set({ stripeCustomerId: customer.id, updatedAt: new Date() })
+      .where(eq(users.id, user.id));
+    return customer.id;
+  }
+
+  private async fulfillCheckout(object: Record<string, unknown>) {
+    const metadata = (object.metadata ?? {}) as Record<string, string>;
+    const type = metadata.type;
+    if (type === "coin_pack" && this.gifts) {
+      const paymentIntent =
+        typeof object.payment_intent === "string" ? object.payment_intent : undefined;
+      return this.gifts.creditCoinsFromCheckout(metadata, paymentIntent);
+    }
+    if (type === "tip") {
+      return this.recordTipFromCheckout(object, metadata);
+    }
+    if (type === "marketplace" && metadata.orderId) {
+      return this.fulfillMarketplaceOrder(metadata.orderId, object);
+    }
+    const customerId = typeof object.customer === "string" ? object.customer : null;
+    const userId = metadata.userId;
+    if (userId && customerId) {
+      await this.db
+        .update(users)
+        .set({ stripeCustomerId: customerId, updatedAt: new Date() })
+        .where(eq(users.id, userId));
+      return true;
+    }
+    return false;
+  }
+
+  private async recordTipFromCheckout(object: Record<string, unknown>, metadata: Record<string, string>) {
+    const fromUserId = metadata.fromUserId;
+    const toUserId = metadata.toUserId;
+    const amountCents = Number(metadata.amountCents);
+    if (!fromUserId || !toUserId || !Number.isFinite(amountCents)) return false;
+    const paymentIntent =
+      typeof object.payment_intent === "string" ? object.payment_intent : `pi_tip_${uuidv7().slice(0, 18)}`;
+    const existing = await this.db
+      .select({ id: tips.id })
+      .from(tips)
+      .where(eq(tips.stripePaymentIntent, paymentIntent))
+      .limit(1);
+    if (existing[0]) return true;
+    await this.createTip(fromUserId, {
+      toUserId,
+      amountCents,
+      subjectType: metadata.subjectType || null,
+      subjectId: metadata.subjectId || null,
+    });
+    const [tip] = await this.db.select().from(tips).where(eq(tips.fromUserId, fromUserId)).orderBy(desc(tips.createdAt)).limit(1);
+    if (tip) {
+      await this.db.update(tips).set({ stripePaymentIntent: paymentIntent }).where(eq(tips.id, tip.id));
+    }
+    return true;
+  }
+
+  private async fulfillMarketplaceOrder(orderId: string, object: Record<string, unknown>) {
+    const [order] = await this.db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+    if (!order || order.state !== "pending") return Boolean(order);
+    const paymentIntent =
+      typeof object.payment_intent === "string" ? object.payment_intent : order.stripePaymentIntent;
+    const [lastLedger] = await this.db
+      .select()
+      .from(creatorLedgers)
+      .where(eq(creatorLedgers.userId, order.sellerId))
+      .orderBy(desc(creatorLedgers.createdAt))
+      .limit(1);
+    const balanceAfter = (lastLedger?.balanceAfter ?? 0) + order.sellerNetCents;
+    await this.db.update(orders).set({ state: "paid", stripePaymentIntent: paymentIntent, updatedAt: new Date() }).where(eq(orders.id, orderId));
+    await this.db.insert(creatorLedgers).values({
+      id: uuidv7(),
+      userId: order.sellerId,
+      entryType: "course_sale",
+      amountCents: order.sellerNetCents,
+      grossAmountCents: order.amountCents,
+      applicationFeeCents: order.feeCents,
+      subjectType: "marketplace_order",
+      subjectId: orderId,
+      stripePaymentIntent: paymentIntent,
+      balanceAfter,
+    });
+    return true;
   }
 
   private async reconcileSubscription(eventType: string, object: Record<string, unknown>) {
@@ -230,6 +512,14 @@ export class BillingService {
         updatedAt: new Date(),
       })
       .where(eq(users.id, user.id));
+
+    await this.entitlements.syncFromStripeSubscription({
+      userId: user.id,
+      tier,
+      status,
+      providerSubscriptionId: sub.id,
+      currentPeriodEnd,
+    });
     return true;
   }
 

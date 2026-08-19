@@ -8,24 +8,34 @@ export function HomeScreen({
   rooms,
   posts,
   live,
-  liked,
   onLike,
+  onLikeLive,
   onEnterRoom,
   onOpenRooms,
   onOpenGearHead,
   onOpenLive,
+  onOpenSearch,
+  onOpenVideos,
+  onOpenPodcasts,
+  onOpenShops,
+  onOpenPost,
   onCompose,
   signedIn,
 }: {
   rooms: ChatRoom[];
   posts: FeedPost[];
   live: LiveSession | null;
-  liked: boolean;
-  onLike: (postId?: string) => void;
+  onLike: (postId: string) => void;
+  onLikeLive: () => void;
   onEnterRoom: (id: string) => void;
   onOpenRooms: () => void;
   onOpenGearHead: () => void;
   onOpenLive: () => void;
+  onOpenSearch: () => void;
+  onOpenVideos: () => void;
+  onOpenPodcasts: () => void;
+  onOpenShops: () => void;
+  onOpenPost: (postId: string) => void;
   onCompose: (body: string) => void;
   signedIn: boolean;
 }) {
@@ -112,11 +122,11 @@ export function HomeScreen({
             className="heart-button"
             onClick={(event) => {
               event.stopPropagation();
-              onLike();
+              onLikeLive();
             }}
-            aria-label={liked ? "Unlike live room" : "Like live room"}
+            aria-label={live?.likedByMe ? "Unlike live room" : "Like live room"}
           >
-            {liked ? <HeartFilledIcon /> : <HeartIcon />}
+            {live?.likedByMe ? <HeartFilledIcon /> : <HeartIcon />}
           </button>
         </div>
       </article>
@@ -126,14 +136,33 @@ export function HomeScreen({
         <article className="feed-card" key={post.id}>
           <strong>{post.authorUsername ?? "gearhead"}</strong>
           <p>{post.body}</p>
-          <button type="button" onClick={() => onLike(post.id)}>
-            Like
-          </button>
+          <div className="profile-actions">
+            <button type="button" onClick={() => onLike(post.id)}>
+              {post.likedByMe ? "Unlike" : "Like"}
+              {post.likeCount ? ` · ${post.likeCount}` : ""}
+            </button>
+            <button type="button" onClick={() => onOpenPost(post.id)}>
+              Comments
+            </button>
+          </div>
         </article>
       ))}
       {posts.length === 0 ? (
         <p className="empty-state">{signedIn ? "No posts yet — drop what you’re wrenching on." : "Sign in to post in the lot."}</p>
       ) : null}
+
+      <SectionHeading eyebrow="The shop" title="More from the garage" action="Search" onAction={onOpenSearch} />
+      <div className="profile-actions">
+        <button type="button" onClick={onOpenVideos}>
+          Videos
+        </button>
+        <button type="button" onClick={onOpenPodcasts}>
+          Podcasts
+        </button>
+        <button type="button" onClick={onOpenShops}>
+          Shops
+        </button>
+      </div>
 
       <button type="button" className="diagnostic-card" onClick={onOpenGearHead}>
         <div className="diagnostic-icon">

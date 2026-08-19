@@ -29,6 +29,15 @@
     "deleteAccount": "Delete my account",
     "registerFailed": "Could not register",
     "loginFailed": "Invalid credentials",
+    "resetTitle": "Restablece tu contraseña.",
+    "resetSubtitle": "Enviaremos un enlace si ese correo está registrado.",
+    "forgot": "¿Olvidaste la contraseña?",
+    "sendReset": "Enviar enlace",
+    "confirmReset": "Nueva contraseña",
+    "resetToken": "Token",
+    "resetSent": "Si el correo existe, el enlace ya va en camino.",
+    "resetDone": "Contraseña actualizada. Entra con la nueva.",
+    "resetFailed": "No se pudo restablecer",
     "signOut": "Cerrar sesión"
   },
   "pwa": {
