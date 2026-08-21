@@ -90,7 +90,7 @@ function needsEvNotes(vehicle: Vehicle | null, message: string): boolean {
   return vehicle?.fuelType === "electric" || vehicle?.fuelType === "hybrid" || /high voltage|hv|ev/i.test(message);
 }
 
-class DefaultGearHeadProvider implements GearHeadProvider {
+class StubGearHeadProvider implements GearHeadProvider {
   async generate(input: GearHeadProviderInput): Promise<ProviderOutput> {
     return {
       diagnosis: `Initial diagnostic direction for ${input.vehicleLabel}: ${input.message}`,
@@ -101,13 +101,117 @@ class DefaultGearHeadProvider implements GearHeadProvider {
   }
 }
 
+const providerOutputLooseSchema = z.object({
+  diagnosis: z.string().min(1),
+  possible_causes: z.array(z.string()).default([]),
+  next_steps: z.array(z.string()).default([]),
+  parts: z
+    .array(
+      z.object({
+        name: z.string().min(1),
+        retailer_links: z.record(z.string(), z.string()).optional(),
+      }),
+    )
+    .default([]),
+  ev_safety_notes: z.string().optional(),
+});
+
+function extractJsonObject(text: string): unknown {
+  const trimmed = text.trim();
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    const start = trimmed.indexOf("{");
+    const end = trimmed.lastIndexOf("}");
+    if (start >= 0 && end > start) {
+      return JSON.parse(trimmed.slice(start, end + 1));
+    }
+    throw new Error("ai_provider_invalid_json");
+  }
+}
+
+/** OpenAI-compatible chat completions client (works with OpenAI and compatible gateways). */
+export class OpenAiCompatibleGearHeadProvider implements GearHeadProvider {
+  constructor(
+    private readonly opts: {
+      apiKey: string;
+      baseUrl: string;
+      fetchImpl?: typeof fetch;
+    },
+  ) {}
+
+  async generate(input: GearHeadProviderInput): Promise<ProviderOutput> {
+    const base = this.opts.baseUrl.replace(/\/$/, "");
+    const url = `${base}/chat/completions`;
+    const userContent: Array<Record<string, unknown>> | string = input.photoUrl
+      ? [
+          { type: "text", text: input.prompt },
+          { type: "image_url", image_url: { url: input.photoUrl } },
+        ]
+      : input.prompt;
+
+    const fetchImpl = this.opts.fetchImpl ?? fetch;
+    const res = await fetchImpl(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.opts.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: input.model,
+        temperature: 0.35,
+        max_tokens: input.maxOutputTokens,
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: input.systemPrompt },
+          { role: "user", content: userContent },
+        ],
+      }),
+    });
+
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      throw new Error(`ai_provider_http_${res.status}:${body.slice(0, 200)}`);
+    }
+
+    const payload = (await res.json()) as {
+      choices?: Array<{ message?: { content?: string | null } }>;
+    };
+    const content = payload.choices?.[0]?.message?.content;
+    if (!content?.trim()) throw new Error("ai_provider_empty_response");
+
+    const parsed = providerOutputLooseSchema.parse(extractJsonObject(content));
+    return {
+      diagnosis: parsed.diagnosis,
+      possible_causes: parsed.possible_causes,
+      next_steps: parsed.next_steps,
+      parts: parsed.parts,
+      ev_safety_notes: parsed.ev_safety_notes,
+    };
+  }
+}
+
+/** Prefer live OpenAI-compatible API when AI_API_KEY is set; otherwise stub for local/tests. */
+export function createDefaultGearHeadProvider(
+  env: NodeJS.ProcessEnv = process.env,
+  fetchImpl?: typeof fetch,
+): GearHeadProvider {
+  const apiKey = env.AI_API_KEY?.trim();
+  if (!apiKey) return new StubGearHeadProvider();
+  return new OpenAiCompatibleGearHeadProvider({
+    apiKey,
+    baseUrl: env.AI_BASE_URL?.trim() || "https://api.openai.com/v1",
+    fetchImpl,
+  });
+}
+
 export class GearHeadService {
   private readonly provider: GearHeadProvider;
   private readonly entitlements: EntitlementService;
 
   constructor(
     private readonly db: Database,
-    provider: GearHeadProvider = new DefaultGearHeadProvider(),
+    provider: GearHeadProvider = createDefaultGearHeadProvider(),
     entitlements?: EntitlementService,
   ) {
     this.provider = provider;

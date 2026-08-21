@@ -4,11 +4,74 @@ import { subscriptions, users } from "@garagetalk/db";
 import { uuidv7 } from "uuidv7";
 import { buildApp } from "./app.js";
 import {
+  createDefaultGearHeadProvider,
   GearHeadService,
+  OpenAiCompatibleGearHeadProvider,
   type GearHeadProvider,
   type GearHeadProviderInput,
 } from "./services/gearhead-service.js";
 import { createTestDb } from "./test/pglite.js";
+
+describe("GearHead OpenAI-compatible provider", () => {
+  it("uses stub when AI_API_KEY is missing", async () => {
+    const provider = createDefaultGearHeadProvider({});
+    const out = await provider.generate({
+      systemPrompt: "sys",
+      prompt: "prompt",
+      vehicleLabel: "2015 Honda Civic (gas)",
+      message: "what oil",
+      model: "gpt-4o-mini",
+      maxOutputTokens: 500,
+      memoryLevel: "short",
+    });
+    expect(out.diagnosis).toContain("Initial diagnostic direction");
+  });
+
+  it("calls chat completions when AI_API_KEY is set", async () => {
+    const fetchImpl: typeof fetch = async (_url, init) => {
+      const body = JSON.parse(String(init?.body)) as {
+        messages: Array<{ role: string; content: unknown }>;
+        response_format?: { type: string };
+      };
+      expect(body.response_format).toEqual({ type: "json_object" });
+      expect(body.messages[0]?.role).toBe("system");
+      return new Response(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  diagnosis: "Use 0W-20 synthetic oil meeting Honda specs.",
+                  possible_causes: ["routine maintenance interval"],
+                  next_steps: ["Confirm engine code on oil cap", "Use API SN/SP oil"],
+                  parts: [{ name: "0W-20 motor oil" }],
+                }),
+              },
+            },
+          ],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    };
+
+    const provider = new OpenAiCompatibleGearHeadProvider({
+      apiKey: "test-key",
+      baseUrl: "https://api.openai.com/v1",
+      fetchImpl,
+    });
+    const out = await provider.generate({
+      systemPrompt: "sys",
+      prompt: "what oil for a 2015 civic",
+      vehicleLabel: "2015 Honda Civic (gas)",
+      message: "what oil for a 2015 civic",
+      model: "gpt-4o-mini",
+      maxOutputTokens: 500,
+      memoryLevel: "short",
+    });
+    expect(out.diagnosis).toContain("0W-20");
+    expect(out.parts[0]?.name).toContain("oil");
+  });
+});
 
 describe("GearHead AI A7", () => {
   let ctx: Awaited<ReturnType<typeof createTestDb>>;

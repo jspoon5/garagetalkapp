@@ -3,6 +3,10 @@ import { createDb } from "@garagetalk/db";
 import { AuthService } from "./services/auth-service.js";
 import { seedHardcodedAmateurTesters } from "./seed-testers.js";
 import { buildApp } from "./app.js";
+import {
+  createDefaultGearHeadProvider,
+  GearHeadService,
+} from "./services/gearhead-service.js";
 
 async function main() {
   const env = loadEnv(process.env);
@@ -13,11 +17,13 @@ async function main() {
     .map((s) => s.trim())
     .filter(Boolean);
 
+  const gearheadProvider = createDefaultGearHeadProvider(process.env);
   const app = await buildApp({
     db,
     trustedOrigins,
     appBaseUrl,
     serveWeb: true,
+    gearhead: new GearHeadService(db, gearheadProvider),
     passkeyConfig: {
       rpName: "Garage Talk",
       rpID: appHost,
@@ -32,6 +38,11 @@ async function main() {
       }
     },
   });
+
+  app.log.info(
+    { gearheadProvider: env.AI_API_KEY ? "openai-compatible" : "stub" },
+    "GearHead provider selected",
+  );
 
   if (process.env.NODE_ENV !== "test") {
     try {
