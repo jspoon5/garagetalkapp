@@ -57,6 +57,13 @@
       "when": 1786544982268,
       "tag": "0007_d1_d11",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1786544982269,
+      "tag": "0008_entitlements_gifting_live",
+      "breakpoints": true
     }
   ]
 }
