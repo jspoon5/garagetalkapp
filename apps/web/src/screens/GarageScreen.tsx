@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DotsHorizontalIcon, PersonIcon, VideoIcon } from "../icons";
 import { LanguageSwitcher } from "../components/LanguageSwitcher";
-import { AndroidInstallPrompt, IosAddToHomeScreenInstructions } from "../components/PwaInstallPrompt";
+import { PlatformInstallGuidance } from "../components/PwaInstallPrompt";
 import { Carousel } from "../components/Carousel";
 import { apiGet, apiSend, type User, type Vehicle } from "../api";
 import { roomImage } from "../bays";
@@ -253,8 +253,7 @@ function SignedOutGarage({ setUser }: { setUser: (user: User) => void }) {
         <LanguageSwitcher />
       </form>
       <div className="pwa-stack">
-        <AndroidInstallPrompt />
-        <IosAddToHomeScreenInstructions />
+        <PlatformInstallGuidance />
       </div>
     </>
   );
@@ -497,8 +496,7 @@ function SignedInGarage({
         <LanguageSwitcher />
       </form>
       <div className="pwa-stack">
-        <AndroidInstallPrompt />
-        <IosAddToHomeScreenInstructions />
+        <PlatformInstallGuidance />
       </div>
     </>
   );

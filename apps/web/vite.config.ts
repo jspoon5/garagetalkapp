@@ -12,7 +12,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon.svg", "pwa-maskable.svg", "offline.html"],
+      includeAssets: ["favicon.svg", "pwa-maskable.svg", "pwa-192.png", "pwa-512.png", "apple-touch-icon.png", "offline.html"],
       manifest: {
         name: "Garage Talk",
         short_name: "GarageTalk",
@@ -22,10 +22,16 @@ export default defineConfig({
         start_url: "/",
         icons: [
           {
-            src: "/favicon.svg",
-            sizes: "any",
-            type: "image/svg+xml",
-            purpose: "any maskable",
+            src: "/pwa-192.png",
+            sizes: "192x192",
+            type: "image/png",
+            purpose: "any",
+          },
+          {
+            src: "/pwa-512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "any",
           },
           {
             src: "/pwa-maskable.svg",
@@ -37,8 +43,16 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,svg,png,ico}"],
-        navigateFallback: "/offline.html",
-        navigateFallbackDenylist: [/^\/auth/, /^\/billing\/webhooks/],
+        navigateFallback: "/index.html",
+        navigateFallbackDenylist: [
+          /^\/auth/,
+          /^\/billing/,
+          /^\/garage/,
+          /^\/api/,
+          /^\/healthz/,
+          /^\/readyz/,
+          /^\/uploads/,
+        ],
         runtimeCaching: [
           {
             urlPattern: ({ request }) => request.mode === "navigate",
@@ -46,19 +60,14 @@ export default defineConfig({
             options: { cacheName: "shell", networkTimeoutSeconds: 3 },
           },
           {
+            // Public catalog-ish GETs only — never cache auth/billing/garage private data.
             urlPattern: ({ url, request }) =>
               request.method === "GET" &&
-              ["/auth", "/feed", "/marketplace", "/videos", "/podcasts", "/rooms", "/live", "/ai", "/billing", "/shops", "/spatial"].some((path) =>
+              ["/feed", "/marketplace", "/videos", "/podcasts", "/rooms", "/live", "/shops", "/gifts"].some((path) =>
                 url.pathname.startsWith(path),
               ),
-            handler: "StaleWhileRevalidate",
-            options: { cacheName: "api-get" },
-          },
-          {
-            urlPattern: ({ url, request }) =>
-              request.method === "GET" && url.pathname.startsWith("/garage"),
             handler: "NetworkFirst",
-            options: { cacheName: "garage-offline", networkTimeoutSeconds: 2 },
+            options: { cacheName: "api-public-get", networkTimeoutSeconds: 3 },
           },
           {
             urlPattern: ({ url, request }) =>

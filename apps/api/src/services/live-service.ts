@@ -209,10 +209,14 @@ export class LiveService {
     const parsed = liveSessionInputSchema.parse(input);
     const sessionId = uuidv7();
     const secret = process.env.LIVEKIT_API_SECRET ?? DEFAULT_SECRET;
-    const rtmp = {
-      url: process.env.LIVEKIT_RTMP_URL ?? "rtmp://rtmp.livekit.local/live",
-      key: `gt_${hmac(sessionId, secret).slice(0, 32)}`,
-    };
+    const rtmpBase = process.env.LIVEKIT_RTMP_URL?.trim();
+    const rtmpReady = Boolean(rtmpBase && !rtmpBase.includes("livekit.local"));
+    const rtmp = rtmpReady
+      ? {
+          url: rtmpBase!,
+          key: `gt_${hmac(sessionId, secret).slice(0, 32)}`,
+        }
+      : { url: null as string | null, key: null as string | null };
     const scheduledAt = parsed.scheduledAt ? new Date(parsed.scheduledAt) : null;
 
     const [session] = await this.db
@@ -224,7 +228,7 @@ export class LiveService {
         title: parsed.title ?? null,
         kind: parsed.kind ?? "stream",
         scheduledAt,
-        rtmpEnabled: "true",
+        rtmpEnabled: rtmpReady ? "true" : "false",
         rtmpIngestUrl: rtmp.url,
         rtmpStreamKey: rtmp.key,
       })
@@ -261,7 +265,11 @@ export class LiveService {
   async getRtmpConfig(sessionId: string, actorId: string) {
     const session = await this.getAuthorizedSession(sessionId, actorId, "mod");
     if (!session) return null;
-    return { url: session.rtmpIngestUrl, key: session.rtmpStreamKey };
+    const url = session.rtmpIngestUrl;
+    if (!url || url.includes("livekit.local")) {
+      return { url: null, key: null };
+    }
+    return { url, key: session.rtmpStreamKey };
   }
 
   async assignRole(sessionId: string, actorId: string, targetUserId: string, role: LiveRole) {

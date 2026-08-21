@@ -24,13 +24,27 @@ export function BayScreen({
 
   useEffect(() => {
     let cancelled = false;
-    void apiGet<{ messages: RoomMessage[] }>(`/rooms/${roomId}/messages?limit=80`)
-      .then((data) => {
-        if (!cancelled) setMessages(data.messages);
-      })
-      .catch(() => {
+
+    async function loadHistory() {
+      try {
+        const data = await apiGet<{ messages: RoomMessage[] }>(`/rooms/${roomId}/messages?limit=80`);
+        if (!cancelled) {
+          setMessages((current) => {
+            const byId = new Map<string, RoomMessage>();
+            for (const message of [...data.messages, ...current]) {
+              byId.set(message.id, message);
+            }
+            return [...byId.values()].sort(
+              (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+            );
+          });
+        }
+      } catch {
         if (!cancelled) setError("Could not load this bay.");
-      });
+      }
+    }
+
+    void loadHistory();
     void apiGet<{ users: unknown[] }>(`/rooms/${roomId}/presence`)
       .then((data) => {
         if (!cancelled) setOnline(Math.max(1, data.users.length));
@@ -41,6 +55,9 @@ export function BayScreen({
       void apiSend(`/rooms/${roomId}/join`, "POST", {}).catch(() => undefined);
       const socket = new WebSocket(roomSocketUrl(roomId));
       socketRef.current = socket;
+      socket.addEventListener("open", () => {
+        void loadHistory();
+      });
       socket.addEventListener("message", (event) => {
         const payload = JSON.parse(String(event.data)) as {
           type?: string;
@@ -58,8 +75,14 @@ export function BayScreen({
       });
     }
 
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void loadHistory();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
     return () => {
       cancelled = true;
+      document.removeEventListener("visibilitychange", onVisible);
       socketRef.current?.close();
       socketRef.current = null;
     };

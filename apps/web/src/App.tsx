@@ -165,6 +165,18 @@ export function App() {
     if (params.get("billing") === "success" || params.get("tip") === "success" || params.get("market") === "success") {
       setLiveNote("Payment completed — Stripe will reconcile the webhook shortly.");
     }
+
+    const refreshIfVisible = () => {
+      if (document.visibilityState === "visible") {
+        void refresh().catch(() => undefined);
+      }
+    };
+    document.addEventListener("visibilitychange", refreshIfVisible);
+    window.addEventListener("focus", refreshIfVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", refreshIfVisible);
+      window.removeEventListener("focus", refreshIfVisible);
+    };
   }, []);
 
   useEffect(() => {
@@ -237,7 +249,7 @@ export function App() {
   async function likeLive() {
     const session = lives[0];
     if (!session) {
-      enterLane("Motorcycles");
+      navigate("rooms");
       return;
     }
     if (!user) {
@@ -325,20 +337,42 @@ export function App() {
     setOverlay(null);
   }
 
-  const notices = [
-    ...lives.slice(0, 3).map((session) => ({
-      id: session.id,
-      title: session.title ?? session.roomName,
-      body: `${session.kind} is on the board.`,
-      onClick: () => setOverlay({ kind: "live", id: session.id }),
-    })),
-    ...rooms.slice(0, 2).map((room) => ({
-      id: room.id,
+  const notices = (() => {
+    const liveNotices = lives
+      .filter((session) => Boolean(session.startedAt) && !session.endedAt)
+      .slice(0, 3)
+      .map((session) => ({
+        id: `live:${session.id}`,
+        title: session.title ?? session.roomName,
+        body: `${session.kind} is live now.`,
+        onClick: () => setOverlay({ kind: "live", id: session.id }),
+      }));
+    const roomNotices = rooms.slice(0, 2).map((room) => ({
+      id: `room:${room.id}`,
       title: room.title,
       body: "Bay is open — tap to walk in.",
       onClick: () => enterRoom(room.id),
-    })),
-  ];
+    }));
+    const byId = new Map<string, (typeof liveNotices)[number]>();
+    for (const notice of [...liveNotices, ...roomNotices]) {
+      byId.set(notice.id, notice);
+    }
+    return [...byId.values()];
+  })();
+
+  function joinBayFromLive(roomName: string) {
+    const match = rooms.find(
+      (room) =>
+        room.title.toLowerCase() === roomName.toLowerCase() ||
+        room.title.toLowerCase().includes(roomName.toLowerCase()) ||
+        roomName.toLowerCase().includes(room.title.toLowerCase()),
+    );
+    if (match) {
+      enterRoom(match.id);
+      return;
+    }
+    navigate("rooms");
+  }
 
   return (
     <div ref={appRef} className={`gt-app ${layoutClasses}`} data-layout={layoutClasses}>
@@ -420,7 +454,7 @@ export function App() {
               sessionId={overlay.id}
               user={user}
               onNeedAccount={() => goSignIn()}
-              onJoinBay={() => enterLane("Motorcycles")}
+              onJoinBay={(roomName) => joinBayFromLive(roomName)}
               onTip={(hostId) => setOverlay({ kind: "tip", toUserId: hostId })}
             />
           ) : overlay?.kind === "videos" ? (
@@ -464,7 +498,7 @@ export function App() {
               onOpenRooms={() => navigate("rooms")}
               onOpenGearHead={() => navigate("gearhead")}
               onOpenLive={() =>
-                lives[0] ? setOverlay({ kind: "live", id: lives[0].id }) : enterLane("Motorcycles")
+                lives[0] ? setOverlay({ kind: "live", id: lives[0].id }) : navigate("rooms")
               }
               onOpenSearch={() => setOverlay({ kind: "search" })}
               onOpenVideos={() => setOverlay({ kind: "videos" })}

@@ -6,6 +6,18 @@ type BeforeInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
 };
 
+function isIosDevice() {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent;
+  if (/iPad|iPhone|iPod/i.test(ua)) return true;
+  return navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1;
+}
+
+function isAndroidDevice() {
+  if (typeof navigator === "undefined") return false;
+  return /Android/i.test(navigator.userAgent);
+}
+
 export function AndroidInstallPrompt() {
   const { t } = useTranslation();
   const [promptEvent, setPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
@@ -47,4 +59,12 @@ export function IosAddToHomeScreenInstructions() {
       <p>{t("pwa.iosSteps")}</p>
     </section>
   );
+}
+
+/** Shows only the install path that matches this device. */
+export function PlatformInstallGuidance() {
+  if (isIosDevice()) return <IosAddToHomeScreenInstructions />;
+  if (isAndroidDevice()) return <AndroidInstallPrompt />;
+  // Desktop / unknown: prefer install prompt when available, otherwise nothing noisy.
+  return <AndroidInstallPrompt />;
 }

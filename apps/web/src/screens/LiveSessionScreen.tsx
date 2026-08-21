@@ -20,7 +20,7 @@ export function LiveSessionScreen({
   sessionId: string;
   user: User | null;
   onNeedAccount: () => void;
-  onJoinBay: () => void;
+  onJoinBay: (roomName: string) => void;
   onTip: (hostId: string) => void;
 }) {
   const [session, setSession] = useState<LiveSession | null>(null);
@@ -246,17 +246,17 @@ export function LiveSessionScreen({
         </button>
       ) : null}
 
-      {isHost && rtmp ? (
+      {isHost && rtmp?.url && rtmp.key ? (
         <div className="auth-card">
           <span>HOST INGEST</span>
-          <p>OBS / RTMP fallback when LiveKit Cloud egress is configured.</p>
+          <p>OBS / RTMP ingest for this session (LiveKit Ingress).</p>
           <label>
             URL
-            <input readOnly value={rtmp.url ?? ""} />
+            <input readOnly value={rtmp.url} />
           </label>
           <label>
             Stream key
-            <input readOnly value={rtmp.key ?? ""} />
+            <input readOnly value={rtmp.key} />
           </label>
         </div>
       ) : null}
@@ -268,7 +268,7 @@ export function LiveSessionScreen({
       ) : null}
 
       <div className="profile-actions">
-        <button type="button" onClick={onJoinBay}>
+        <button type="button" onClick={() => onJoinBay(session.roomName)}>
           Join the bay
         </button>
         <button
