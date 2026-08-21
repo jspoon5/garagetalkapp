@@ -1,4 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
+import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { and, eq } from "drizzle-orm";
 import type { Database } from "@garagetalk/db";
 import { mediaAssets } from "@garagetalk/db";
@@ -29,6 +31,42 @@ export type PresignedUpload = {
   expiresAt: string;
   storageKey: string;
 };
+
+type R2Config = {
+  accountId: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+  bucket: string;
+  publicBaseUrl: string;
+};
+
+function readR2Config(env: NodeJS.ProcessEnv = process.env): R2Config | null {
+  const accountId = env.R2_ACCOUNT_ID?.trim();
+  const accessKeyId = env.R2_ACCESS_KEY_ID?.trim();
+  const secretAccessKey = env.R2_SECRET_ACCESS_KEY?.trim();
+  const bucket = env.R2_BUCKET?.trim();
+  const publicBaseUrl = env.R2_PUBLIC_BASE_URL?.trim()?.replace(/\/$/, "");
+  if (!accountId || !accessKeyId || !secretAccessKey || !bucket || !publicBaseUrl) {
+    return null;
+  }
+  return { accountId, accessKeyId, secretAccessKey, bucket, publicBaseUrl };
+}
+
+function createR2Client(config: R2Config): S3Client {
+  return new S3Client({
+    region: "auto",
+    endpoint: `https://${config.accountId}.r2.cloudflarestorage.com`,
+    credentials: {
+      accessKeyId: config.accessKeyId,
+      secretAccessKey: config.secretAccessKey,
+    },
+  });
+}
+
+function publicUrlForKey(config: R2Config | null, storageKey: string, assetId: string): string {
+  if (config) return `${config.publicBaseUrl}/${storageKey}`;
+  return `https://stub-r2.local/cdn/${assetId}`;
+}
 
 /**
  * Strips EXIF metadata from image buffers via sharp re-encode.
@@ -71,7 +109,7 @@ export class MediaUploadService {
     const assetId = uuidv7();
     const storageKey = `uploads/${ownerId}/${parsed.kind}/${assetId}`;
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
-    const signature = buildStubSignature(assetId, storageKey);
+    const r2 = readR2Config();
 
     await this.db.insert(mediaAssets).values({
       id: assetId,
@@ -81,9 +119,30 @@ export class MediaUploadService {
       sizeBytes: parsed.sizeBytes,
       storageKey,
       status: "pending",
-      metadata: { stub: true },
+      metadata: { stub: !r2, provider: r2 ? "r2" : "stub" },
     });
 
+    if (r2) {
+      const client = createR2Client(r2);
+      const command = new PutObjectCommand({
+        Bucket: r2.bucket,
+        Key: storageKey,
+        ContentType: parsed.mimeType,
+      });
+      const uploadUrl = await getSignedUrl(client, command, { expiresIn: 15 * 60 });
+      return {
+        assetId,
+        uploadUrl,
+        method: "PUT",
+        headers: {
+          "Content-Type": parsed.mimeType,
+        },
+        expiresAt: expiresAt.toISOString(),
+        storageKey,
+      };
+    }
+
+    const signature = buildStubSignature(assetId, storageKey);
     return {
       assetId,
       uploadUrl: `https://stub-r2.local/${storageKey}?X-Amz-Signature=${signature}`,
@@ -98,11 +157,19 @@ export class MediaUploadService {
   }
 
   async markUploadComplete(ownerId: string, assetId: string) {
+    const [existing] = await this.db
+      .select()
+      .from(mediaAssets)
+      .where(and(eq(mediaAssets.id, assetId), eq(mediaAssets.ownerId, ownerId)))
+      .limit(1);
+    if (!existing) return null;
+
+    const r2 = readR2Config();
     const [row] = await this.db
       .update(mediaAssets)
       .set({
         status: "uploaded",
-        publicUrl: `https://stub-r2.local/cdn/${assetId}`,
+        publicUrl: publicUrlForKey(r2, existing.storageKey, assetId),
         updatedAt: new Date(),
       })
       .where(and(eq(mediaAssets.id, assetId), eq(mediaAssets.ownerId, ownerId)))
@@ -119,12 +186,13 @@ export class MediaUploadService {
     if (!asset) return null;
 
     const { buffer, stripped, mimeType } = await stripExifFromBuffer(rawBuffer);
+    const r2 = readR2Config();
     const [row] = await this.db
       .update(mediaAssets)
       .set({
         exifStripped: stripped,
         status: "ready",
-        publicUrl: `https://stub-r2.local/cdn/${assetId}`,
+        publicUrl: publicUrlForKey(r2, asset.storageKey, assetId),
         metadata: {
           ...(asset.metadata ?? {}),
           processedMimeType: mimeType,

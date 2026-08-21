@@ -105,6 +105,16 @@ projects:
                 sync: false
               - key: LIVEKIT_RTMP_URL
                 sync: false
+              - key: R2_ACCOUNT_ID
+                sync: false
+              - key: R2_ACCESS_KEY_ID
+                sync: false
+              - key: R2_SECRET_ACCESS_KEY
+                sync: false
+              - key: R2_BUCKET
+                sync: false
+              - key: R2_PUBLIC_BASE_URL
+                sync: false
 
           - type: keyvalue
             name: garagetalk-redis
