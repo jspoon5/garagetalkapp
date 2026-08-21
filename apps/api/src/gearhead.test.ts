@@ -71,6 +71,45 @@ describe("GearHead OpenAI-compatible provider", () => {
     expect(out.diagnosis).toContain("0W-20");
     expect(out.parts[0]?.name).toContain("oil");
   });
+
+  it("normalizes alternate JSON keys from the model", async () => {
+    const fetchImpl: typeof fetch = async () =>
+      new Response(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  answer: "Honda specifies 0W-20 for most 2015 Civics.",
+                  causes: ["due for oil change"],
+                  steps: ["Check oil cap for viscosity"],
+                  recommended_parts: ["0W-20 synthetic oil"],
+                }),
+              },
+            },
+          ],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+
+    const provider = new OpenAiCompatibleGearHeadProvider({
+      apiKey: "test-key",
+      baseUrl: "https://api.openai.com/v1",
+      fetchImpl,
+    });
+    const out = await provider.generate({
+      systemPrompt: "sys",
+      prompt: "oil question",
+      vehicleLabel: "2015 Honda Civic (gas)",
+      message: "oil",
+      model: "gpt-4o-mini",
+      maxOutputTokens: 500,
+      memoryLevel: "short",
+    });
+    expect(out.diagnosis).toContain("0W-20");
+    expect(out.possible_causes[0]).toContain("oil change");
+    expect(out.parts[0]?.name).toContain("0W-20");
+  });
 });
 
 describe("GearHead AI A7", () => {

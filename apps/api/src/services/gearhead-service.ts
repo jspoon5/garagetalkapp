@@ -130,6 +130,49 @@ function extractJsonObject(text: string): unknown {
   }
 }
 
+const JSON_OUTPUT_INSTRUCTIONS = `Respond with a single JSON object using exactly these keys:
+{"diagnosis": string, "possible_causes": string[], "next_steps": string[], "parts": [{"name": string}], "ev_safety_notes"?: string}
+Do not wrap the object or include markdown.`;
+
+function asStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => String(item)).filter((s) => s.trim().length > 0);
+}
+
+function normalizeProviderJson(raw: unknown): unknown {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return raw;
+  const obj = raw as Record<string, unknown>;
+  const diagnosis =
+    (typeof obj.diagnosis === "string" && obj.diagnosis) ||
+    (typeof obj.answer === "string" && obj.answer) ||
+    (typeof obj.summary === "string" && obj.summary) ||
+    (typeof obj.recommendation === "string" && obj.recommendation) ||
+    (typeof obj.response === "string" && obj.response) ||
+    undefined;
+  const partsRaw = obj.parts ?? obj.recommended_parts ?? obj.recommendedParts;
+  const parts = Array.isArray(partsRaw)
+    ? partsRaw.map((part) => {
+        if (typeof part === "string") return { name: part };
+        if (part && typeof part === "object" && "name" in part) {
+          return { name: String((part as { name: unknown }).name) };
+        }
+        return null;
+      }).filter((p): p is { name: string } => Boolean(p?.name))
+    : [];
+  return {
+    diagnosis,
+    possible_causes: asStringArray(obj.possible_causes ?? obj.possibleCauses ?? obj.causes),
+    next_steps: asStringArray(obj.next_steps ?? obj.nextSteps ?? obj.steps),
+    parts,
+    ev_safety_notes:
+      typeof obj.ev_safety_notes === "string"
+        ? obj.ev_safety_notes
+        : typeof obj.evSafetyNotes === "string"
+          ? obj.evSafetyNotes
+          : undefined,
+  };
+}
+
 /** OpenAI-compatible chat completions client (works with OpenAI and compatible gateways). */
 export class OpenAiCompatibleGearHeadProvider implements GearHeadProvider {
   constructor(
@@ -180,7 +223,7 @@ export class OpenAiCompatibleGearHeadProvider implements GearHeadProvider {
     const content = payload.choices?.[0]?.message?.content;
     if (!content?.trim()) throw new Error("ai_provider_empty_response");
 
-    const parsed = providerOutputLooseSchema.parse(extractJsonObject(content));
+    const parsed = providerOutputLooseSchema.parse(normalizeProviderJson(extractJsonObject(content)));
     return {
       diagnosis: parsed.diagnosis,
       possible_causes: parsed.possible_causes,
@@ -247,20 +290,24 @@ export class GearHeadService {
     }
 
     const prompt = vehicle
-      ? buildVehicleDiagnosticPrompt({
+      ? `${buildVehicleDiagnosticPrompt({
           year: vehicle.year,
           make: vehicle.make,
           model: vehicle.model,
           fuelType: vehicle.fuelType,
           symptom: parsed.message,
-        })
+        })}
+
+${JSON_OUTPUT_INSTRUCTIONS}`
       : `Symptom: ${parsed.message}
 
-Respond with JSON matching the GearHead diagnostic output schema.`;
+${JSON_OUTPUT_INSTRUCTIONS}`;
 
     const model = planModelName(entitlement.plan);
     const output = await this.provider.generate({
-      systemPrompt: SAFETY_SYSTEM_PROMPT,
+      systemPrompt: `${SAFETY_SYSTEM_PROMPT}
+
+${JSON_OUTPUT_INSTRUCTIONS}`,
       prompt,
       vehicleLabel: label,
       message: parsed.message,
