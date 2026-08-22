@@ -16,11 +16,13 @@ export function MarketplaceScreen({
   setFilter,
   onNeedAccount,
   signedIn,
+  userId,
 }: {
   filter: string;
   setFilter: (value: string) => void;
   onNeedAccount: () => void;
   signedIn: boolean;
+  userId: string | null;
 }) {
   const [listings, setListings] = useState<Listing[]>([]);
   const [saved, setSaved] = useState<string[]>([]);
@@ -114,6 +116,23 @@ export function MarketplaceScreen({
     }
   }
 
+  async function removeListing(listing: Listing) {
+    if (!signedIn || !userId || listing.sellerId !== userId) {
+      onNeedAccount();
+      return;
+    }
+    if (!window.confirm(`Delete “${listing.title}”?`)) return;
+    setError(null);
+    try {
+      await apiSend(`/marketplace/listings/${listing.id}`, "DELETE");
+      setListings((current) => current.filter((item) => item.id !== listing.id));
+      setOpenId(null);
+      setNotice("Listing deleted.");
+    } catch {
+      setError("Could not delete that listing.");
+    }
+  }
+
   return (
     <>
       <div className="market-hero">
@@ -170,6 +189,11 @@ export function MarketplaceScreen({
             <button type="button" className="sell-button sheet-cta" onClick={() => void buy(open)}>
               Buy now
             </button>
+            {userId && open.sellerId === userId ? (
+              <button type="button" className="sheet-close" onClick={() => void removeListing(open)}>
+                Delete listing
+              </button>
+            ) : null}
             <button type="button" className="sheet-close" onClick={() => setOpenId(null)}>
               Close
             </button>

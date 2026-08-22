@@ -8,6 +8,20 @@ import "@livekit/components-styles";
 import { useEffect, useState } from "react";
 import { apiSend } from "../api";
 
+const CLIENT_ID_KEY = "gt_livekit_client_id";
+
+function getLiveKitClientId(): string {
+  try {
+    const existing = sessionStorage.getItem(CLIENT_ID_KEY);
+    if (existing && existing.length >= 8) return existing;
+    const next = crypto.randomUUID().replace(/-/g, "").slice(0, 16);
+    sessionStorage.setItem(CLIENT_ID_KEY, next);
+    return next;
+  } catch {
+    return `tab_${Math.random().toString(36).slice(2, 12)}`;
+  }
+}
+
 function HostBroadcastControls({ onAir, setOnAir }: { onAir: boolean; setOnAir: (value: boolean) => void }) {
   const room = useRoomContext();
   const [busy, setBusy] = useState(false);
@@ -71,14 +85,41 @@ function HostBroadcastControls({ onAir, setOnAir }: { onAir: boolean; setOnAir: 
   );
 }
 
+function LeaveLiveControl({ onLeave }: { onLeave?: () => void }) {
+  const room = useRoomContext();
+  const [busy, setBusy] = useState(false);
+
+  async function leave() {
+    setBusy(true);
+    try {
+      await room.localParticipant.setCameraEnabled(false).catch(() => undefined);
+      await room.localParticipant.setMicrophoneEnabled(false).catch(() => undefined);
+      await room.disconnect();
+    } finally {
+      setBusy(false);
+      onLeave?.();
+    }
+  }
+
+  return (
+    <div className="livekit-controls">
+      <button type="button" disabled={busy} onClick={() => void leave()}>
+        {busy ? "Leaving…" : "Leave live"}
+      </button>
+    </div>
+  );
+}
+
 export function LiveKitSession({
   sessionId,
   userId,
   isHost,
+  onLeave,
 }: {
   sessionId: string;
   userId: string;
   isHost: boolean;
+  onLeave?: () => void;
 }) {
   const [token, setToken] = useState<string | null>(null);
   const [livekitUrl, setLivekitUrl] = useState<string | null>(null);
@@ -87,10 +128,11 @@ export function LiveKitSession({
 
   useEffect(() => {
     let cancelled = false;
+    const clientId = getLiveKitClientId();
     void apiSend<{ token: string; livekitUrl?: string | null; role: string }>(
       `/live/sessions/${sessionId}/token`,
       "POST",
-      { role: isHost ? "host" : "viewer" },
+      { role: isHost ? "host" : "viewer", clientId },
     )
       .then((result) => {
         if (cancelled) return;
@@ -121,6 +163,7 @@ export function LiveKitSession({
         onDisconnected={() => setOnAir(false)}
       >
         {isHost ? <HostBroadcastControls onAir={onAir} setOnAir={setOnAir} /> : null}
+        <LeaveLiveControl onLeave={onLeave} />
         {isHost && !onAir ? null : (
           <>
             <VideoConference />

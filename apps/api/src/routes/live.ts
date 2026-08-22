@@ -95,7 +95,7 @@ export const liveRoutes: FastifyPluginAsync<{ live: LiveService; gifts?: GiftSer
     if (!req.user) return reply.code(401).send({ error: "unauthorized" });
     const { id } = idParamSchema.parse(req.params);
     const body = liveTokenInputSchema.parse(req.body ?? {});
-    const result = await live.issueToken(id, req.user.id, body.role);
+    const result = await live.issueToken(id, req.user.id, body.role, body.clientId);
     if (!result) return reply.code(404).send({ error: "not_found" });
     if ("error" in result) return reply.code(403).send({ error: result.error });
     return result;

@@ -456,6 +456,7 @@ export function App() {
               onNeedAccount={() => goSignIn()}
               onJoinBay={(roomName) => joinBayFromLive(roomName)}
               onTip={(hostId) => setOverlay({ kind: "tip", toUserId: hostId })}
+              onLeaveLive={() => setOverlay(null)}
             />
           ) : overlay?.kind === "videos" ? (
             <VideosScreen signedIn={Boolean(user)} onNeedAccount={() => goSignIn()} />
@@ -525,6 +526,7 @@ export function App() {
               setFilter={setVehicleFilter}
               onNeedAccount={() => goSignIn()}
               signedIn={Boolean(user)}
+              userId={user?.id ?? null}
             />
           ) : (
             <GarageScreen

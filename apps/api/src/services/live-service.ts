@@ -30,6 +30,8 @@ export const liveSessionInputSchema = z.object({
 
 export const liveTokenInputSchema = z.object({
   role: liveRoleSchema.optional(),
+  /** Per-device/browser id so the same user can leave mobile and rejoin desktop without LiveKit kicking them. */
+  clientId: z.string().min(8).max(64).optional(),
 });
 
 export const liveRoleInputSchema = z.object({
@@ -78,12 +80,13 @@ function signMockLiveKitToken(input: {
   role: LiveRole;
   userId: string;
   username?: string;
+  identity?: string;
 }): string {
   const header = b64(JSON.stringify({ alg: "HS256", typ: "JWT" }));
   const now = Math.floor(Date.now() / 1000);
   const payload: Record<string, unknown> = {
     iss: input.apiKey,
-    sub: input.userId,
+    sub: input.identity ?? input.userId,
     nbf: now - 5,
     exp: now + 60 * 60,
     video: {
@@ -94,7 +97,7 @@ function signMockLiveKitToken(input: {
       roomAdmin: input.role === "host",
       roomRecord: input.role === "host" || input.role === "mod",
     },
-    metadata: JSON.stringify({ role: input.role, username: input.username ?? input.userId }),
+    metadata: JSON.stringify({ role: input.role, username: input.username ?? input.userId, userId: input.userId }),
   };
   const body = b64(JSON.stringify(payload));
   return `${header}.${body}.${hmac(`${header}.${body}`, input.secret)}`;
@@ -107,16 +110,18 @@ async function signLiveKitToken(input: {
   role: LiveRole;
   userId: string;
   username?: string;
+  identity?: string;
 }): Promise<string> {
   const apiKey = process.env.LIVEKIT_API_KEY ?? input.apiKey;
   const secret = process.env.LIVEKIT_API_SECRET ?? input.secret;
+  const identity = input.identity ?? input.userId;
   if (process.env.LIVEKIT_API_KEY && process.env.LIVEKIT_API_SECRET) {
     try {
       const { AccessToken } = await import("livekit-server-sdk");
       const token = new AccessToken(apiKey, secret, {
-        identity: input.userId,
+        identity,
         name: input.username ?? input.userId,
-        metadata: JSON.stringify({ role: input.role }),
+        metadata: JSON.stringify({ role: input.role, userId: input.userId }),
       });
       token.addGrant({
         roomJoin: true,
@@ -131,7 +136,7 @@ async function signLiveKitToken(input: {
       // Fall back to mock JWT when SDK unavailable.
     }
   }
-  return signMockLiveKitToken({ ...input, apiKey, secret });
+  return signMockLiveKitToken({ ...input, apiKey, secret, identity });
 }
 
 export type LiveSessionBroadcaster = (sessionId: string, payload: unknown) => void;
@@ -286,13 +291,20 @@ export class LiveService {
     return row ?? null;
   }
 
-  async issueToken(sessionId: string, userId: string, requestedRole?: LiveRole) {
+  async issueToken(
+    sessionId: string,
+    userId: string,
+    requestedRole?: LiveRole,
+    clientId?: string,
+  ) {
     const session = await this.getSession(sessionId);
     if (!session) return null;
     const effectiveRole = await this.getEffectiveRole(sessionId, userId);
     const role = requestedRole ?? effectiveRole;
     if (ROLE_RANK[role] > ROLE_RANK[effectiveRole]) return { error: "forbidden" as const };
     const [user] = await this.db.select().from(users).where(eq(users.id, userId)).limit(1);
+    const safeClient = clientId?.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 32);
+    const identity = safeClient ? `${userId}:${safeClient}` : userId;
     const token = await signLiveKitToken({
       apiKey: process.env.LIVEKIT_API_KEY ?? DEFAULT_KEY,
       secret: process.env.LIVEKIT_API_SECRET ?? DEFAULT_SECRET,
@@ -300,12 +312,14 @@ export class LiveService {
       role,
       userId,
       username: user?.username,
+      identity,
     });
     return {
       token,
       role,
       roomName: session.roomName,
       livekitUrl: this.liveKitUrl(),
+      identity,
     };
   }
 

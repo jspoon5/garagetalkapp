@@ -16,12 +16,14 @@ export function LiveSessionScreen({
   onNeedAccount,
   onJoinBay,
   onTip,
+  onLeaveLive,
 }: {
   sessionId: string;
   user: User | null;
   onNeedAccount: () => void;
   onJoinBay: (roomName: string) => void;
   onTip: (hostId: string) => void;
+  onLeaveLive: () => void;
 }) {
   const [session, setSession] = useState<LiveSession | null>(null);
   const [livekitUrl, setLivekitUrl] = useState<string | null>(null);
@@ -176,7 +178,7 @@ export function LiveSessionScreen({
       ) : null}
 
       {user && live ? (
-        <LiveKitSession sessionId={sessionId} userId={user.id} isHost={isHost} />
+        <LiveKitSession sessionId={sessionId} userId={user.id} isHost={isHost} onLeave={onLeaveLive} />
       ) : (
         <p className="empty-state">
           {livekitUrl
