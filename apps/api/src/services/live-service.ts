@@ -205,9 +205,13 @@ export class LiveService {
     return { liked: result.liked, likeCount: counts.get(sessionId) ?? 0 };
   }
 
+  private async userCanHostLive(userId: string): Promise<boolean> {
+    const entitlement = await this.entitlements.resolveForUser(userId);
+    return Boolean(entitlement?.canHostLive);
+  }
+
   async createSession(hostId: string, input: LiveSessionInput) {
-    const entitlement = await this.entitlements.resolveForUser(hostId);
-    if (!entitlement?.canHostLive) {
+    if (!(await this.userCanHostLive(hostId))) {
       return { error: "upgrade_required" as const };
     }
 
@@ -302,6 +306,13 @@ export class LiveService {
     const effectiveRole = await this.getEffectiveRole(sessionId, userId);
     const role = requestedRole ?? effectiveRole;
     if (ROLE_RANK[role] > ROLE_RANK[effectiveRole]) return { error: "forbidden" as const };
+    if (
+      session.hostId === userId &&
+      (role === "host" || role === "mod") &&
+      !(await this.userCanHostLive(userId))
+    ) {
+      return { error: "upgrade_required" as const };
+    }
     const [user] = await this.db.select().from(users).where(eq(users.id, userId)).limit(1);
     const safeClient = clientId?.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 32);
     const identity = safeClient ? `${userId}:${safeClient}` : userId;
@@ -402,6 +413,9 @@ export class LiveService {
   async markStarted(sessionId: string, hostId: string) {
     const session = await this.getAuthorizedSession(sessionId, hostId, "host");
     if (!session) return null;
+    if (!(await this.userCanHostLive(hostId))) {
+      return { error: "upgrade_required" as const };
+    }
     const [updated] = await this.db
       .update(liveSessions)
       .set({ startedAt: new Date(), updatedAt: new Date() })

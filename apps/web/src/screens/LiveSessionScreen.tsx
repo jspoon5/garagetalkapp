@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { HeartFilledIcon, HeartIcon } from "../icons";
 import { LiveKitSession, liveSessionSocketUrl } from "../components/LiveKitSession";
-import { apiGet, apiSend, checkoutUrl, formatUsd, type GiftCatalogItem, type LiveSession, type User } from "../api";
+import { apiGet, apiSend, checkoutUrl, ApiError, formatUsd, type GiftCatalogItem, type LiveSession, type User } from "../api";
 import { images } from "./shared";
 
 type GiftEvent = {
@@ -13,14 +13,18 @@ type GiftEvent = {
 export function LiveSessionScreen({
   sessionId,
   user,
+  canHostLive,
   onNeedAccount,
+  onUpgradeRequired,
   onJoinBay,
   onTip,
   onLeaveLive,
 }: {
   sessionId: string;
   user: User | null;
+  canHostLive: boolean;
   onNeedAccount: () => void;
+  onUpgradeRequired: () => void;
   onJoinBay: (roomName: string) => void;
   onTip: (hostId: string) => void;
   onLeaveLive: () => void;
@@ -141,8 +145,20 @@ export function LiveSessionScreen({
 
   async function goLive() {
     if (!user || !session) return;
-    await apiSend(`/live/sessions/${sessionId}/start`, "POST");
-    await load();
+    if (!canHostLive) {
+      onUpgradeRequired();
+      return;
+    }
+    try {
+      await apiSend(`/live/sessions/${sessionId}/start`, "POST");
+      await load();
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 402) {
+        onUpgradeRequired();
+        return;
+      }
+      setError("Could not start this live session.");
+    }
   }
 
   if (!session) return <p className="empty-state">{error ?? "Loading the bay…"}</p>;
@@ -178,7 +194,14 @@ export function LiveSessionScreen({
       ) : null}
 
       {user && live ? (
-        <LiveKitSession sessionId={sessionId} userId={user.id} isHost={isHost} onLeave={onLeaveLive} />
+        <LiveKitSession
+          sessionId={sessionId}
+          userId={user.id}
+          isHost={isHost}
+          canHostLive={canHostLive}
+          onUpgradeRequired={onUpgradeRequired}
+          onLeave={onLeaveLive}
+        />
       ) : (
         <p className="empty-state">
           {livekitUrl
@@ -190,10 +213,14 @@ export function LiveSessionScreen({
       {error ? <p className="auth-error">{error}</p> : null}
       {notice ? <p className="empty-state">{notice}</p> : null}
 
-      {isHost && !live ? (
+      {isHost && !live && canHostLive ? (
         <button type="button" className="sell-button" onClick={() => void goLive()}>
           Go live in app
         </button>
+      ) : null}
+
+      {isHost && !canHostLive ? (
+        <p className="empty-state">Live hosting requires GearHead or higher. Free accounts can watch only.</p>
       ) : null}
 
       {user && gifts.length > 0 ? (

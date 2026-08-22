@@ -13,12 +13,14 @@ export type { User };
 export function GarageScreen({
   user,
   setUser,
+  canHostLive,
   onOpenVehicle,
   onGoLive,
   onOpenBilling,
 }: {
   user: User | null;
   setUser: (user: User | null) => void;
+  canHostLive: boolean;
   onOpenVehicle: (id: string) => void;
   onGoLive: () => void;
   onOpenBilling: () => void;
@@ -27,6 +29,7 @@ export function GarageScreen({
     <SignedInGarage
       user={user}
       setUser={setUser}
+      canHostLive={canHostLive}
       onOpenVehicle={onOpenVehicle}
       onGoLive={onGoLive}
       onOpenBilling={onOpenBilling}
@@ -262,12 +265,14 @@ function SignedOutGarage({ setUser }: { setUser: (user: User) => void }) {
 function SignedInGarage({
   user,
   setUser,
+  canHostLive,
   onOpenVehicle,
   onGoLive,
   onOpenBilling,
 }: {
   user: User;
   setUser: (user: User | null) => void;
+  canHostLive: boolean;
   onOpenVehicle: (id: string) => void;
   onGoLive: () => void;
   onOpenBilling: () => void;
@@ -382,9 +387,15 @@ function SignedInGarage({
         <button type="button" onClick={() => document.querySelector<HTMLInputElement>("[data-testid=profile-bio]")?.focus()}>
           Edit garage
         </button>
-        <button type="button" onClick={onGoLive}>
-          <VideoIcon /> Go live
-        </button>
+        {canHostLive ? (
+          <button type="button" onClick={onGoLive}>
+            <VideoIcon /> Go live
+          </button>
+        ) : (
+          <button type="button" onClick={onOpenBilling}>
+            <VideoIcon /> Subscribe to go live
+          </button>
+        )}
         <button type="button" onClick={onOpenBilling}>
           Subscribe
         </button>

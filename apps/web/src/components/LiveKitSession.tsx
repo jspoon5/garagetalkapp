@@ -6,7 +6,7 @@ import {
 } from "@livekit/components-react";
 import "@livekit/components-styles";
 import { useEffect, useState } from "react";
-import { apiSend } from "../api";
+import { apiSend, ApiError } from "../api";
 
 const CLIENT_ID_KEY = "gt_livekit_client_id";
 
@@ -114,11 +114,15 @@ export function LiveKitSession({
   sessionId,
   userId,
   isHost,
+  canHostLive,
+  onUpgradeRequired,
   onLeave,
 }: {
   sessionId: string;
   userId: string;
   isHost: boolean;
+  canHostLive: boolean;
+  onUpgradeRequired?: () => void;
   onLeave?: () => void;
 }) {
   const [token, setToken] = useState<string | null>(null);
@@ -139,8 +143,14 @@ export function LiveKitSession({
         setToken(result.token);
         setLivekitUrl(result.livekitUrl ?? null);
       })
-      .catch(() => {
-        if (!cancelled) setError("Could not join the live room.");
+      .catch((err) => {
+        if (cancelled) return;
+        if (err instanceof ApiError && err.status === 402) {
+          setError("Live hosting requires a paid plan.");
+          onUpgradeRequired?.();
+          return;
+        }
+        setError("Could not join the live room.");
       });
     return () => {
       cancelled = true;
@@ -162,7 +172,13 @@ export function LiveKitSession({
         video={false}
         onDisconnected={() => setOnAir(false)}
       >
-        {isHost ? <HostBroadcastControls onAir={onAir} setOnAir={setOnAir} /> : null}
+        {isHost ? (
+          canHostLive ? (
+            <HostBroadcastControls onAir={onAir} setOnAir={setOnAir} />
+          ) : (
+            <p className="empty-state">Upgrade to publish from this session.</p>
+          )
+        ) : null}
         <LeaveLiveControl onLeave={onLeave} />
         {isHost && !onAir ? null : (
           <>

@@ -69,9 +69,12 @@ export const liveRoutes: FastifyPluginAsync<{ live: LiveService; gifts?: GiftSer
   app.post("/live/sessions/:id/start", async (req, reply) => {
     if (!req.user) return reply.code(401).send({ error: "unauthorized" });
     const { id } = idParamSchema.parse(req.params);
-    const session = await live.markStarted(id, req.user.id);
-    if (!session) return reply.code(403).send({ error: "forbidden" });
-    return { session };
+    const result = await live.markStarted(id, req.user.id);
+    if (!result) return reply.code(403).send({ error: "forbidden" });
+    if ("error" in result) {
+      return reply.code(402).send({ error: "upgrade_required", message: "Live hosting requires a paid tier." });
+    }
+    return { session: result };
   });
 
   app.get("/live/sessions/:id/rtmp", async (req, reply) => {
@@ -97,7 +100,12 @@ export const liveRoutes: FastifyPluginAsync<{ live: LiveService; gifts?: GiftSer
     const body = liveTokenInputSchema.parse(req.body ?? {});
     const result = await live.issueToken(id, req.user.id, body.role, body.clientId);
     if (!result) return reply.code(404).send({ error: "not_found" });
-    if ("error" in result) return reply.code(403).send({ error: result.error });
+    if ("error" in result) {
+      if (result.error === "upgrade_required") {
+        return reply.code(402).send({ error: "upgrade_required", message: "Live hosting requires a paid tier." });
+      }
+      return reply.code(403).send({ error: result.error });
+    }
     return result;
   });
 

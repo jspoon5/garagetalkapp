@@ -74,6 +74,17 @@ describe("A8 live sessions", () => {
     await client.close();
   });
 
+  it("blocks amateur tier from creating live sessions", async () => {
+    const blocked = await app.inject({
+      method: "POST",
+      url: "/live/sessions",
+      headers: { cookie: viewerCookie },
+      payload: { roomName: "amateur-blocked-room" },
+    });
+    expect(blocked.statusCode).toBe(402);
+    expect(blocked.json().error).toBe("upgrade_required");
+  });
+
   it("creates scheduled sessions, sends reminders, and enforces token roles", async () => {
     const created = await app.inject({
       method: "POST",

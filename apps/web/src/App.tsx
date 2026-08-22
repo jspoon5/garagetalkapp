@@ -4,10 +4,12 @@ import {
   apiGet,
   apiSend,
   checkoutUrl,
+  ApiError,
   type ChatRoom,
   type FeedPost,
   type LiveSession,
   type User,
+  type UserEntitlement,
 } from "./api";
 import { preferredRoom, roomImage, roomLane, type Lane } from "./bays";
 import { BayScreen } from "./screens/BayScreen";
@@ -86,6 +88,7 @@ export function App() {
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [lives, setLives] = useState<LiveSession[]>([]);
   const [liveNote, setLiveNote] = useState<string | null>(null);
+  const [entitlement, setEntitlement] = useState<UserEntitlement | null>(null);
   const [draft, setDraft] = useState("");
   const [tipAmount, setTipAmount] = useState("500");
 
@@ -142,6 +145,19 @@ export function App() {
     setRoomId(null);
   };
 
+  async function loadEntitlement() {
+    if (!user) {
+      setEntitlement(null);
+      return;
+    }
+    try {
+      const data = await apiGet<{ entitlement: UserEntitlement }>("/billing/entitlement");
+      setEntitlement(data.entitlement);
+    } catch {
+      setEntitlement(null);
+    }
+  }
+
   async function refresh() {
     const [roomData, feedData, liveData] = await Promise.all([
       apiGet<{ rooms: ChatRoom[] }>("/rooms"),
@@ -178,6 +194,22 @@ export function App() {
       window.removeEventListener("focus", refreshIfVisible);
     };
   }, []);
+
+  useEffect(() => {
+    void loadEntitlement().catch(() => undefined);
+    const refreshIfVisible = () => {
+      if (document.visibilityState === "visible") {
+        void refresh().catch(() => undefined);
+        void loadEntitlement().catch(() => undefined);
+      }
+    };
+    document.addEventListener("visibilitychange", refreshIfVisible);
+    window.addEventListener("focus", refreshIfVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", refreshIfVisible);
+      window.removeEventListener("focus", refreshIfVisible);
+    };
+  }, [user?.id]);
 
   useEffect(() => {
     if (user && pendingRoom) {
@@ -304,17 +336,49 @@ export function App() {
       goSignIn();
       return;
     }
+    if (entitlement && !entitlement.canHostLive) {
+      setLiveNote("Live hosting is included with GearHead and up. Free accounts can watch only.");
+      setOverlay({ kind: "billing" });
+      return;
+    }
     const titleText = draft.trim() || `${user.username} live`;
     const roomName = `bay_${user.username.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 24) || "live"}`;
-    const data = await apiSend<{ session: LiveSession; rtmp: { url: string; key: string } }>("/live/sessions", "POST", {
-      roomName,
-      title: titleText,
-      kind: "stream",
-    });
-    setLiveNote(`OBS ingest: ${data.rtmp.url}`);
+    try {
+      const data = await apiSend<{ session: LiveSession; rtmp: { url: string | null; key: string | null } }>(
+        "/live/sessions",
+        "POST",
+        {
+          roomName,
+          title: titleText,
+          kind: "stream",
+        },
+      );
+      setLiveNote(data.rtmp.url ? `OBS ingest: ${data.rtmp.url}` : "Session created — go live in app when ready.");
+      setDraft("");
+      await refresh();
+      setOverlay({ kind: "live", id: data.session.id });
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 402) {
+        setLiveNote("Live hosting requires a paid plan. Free accounts can watch only.");
+        setOverlay({ kind: "billing" });
+        return;
+      }
+      setLiveNote("Could not create live session.");
+    }
+  }
+
+  function openGoLive() {
+    if (!user) {
+      goSignIn();
+      return;
+    }
+    if (entitlement && !entitlement.canHostLive) {
+      setLiveNote("Live hosting is included with GearHead and up. Free accounts can watch only.");
+      setOverlay({ kind: "billing" });
+      return;
+    }
     setDraft("");
-    await refresh();
-    setOverlay({ kind: "live", id: data.session.id });
+    setOverlay({ kind: "goLive" });
   }
 
   async function sendTip(toUserId: string) {
@@ -453,7 +517,12 @@ export function App() {
             <LiveSessionScreen
               sessionId={overlay.id}
               user={user}
+              canHostLive={entitlement?.canHostLive ?? false}
               onNeedAccount={() => goSignIn()}
+              onUpgradeRequired={() => {
+                setLiveNote("Live hosting requires a paid plan. Free accounts can watch only.");
+                setOverlay({ kind: "billing" });
+              }}
               onJoinBay={(roomName) => joinBayFromLive(roomName)}
               onTip={(hostId) => setOverlay({ kind: "tip", toUserId: hostId })}
               onLeaveLive={() => setOverlay(null)}
@@ -532,11 +601,9 @@ export function App() {
             <GarageScreen
               user={user}
               setUser={setUser}
+              canHostLive={entitlement?.canHostLive ?? false}
               onOpenVehicle={(id) => setOverlay({ kind: "vehicle", id })}
-              onGoLive={() => {
-                setDraft("");
-                setOverlay({ kind: "goLive" });
-              }}
+              onGoLive={openGoLive}
               onOpenBilling={() => setOverlay({ kind: "billing" })}
             />
           )}
