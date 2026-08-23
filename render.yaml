@@ -65,6 +65,8 @@ projects:
                 generateValue: true
               - key: ADMIN_EMAIL
                 sync: false
+              - key: ADMIN_EMAILS
+                sync: false
               - key: ADMIN_PASSWORD
                 sync: false
               - key: AI_API_KEY

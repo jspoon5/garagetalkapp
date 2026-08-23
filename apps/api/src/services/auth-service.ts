@@ -10,7 +10,7 @@ import {
   type EmailClient,
 } from "@garagetalk/email";
 import { uuidv7 } from "uuidv7";
-import { meetsMinimumAge } from "@garagetalk/shared";
+import { isFirstPartyAdminEmail, meetsMinimumAge } from "@garagetalk/shared";
 
 const ARGON2_OPTS: argon2.Options & { raw?: false } = {
   type: argon2.argon2id,
@@ -30,6 +30,7 @@ export type PublicUser = {
   avatarValue: string;
   tier: "amateur" | "gearhead" | "racing_pro" | "pro";
   emailVerifiedAt: Date | null;
+  isAdmin: boolean;
 };
 
 function toPublic(u: typeof users.$inferSelect): PublicUser {
@@ -43,6 +44,7 @@ function toPublic(u: typeof users.$inferSelect): PublicUser {
     avatarValue: u.avatarValue,
     tier: u.tier,
     emailVerifiedAt: u.emailVerifiedAt,
+    isAdmin: u.roles.includes("admin"),
   };
 }
 
@@ -72,8 +74,9 @@ export class AuthService {
   }
 
   /**
-   * Create or repair a non-admin amateur tester. If the username or email already
-   * exists, reset the password hash so a known login cannot stay broken.
+   * Create or repair a non-admin tester login. Password/email/username can be
+   * reset, but an admin-granted paid tier is left intact so boot seed cannot
+   * lock testers out of Pro after a manual grant.
    */
   async ensureAmateurTester(input: {
     email: string;
@@ -115,7 +118,6 @@ export class AuthService {
       passwordOk &&
       existing.username === username &&
       existing.email === email &&
-      existing.tier === "amateur" &&
       !existing.roles.includes("admin") &&
       existing.deletedAt == null;
     if (alreadyGood) return toPublic(existing);
@@ -127,7 +129,6 @@ export class AuthService {
         email,
         username,
         roles: ["user"],
-        tier: "amateur",
         deletedAt: null,
         updatedAt: new Date(),
       })
@@ -152,6 +153,7 @@ export class AuthService {
     const passwordHash = await argon2.hash(input.password, ARGON2_OPTS);
 
     const now = new Date();
+    const roles = isFirstPartyAdminEmail(email) ? ["user", "admin"] : ["user"];
     const [user] = await this.db
       .insert(users)
       .values({
@@ -159,7 +161,7 @@ export class AuthService {
         email,
         username,
         passwordHash,
-        roles: ["user"],
+        roles,
         birthYear: input.birthYear,
         ageVerifiedAt: now,
         privacyPolicyAcceptedAt: now,
@@ -194,8 +196,9 @@ export class AuthService {
     const ok = await argon2.verify(user.passwordHash, input.password);
     if (!ok) return null;
 
-    const sessionToken = await this.createSession(user.id, input.userAgent, input.ip);
-    return { user: toPublic(user), sessionToken };
+    const sessionUser = await this.ensureFirstPartyAdminRole(user);
+    const sessionToken = await this.createSession(sessionUser.id, input.userAgent, input.ip);
+    return { user: toPublic(sessionUser), sessionToken };
   }
 
   async createSession(userId: string, userAgent?: string, ip?: string): Promise<string> {
@@ -228,7 +231,21 @@ export class AuthService {
       .set({ expiresAt: newExpiry, updatedAt: new Date() })
       .where(eq(sessions.id, row.session.id));
 
-    return toPublic(row.user);
+    const sessionUser = await this.ensureFirstPartyAdminRole(row.user);
+    return toPublic(sessionUser);
+  }
+
+  private async ensureFirstPartyAdminRole(
+    user: typeof users.$inferSelect,
+  ): Promise<typeof users.$inferSelect> {
+    if (!isFirstPartyAdminEmail(user.email) || user.roles.includes("admin")) return user;
+    const roles = [...new Set([...user.roles, "admin"])];
+    const [updated] = await this.db
+      .update(users)
+      .set({ roles, updatedAt: new Date() })
+      .where(eq(users.id, user.id))
+      .returning();
+    return updated ?? { ...user, roles };
   }
 
   async logout(token: string): Promise<void> {

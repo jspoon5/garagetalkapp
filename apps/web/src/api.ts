@@ -5,6 +5,33 @@ export type User = {
   bio: string | null;
   cityText: string | null;
   tier?: "amateur" | "gearhead" | "racing_pro" | "pro";
+  isAdmin?: boolean;
+};
+
+export type AdminUserRow = {
+  id: string;
+  email: string;
+  username: string;
+  roles: string[];
+  tier: "amateur" | "gearhead" | "racing_pro" | "pro";
+  tierStatus: string;
+  suspendedAt: string | null;
+  deletedAt: string | null;
+  createdAt: string;
+};
+
+export type AdminStats = {
+  users: number;
+  paidUsers: number;
+  openReports: number;
+  activeSubscriptions: number;
+  liveSessions: number;
+  byTier: {
+    amateur: number;
+    gearhead: number;
+    racing_pro: number;
+    pro: number;
+  };
 };
 
 export type ChatRoom = {

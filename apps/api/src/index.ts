@@ -1,12 +1,13 @@
 import { loadEnv } from "@garagetalk/shared";
 import { createDb } from "@garagetalk/db";
 import { AuthService } from "./services/auth-service.js";
-import { seedHardcodedAmateurTesters } from "./seed-testers.js";
+import { seedHardcodedAmateurTesters, seedTesterProGrant } from "./seed-testers.js";
 import { buildApp } from "./app.js";
 import {
   createDefaultGearHeadProvider,
   GearHeadService,
 } from "./services/gearhead-service.js";
+import { EntitlementService } from "./services/entitlement-service.js";
 
 async function main() {
   const env = loadEnv(process.env);
@@ -48,7 +49,9 @@ async function main() {
     try {
       const auth = new AuthService(db, { appBaseUrl });
       const usernames = await seedHardcodedAmateurTesters(auth);
-      app.log.info({ usernames }, "seeded amateur tester accounts");
+      const entitlements = new EntitlementService(db);
+      const proGrant = await seedTesterProGrant(db, entitlements);
+      app.log.info({ usernames, proGrant }, "seeded tester accounts");
     } catch (err) {
       app.log.error({ err }, "tester seed failed");
     }

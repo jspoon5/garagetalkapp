@@ -188,6 +188,66 @@ export class EntitlementService {
     void plan;
   }
 
+  async grantManualTier(
+    userId: string,
+    tier: AiPlanId,
+    status: "active" | "canceled" | "past_due" | "trialing" = "active",
+  ) {
+    const paid = tier !== "amateur" && (status === "active" || status === "trialing");
+    const effectiveTier: AiPlanId = paid ? tier : "amateur";
+    const plan = AI_PLANS[effectiveTier];
+    const entitlementStatus = paid ? status : "canceled";
+    const providerSubscriptionId = `manual:${userId}`;
+
+    const [existing] = await this.db
+      .select()
+      .from(entitlements)
+      .where(and(eq(entitlements.userId, userId), eq(entitlements.provider, "manual")))
+      .limit(1);
+
+    const values = {
+      userId,
+      provider: "manual" as const,
+      providerSubscriptionId,
+      tier: effectiveTier,
+      status: entitlementStatus,
+      currentPeriodEnd: null,
+      aiMonthlyAllowance: plan.monthlyQuestions,
+      featureFlags: {
+        photos: plan.photosAllowed,
+        live_host: effectiveTier !== "amateur",
+        gifting: true,
+      },
+      updatedAt: new Date(),
+    };
+
+    if (existing) {
+      await this.db.update(entitlements).set(values).where(eq(entitlements.id, existing.id));
+    } else {
+      await this.db.insert(entitlements).values({ id: uuidv7(), ...values });
+    }
+
+    const [user] = await this.db
+      .update(users)
+      .set({
+        tier: effectiveTier,
+        tierStatus: entitlementStatus,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    return user ?? null;
+  }
+
+  async findManualEntitlement(userId: string) {
+    const [row] = await this.db
+      .select()
+      .from(entitlements)
+      .where(and(eq(entitlements.userId, userId), eq(entitlements.provider, "manual")))
+      .limit(1);
+    return row ?? null;
+  }
+
   private async findActiveEntitlement(userId: string) {
     const [row] = await this.db
       .select()

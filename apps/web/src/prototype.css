@@ -1865,3 +1865,26 @@ button.inline-link {
   text-decoration: underline;
   font: inherit;
 }
+
+.admin-stats {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.admin-user-card .admin-user-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.admin-user-card .admin-user-actions button {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--gt-line);
+  border-radius: 10px;
+  background: var(--gt-ink);
+  color: #f7fbff;
+}
+
+.admin-user-card .admin-user-actions button:disabled {
+  opacity: 0.45;
+}

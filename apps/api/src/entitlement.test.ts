@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { describe, expect, it, beforeAll, afterAll } from "vitest";
-import { subscriptions, users } from "@garagetalk/db";
+import { entitlements, subscriptions, users } from "@garagetalk/db";
 import { uuidv7 } from "uuidv7";
 import { EntitlementService } from "./services/entitlement-service.js";
 import { createTestDb } from "./test/pglite.js";
@@ -57,5 +57,32 @@ describe("EntitlementService", () => {
 
     const result = await service.resolveForUser(userId);
     expect(result?.effectiveTier).toBe("amateur");
+  });
+
+  it("honors a manual Pro grant without a Stripe row", async () => {
+    const grantedId = uuidv7();
+    await ctx.db.insert(users).values({
+      id: grantedId,
+      email: "manual-pro@example.com",
+      username: "manualpro",
+      passwordHash: "hash",
+      tier: "amateur",
+      tierStatus: "active",
+    });
+
+    await service.grantManualTier(grantedId, "pro", "active");
+    const granted = await service.resolveForUser(grantedId);
+    expect(granted?.effectiveTier).toBe("pro");
+    expect(granted?.plan.monthlyQuestions).toBe(1000);
+    expect(granted?.canHostLive).toBe(true);
+
+    const [row] = await ctx.db.select().from(entitlements).where(eq(entitlements.userId, grantedId));
+    expect(row?.provider).toBe("manual");
+    expect(row?.providerSubscriptionId).toBe(`manual:${grantedId}`);
+
+    await service.grantManualTier(grantedId, "amateur", "canceled");
+    const revoked = await service.resolveForUser(grantedId);
+    expect(revoked?.effectiveTier).toBe("amateur");
+    expect(revoked?.canHostLive).toBe(false);
   });
 });

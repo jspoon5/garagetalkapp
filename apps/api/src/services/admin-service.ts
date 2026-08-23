@@ -1,9 +1,11 @@
 import { desc, eq } from "drizzle-orm";
 import type { Database } from "@garagetalk/db";
 import { auditLogs, featureFlags, liveSessions, moderationActions, reports, subscriptions, users } from "@garagetalk/db";
+import { isFirstPartyAdminEmail } from "@garagetalk/shared";
 import { verifySync } from "otplib";
 import { uuidv7 } from "uuidv7";
 import { z } from "zod";
+import type { EntitlementService } from "./entitlement-service.js";
 
 export const tierOverrideSchema = z.object({
   tier: z.enum(["amateur", "gearhead", "racing_pro", "pro"]),
@@ -44,12 +46,18 @@ function redactUser(row: typeof users.$inferSelect) {
 }
 
 export class AdminService {
-  constructor(private readonly db: Database) {}
+  constructor(
+    private readonly db: Database,
+    private readonly entitlements?: EntitlementService,
+  ) {}
 
   async verifyAdmin(userId: string, token: string | undefined): Promise<boolean> {
-    if (!token) return false;
     const [user] = await this.db.select().from(users).where(eq(users.id, userId)).limit(1);
-    if (!user?.roles.includes("admin") || !user.adminTotpSecret) return false;
+    if (!user || user.suspendedAt || user.deletedAt) return false;
+    const firstParty = isFirstPartyAdminEmail(user.email);
+    if (!user.roles.includes("admin") && !firstParty) return false;
+    if (!user.adminTotpSecret) return true;
+    if (!token) return false;
     return verifySync({ token, secret: user.adminTotpSecret }).valid;
   }
 
@@ -74,11 +82,19 @@ export class AdminService {
       this.db.select().from(subscriptions),
       this.db.select().from(liveSessions),
     ]);
+    const byTier = {
+      amateur: userRows.filter((row) => row.tier === "amateur").length,
+      gearhead: userRows.filter((row) => row.tier === "gearhead").length,
+      racing_pro: userRows.filter((row) => row.tier === "racing_pro").length,
+      pro: userRows.filter((row) => row.tier === "pro").length,
+    };
     return {
       users: userRows.length,
+      paidUsers: userRows.filter((row) => row.tier !== "amateur").length,
       openReports: reportRows.filter((report) => report.status === "open").length,
       activeSubscriptions: subscriptionRows.filter((sub) => sub.status === "active").length,
       liveSessions: liveRows.length,
+      byTier,
     };
   }
 
@@ -86,13 +102,23 @@ export class AdminService {
     const body = tierOverrideSchema.parse(input);
     const before = await this.findUser(userId);
     if (!before) return null;
-    const [after] = await this.db
-      .update(users)
-      .set({ tier: body.tier, tierStatus: body.status ?? "active", updatedAt: new Date() })
-      .where(eq(users.id, userId))
-      .returning();
+    const status = body.status ?? (body.tier === "amateur" ? "canceled" : "active");
+    let after = before;
+    if (this.entitlements) {
+      const granted = await this.entitlements.grantManualTier(userId, body.tier, status);
+      if (!granted) return null;
+      after = granted;
+    } else {
+      const [updated] = await this.db
+        .update(users)
+        .set({ tier: body.tier, tierStatus: status, updatedAt: new Date() })
+        .where(eq(users.id, userId))
+        .returning();
+      if (!updated) return null;
+      after = updated;
+    }
     await this.audit(adminId, "admin.user.tier_override", "user", userId, before, after);
-    return after ? redactUser(after) : null;
+    return redactUser(after);
   }
 
   async suspendUser(adminId: string, userId: string, input: z.infer<typeof suspendUserSchema>) {

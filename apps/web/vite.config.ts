@@ -46,6 +46,7 @@ export default defineConfig({
         navigateFallback: "/index.html",
         navigateFallbackDenylist: [
           /^\/auth/,
+          /^\/admin\/(users|dashboard|me|settings|moderation)/,
           /^\/billing/,
           /^\/garage/,
           /^\/api/,
@@ -95,6 +96,11 @@ export default defineConfig({
     port: 5173,
     proxy: {
       "/auth": "http://127.0.0.1:3000",
+      "/admin/users": "http://127.0.0.1:3000",
+      "/admin/dashboard": "http://127.0.0.1:3000",
+      "/admin/me": "http://127.0.0.1:3000",
+      "/admin/settings": "http://127.0.0.1:3000",
+      "/admin/moderation": "http://127.0.0.1:3000",
       "/garage": "http://127.0.0.1:3000",
       "/feed": "http://127.0.0.1:3000",
       "/marketplace": "http://127.0.0.1:3000",

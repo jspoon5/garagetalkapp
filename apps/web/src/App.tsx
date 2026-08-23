@@ -32,6 +32,7 @@ import { VehicleScreen } from "./screens/VehicleScreen";
 import { SiteFooter } from "./components/SiteFooter";
 import { LegalDocumentScreen } from "./screens/LegalDocumentScreen";
 import { privacyPolicySections, termsOfUseSections } from "./legal/documents";
+import { AdminScreen } from "./screens/AdminScreen";
 
 export type Screen = "home" | "rooms" | "gearhead" | "market" | "profile";
 
@@ -49,7 +50,8 @@ type Overlay =
   | { kind: "goLive" }
   | { kind: "tip"; toUserId: string }
   | { kind: "privacy" }
-  | { kind: "terms" };
+  | { kind: "terms" }
+  | { kind: "admin" };
 
 type ExtendedNavigator = Navigator & {
   connection?: { saveData?: boolean };
@@ -79,6 +81,7 @@ const overlayTitles: Record<Overlay["kind"], string> = {
   tip: "Tip",
   privacy: "Privacy Policy",
   terms: "Terms of Use",
+  admin: "Admin",
 };
 
 export function App() {
@@ -144,8 +147,20 @@ export function App() {
     else navigate("rooms");
   };
 
+  const openAdmin = () => {
+    setRoomId(null);
+    setNoticesOpen(false);
+    setOverlay({ kind: "admin" });
+    if (window.location.pathname !== "/admin") {
+      window.history.pushState({ overlay: "admin" }, "", "/admin");
+    }
+  };
+
   const goBack = () => {
     if (overlay) {
+      if (overlay.kind === "admin" && window.location.pathname === "/admin") {
+        window.history.pushState({}, "", "/");
+      }
       setOverlay(null);
       return;
     }
@@ -188,6 +203,13 @@ export function App() {
     if (params.get("billing") === "success" || params.get("tip") === "success" || params.get("market") === "success") {
       setLiveNote("Payment completed — Stripe will reconcile the webhook shortly.");
     }
+    if (window.location.pathname === "/admin") {
+      setOverlay({ kind: "admin" });
+    }
+    const onPopState = () => {
+      setOverlay(window.location.pathname === "/admin" ? { kind: "admin" } : null);
+    };
+    window.addEventListener("popstate", onPopState);
 
     const refreshIfVisible = () => {
       if (document.visibilityState === "visible") {
@@ -199,6 +221,7 @@ export function App() {
     return () => {
       document.removeEventListener("visibilitychange", refreshIfVisible);
       window.removeEventListener("focus", refreshIfVisible);
+      window.removeEventListener("popstate", onPopState);
     };
   }, []);
 
@@ -553,6 +576,8 @@ export function App() {
             <LegalDocumentScreen title="Privacy Policy" sections={privacyPolicySections} onClose={() => setOverlay(null)} />
           ) : overlay?.kind === "terms" ? (
             <LegalDocumentScreen title="Terms of Use" sections={termsOfUseSections} onClose={() => setOverlay(null)} />
+          ) : overlay?.kind === "admin" ? (
+            <AdminScreen user={user} onNeedAccount={() => goSignIn()} />
           ) : overlay?.kind === "post" && activePost ? (
             <PostThreadScreen
               post={activePost}
@@ -617,6 +642,7 @@ export function App() {
               onGoLive={openGoLive}
               onOpenBilling={() => setOverlay({ kind: "billing" })}
               onOpenPrivacy={() => setOverlay({ kind: "privacy" })}
+              onOpenAdmin={openAdmin}
             />
           )}
         </main>

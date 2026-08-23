@@ -1,1 +1,5 @@
-# Runbooks\n\n- OBD hardware-in-loop: pending C3\n- Incident response: pending launch checklist\n
+# Runbooks
+
+- First-party admin desk: [admin.md](./admin.md)
+- OBD hardware-in-loop: pending C3
+- Incident response: pending launch checklist

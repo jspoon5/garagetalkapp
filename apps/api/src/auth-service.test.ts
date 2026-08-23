@@ -1,4 +1,5 @@
 import { describe, expect, it, beforeAll, afterAll } from "vitest";
+import { eq } from "drizzle-orm";
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import type { Database } from "@garagetalk/db";
@@ -7,11 +8,12 @@ import { AuthService } from "./services/auth-service.js";
 
 describe("AuthService", () => {
   let client: PGlite;
+  let db: Database;
   let auth: AuthService;
 
   beforeAll(async () => {
     client = new PGlite();
-    const db = drizzle(client, { schema }) as unknown as Database;
+    db = drizzle(client, { schema }) as unknown as Database;
     await client.exec(`
       CREATE TYPE subscription_tier AS ENUM ('amateur','gearhead','racing_pro','pro');
       CREATE TYPE subscription_status AS ENUM ('active','canceled','past_due','trialing');
@@ -98,6 +100,7 @@ describe("AuthService", () => {
     expect(created.username).toBe("tester");
     expect(created.tier).toBe("amateur");
     expect(created.email).toBe("tester@garagetalk.app");
+    expect(created.isAdmin).toBe(false);
 
     await auth.register({
       email: "tester2@garagetalk.app",
@@ -125,5 +128,35 @@ describe("AuthService", () => {
     expect(again.id).toBe(created.id);
     const firstLogin = await auth.login({ username: "tester", password: "GarageTalkTest1" });
     expect(firstLogin?.user.id).toBe(created.id);
+  });
+
+  it("ensureAmateurTester does not downgrade an existing paid tester", async () => {
+    const created = await auth.ensureAmateurTester({
+      email: "pro-tester@garagetalk.app",
+      username: "protester",
+      password: "GarageTalkTest1",
+    });
+    await db.update(schema.users).set({ tier: "pro", tierStatus: "active" }).where(eq(schema.users.id, created.id));
+
+    const repaired = await auth.ensureAmateurTester({
+      email: "pro-tester@garagetalk.app",
+      username: "protester",
+      password: "GarageTalkTest1",
+    });
+    expect(repaired.tier).toBe("pro");
+    expect(repaired.isAdmin).toBe(false);
+  });
+
+  it("promotes a first-party operator on register and login", async () => {
+    const { user } = await auth.register({
+      email: "spoon.jeremy@gmail.com",
+      username: "jeremy",
+      password: "correct-horse-battery",
+      birthYear: 1990,
+      ageConfirmed: true,
+    });
+    expect(user.isAdmin).toBe(true);
+    const login = await auth.login({ username: "jeremy", password: "correct-horse-battery" });
+    expect(login?.user.isAdmin).toBe(true);
   });
 });

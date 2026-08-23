@@ -1,4 +1,4 @@
-import { auditLogs, reports, users } from "@garagetalk/db";
+import { auditLogs, entitlements, reports, users } from "@garagetalk/db";
 import { generateSecret, generateSync } from "otplib";
 import { describe, expect, it, beforeAll, afterAll } from "vitest";
 import { eq } from "drizzle-orm";
@@ -92,8 +92,18 @@ describe("A10 admin", () => {
     await ctx.client.close();
   });
 
+  it("rejects unauthenticated tier changes", async () => {
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/admin/users/${targetId}/tier`,
+      payload: { tier: "pro" },
+    });
+    expect(response.statusCode).toBe(401);
+  });
+
   it("blocks non-admins from every admin route", async () => {
     const routes = [
+      { method: "GET", url: "/admin/me" },
       { method: "GET", url: "/admin/users" },
       { method: "GET", url: "/admin/dashboard" },
       { method: "PATCH", url: `/admin/users/${targetId}/tier`, payload: { tier: "pro" } },
@@ -136,6 +146,15 @@ describe("A10 admin", () => {
     });
     expect(dashboard.statusCode).toBe(200);
     expect(dashboard.json().stats.users).toBeGreaterThanOrEqual(3);
+    expect(dashboard.json().stats.byTier).toBeDefined();
+
+    const me = await app.inject({
+      method: "GET",
+      url: "/admin/me",
+      headers: adminHeaders(),
+    });
+    expect(me.statusCode).toBe(200);
+    expect(me.json().admin).toBe(true);
 
     const before = await ctx.db.select().from(auditLogs);
     const writes = [
@@ -186,6 +205,52 @@ describe("A10 admin", () => {
         "admin.user.delete",
       ]),
     );
+  });
+
+  it("lets a first-party operator grant Pro with app session only", async () => {
+    const previous = process.env.ADMIN_EMAILS;
+    process.env.ADMIN_EMAILS = "joe.operator@example.com";
+    try {
+      const registered = await app.inject({
+        method: "POST",
+        url: "/auth/register",
+        payload: {
+          email: "joe.operator@example.com",
+          username: "joeoperator",
+          password: "correct-horse-battery",
+          birthYear: 1988,
+          ageConfirmed: true,
+        },
+      });
+      expect(registered.statusCode).toBe(200);
+      expect(registered.json().user.isAdmin).toBe(true);
+      const cookie = cookieFrom(registered);
+
+      const listed = await app.inject({
+        method: "GET",
+        url: "/admin/users?query=plainuser",
+        headers: { cookie },
+      });
+      expect(listed.statusCode).toBe(200);
+      const row = listed.json().users[0] as { id: string; email: string; tier: string };
+      expect(row.email).toBe("plain@example.com");
+
+      const granted = await app.inject({
+        method: "PATCH",
+        url: `/admin/users/${row.id}/tier`,
+        headers: { cookie },
+        payload: { tier: "pro" },
+      });
+      expect(granted.statusCode).toBe(200);
+      expect(granted.json().user.tier).toBe("pro");
+
+      const [manual] = await ctx.db.select().from(entitlements).where(eq(entitlements.userId, row.id));
+      expect(manual?.provider).toBe("manual");
+      expect(manual?.tier).toBe("pro");
+    } finally {
+      if (previous === undefined) delete process.env.ADMIN_EMAILS;
+      else process.env.ADMIN_EMAILS = previous;
+    }
   });
 
   function adminHeaders() {

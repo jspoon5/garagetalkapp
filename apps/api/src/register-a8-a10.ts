@@ -22,7 +22,7 @@ export async function registerA8A10Routes(app: FastifyInstance, opts: RegisterA8
   const gifts = new GiftService(opts.db);
   const live = new LiveService(opts.db, { emailClient: opts.emailClient, entitlements });
   const billing = new BillingService(opts.db, gifts);
-  const admin = new AdminService(opts.db);
+  const admin = new AdminService(opts.db, entitlements);
 
   await app.register(liveRoutes, { live, gifts });
   await app.register(giftRoutes, { gifts, appBaseUrl: opts.appBaseUrl });

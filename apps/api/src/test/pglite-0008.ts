@@ -24,6 +24,9 @@ export const PGlite_0008_SQL = `
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now()
   );
+  CREATE UNIQUE INDEX IF NOT EXISTS entitlements_provider_sub_uidx
+    ON entitlements(provider, provider_subscription_id)
+    WHERE provider_subscription_id IS NOT NULL;
 
   CREATE TABLE IF NOT EXISTS coin_wallets (
     id uuid PRIMARY KEY,

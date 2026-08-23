@@ -51,6 +51,10 @@ export const envSchema = z.object({
   SENTRY_DSN_WEB: z.string().optional(),
   SENTRY_DSN_API: z.string().optional(),
   PLAUSIBLE_DOMAIN: z.string().optional(),
+  /** Single first-party admin email (legacy Render secret). */
+  ADMIN_EMAIL: z.string().optional(),
+  /** Comma-separated first-party admin emails (Joe and extras). */
+  ADMIN_EMAILS: z.string().optional(),
 });
 
 export type AppEnv = z.infer<typeof envSchema>;

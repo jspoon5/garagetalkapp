@@ -19,6 +19,7 @@ export function GarageScreen({
   onGoLive,
   onOpenBilling,
   onOpenPrivacy,
+  onOpenAdmin,
 }: {
   user: User | null;
   setUser: (user: User | null) => void;
@@ -27,6 +28,7 @@ export function GarageScreen({
   onGoLive: () => void;
   onOpenBilling: () => void;
   onOpenPrivacy: () => void;
+  onOpenAdmin: () => void;
 }) {
   return user ? (
     <SignedInGarage
@@ -36,6 +38,7 @@ export function GarageScreen({
       onOpenVehicle={onOpenVehicle}
       onGoLive={onGoLive}
       onOpenBilling={onOpenBilling}
+      onOpenAdmin={onOpenAdmin}
     />
   ) : (
     <SignedOutGarage setUser={setUser} onOpenPrivacy={onOpenPrivacy} />
@@ -334,6 +337,7 @@ function SignedInGarage({
   onOpenVehicle,
   onGoLive,
   onOpenBilling,
+  onOpenAdmin,
 }: {
   user: User;
   setUser: (user: User | null) => void;
@@ -341,6 +345,7 @@ function SignedInGarage({
   onOpenVehicle: (id: string) => void;
   onGoLive: () => void;
   onOpenBilling: () => void;
+  onOpenAdmin: () => void;
 }) {
   const { t } = useTranslation();
   const [bio, setBio] = useState(user.bio ?? "");
@@ -464,6 +469,11 @@ function SignedInGarage({
         <button type="button" onClick={onOpenBilling}>
           Subscribe
         </button>
+        {user.isAdmin ? (
+          <button type="button" data-testid="open-admin" onClick={onOpenAdmin}>
+            Admin desk
+          </button>
+        ) : null}
       </div>
       <SectionHeading eyebrow="My machines" title="Vehicles & projects" action="Add" onAction={() => document.getElementById("add-vehicle")?.scrollIntoView()} />
       <Carousel ariaLabel="Vehicles and projects" className="garage-carousel" contentClassName="garage-carousel-track">
