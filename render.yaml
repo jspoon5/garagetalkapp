@@ -45,9 +45,9 @@ projects:
               - key: NODE_ENV
                 value: production
               - key: APP_BASE_URL
-                value: https://garagetalk-app.onrender.com
+                value: https://app.garagetalk.app
               - key: AUTH_TRUSTED_ORIGINS
-                value: https://garagetalk-app.onrender.com,https://garagetalk-homepage.onrender.com,https://app.garagetalk.app,https://garagetalk.app,https://www.garagetalk.app
+                value: https://app.garagetalk.app,https://garagetalk.app,https://www.garagetalk.app,https://garagetalk-app.onrender.com,https://garagetalk-homepage.onrender.com
               - key: DATABASE_URL
                 fromDatabase:
                   name: garagetalk-db-v3
