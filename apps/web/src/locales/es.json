@@ -48,11 +48,11 @@
     "underage": "Garage Talk es para usuarios de 13 años o más."
   },
   "pwa": {
-    "androidTitle": "Install Garage Talk",
-    "androidBody": "Add the app to your Android home screen for offline garage access.",
-    "androidInstall": "Install app",
-    "androidUnavailable": "Open this page in Chrome on Android to see the install prompt.",
-    "iosTitle": "Add to Home Screen on iOS",
+    "androidTitle": "Open Garage Talk on your phone",
+    "androidBody": "Add Garage Talk to your home screen for quick access to your garage, bays, and live sessions.",
+    "androidInstall": "Add to home screen",
+    "androidUnavailable": "Open Garage Talk in Chrome on Android to add it to your home screen.",
+    "iosTitle": "Add Garage Talk to your home screen",
     "iosSteps": "In Safari, tap Share, then Add to Home Screen.",
     "offlineTitle": "Offline garage ready",
     "offlineBody": "Your latest garage can be served from cache while you reconnect."

@@ -11,7 +11,7 @@ export const privacyPolicySections: LegalSection[] = [
   {
     title: "Overview",
     paragraphs: [
-      `${LEGAL_ENTITY} (“Garage Talk,” “we,” “us,” or “our”) operates the Garage Talk website, progressive web application, and related services (collectively, the “Service”).`,
+      `${LEGAL_ENTITY} (“Garage Talk,” “we,” “us,” or “our”) operates the Garage Talk website, app, and related services (collectively, the “Service”).`,
       "This Privacy Policy explains what information we collect, how we use it, and the choices you have. By creating an account or using the Service, you agree to this Privacy Policy.",
     ],
   },
