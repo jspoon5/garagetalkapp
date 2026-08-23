@@ -150,6 +150,9 @@ describe("GearHead AI A7", () => {
         email: `${username}@example.com`,
         username,
         password: "correct-horse-battery",
+        birthYear: 1995,
+        ageConfirmed: true,
+
       },
     });
     const setCookie = res.headers["set-cookie"];

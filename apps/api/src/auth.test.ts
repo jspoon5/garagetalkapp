@@ -5,6 +5,7 @@ import type { Database } from "@garagetalk/db";
 import * as schema from "@garagetalk/db";
 import { buildApp } from "./app.js";
 import { getRouteManifest } from "./routes-manifest.js";
+import { registerBody } from "./test/register-body.js";
 
 describe("auth HTTP loop", () => {
   let client: PGlite;
@@ -40,6 +41,9 @@ describe("auth HTTP loop", () => {
         admin_totp_secret text,
         suspended_at timestamptz,
         email_verified_at timestamptz,
+        birth_year integer,
+        age_verified_at timestamptz,
+        privacy_policy_accepted_at timestamptz,
         created_at timestamptz NOT NULL DEFAULT now(),
         updated_at timestamptz NOT NULL DEFAULT now(),
         deleted_at timestamptz
@@ -70,11 +74,10 @@ describe("auth HTTP loop", () => {
     const reg = await app.inject({
       method: "POST",
       url: "/auth/register",
-      payload: {
+      payload: registerBody({
         email: "founder@example.com",
         username: "founder",
-        password: "correct-horse-battery",
-      },
+      }),
     });
     expect(reg.statusCode).toBe(200);
     const setCookie = reg.headers["set-cookie"];
@@ -125,6 +128,22 @@ describe("auth HTTP loop", () => {
 
     const routes = getRouteManifest();
     expect(routes.some((r) => r.url === "/auth/register")).toBe(true);
+  });
+
+  it("rejects registration for users under 13", async () => {
+    const reg = await app.inject({
+      method: "POST",
+      url: "/auth/register",
+      payload: {
+        email: "child@example.com",
+        username: "childuser",
+        password: "correct-horse-battery",
+        birthYear: new Date().getUTCFullYear() - 10,
+        ageConfirmed: true,
+      },
+    });
+    expect(reg.statusCode).toBe(400);
+    expect(reg.json().error).toBe("underage");
   });
 
   it("health endpoints", async () => {

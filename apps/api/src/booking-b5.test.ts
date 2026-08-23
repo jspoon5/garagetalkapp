@@ -122,7 +122,7 @@ describe("B5 booking", () => {
     const res = await app.inject({
       method: "POST",
       url: "/auth/register",
-      payload: { email: emailAddress, username, password: "correct-horse-battery" },
+      payload: { email: emailAddress, username, password: "correct-horse-battery", birthYear: 1995, ageConfirmed: true },
     });
     return { cookie: cookieFrom(res) };
   }

@@ -137,6 +137,9 @@ describe("C1-C3 diagnostics and OBD", () => {
         model: "Civic",
         year: 2006,
         vin: "1HGFA16526L000000",
+        birthYear: 1995,
+        ageConfirmed: true,
+
       },
     });
     return res.json().vehicle.id as string;

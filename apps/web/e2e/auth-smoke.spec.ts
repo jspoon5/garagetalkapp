@@ -13,6 +13,7 @@ test.describe("auth smoke", () => {
     await page.getByTestId("auth-email").fill(email);
     await page.getByTestId("auth-username").fill(username);
     await page.getByTestId("auth-password").fill(password);
+    await page.getByTestId("auth-age-confirm").check();
     await page.getByTestId("auth-register").click();
 
     await expect(page.getByText(`Signed in as ${username}`)).toBeVisible();

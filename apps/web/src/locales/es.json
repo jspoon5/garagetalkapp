@@ -38,7 +38,14 @@
     "resetSent": "Si el correo existe, el enlace ya va en camino.",
     "resetDone": "Contraseña actualizada. Entra con la nueva.",
     "resetFailed": "No se pudo restablecer",
-    "signOut": "Cerrar sesión"
+    "signOut": "Cerrar sesión",
+    "birthYear": "Año de nacimiento",
+    "privacyPolicy": "Privacy Policy",
+    "ageConfirmPrefix": "Confirmo que tengo 13 años o más y acepto la",
+    "ageConfirmSuffix": ".",
+    "ageConfirmRequired": "Confirma tu edad y acepta la Privacy Policy para continuar.",
+    "birthYearInvalid": "Introduce un año de nacimiento válido.",
+    "underage": "Garage Talk es para usuarios de 13 años o más."
   },
   "pwa": {
     "androidTitle": "Install Garage Talk",

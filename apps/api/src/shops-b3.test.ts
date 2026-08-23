@@ -119,7 +119,7 @@ describe("B3 shops verification", () => {
     const res = await app.inject({
       method: "POST",
       url: "/auth/register",
-      payload: { email, username, password: "correct-horse-battery" },
+      payload: { email, username, password: "correct-horse-battery", birthYear: 1995, ageConfirmed: true },
     });
     return { id: res.json().user.id as string, cookie: cookieFrom(res) };
   }

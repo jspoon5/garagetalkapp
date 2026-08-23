@@ -37,6 +37,9 @@ describe("A10 admin", () => {
         email: "admin@example.com",
         username: "adminuser",
         password: "correct-horse-battery",
+        birthYear: 1995,
+        ageConfirmed: true,
+
       },
     });
     adminCookie = cookieFrom(admin);
@@ -53,6 +56,9 @@ describe("A10 admin", () => {
         email: "plain@example.com",
         username: "plainuser",
         password: "correct-horse-battery",
+        birthYear: 1995,
+        ageConfirmed: true,
+
       },
     });
     userCookie = cookieFrom(user);
@@ -64,6 +70,9 @@ describe("A10 admin", () => {
         email: "target@example.com",
         username: "targetuser",
         password: "correct-horse-battery",
+        birthYear: 1995,
+        ageConfirmed: true,
+
       },
     });
     targetId = target.json().user.id as string;

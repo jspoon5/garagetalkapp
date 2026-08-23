@@ -1808,6 +1808,55 @@ textarea {
   }
 }
 
+.site-legal-footer {
+  margin: 1.5rem 0 0.5rem;
+  padding: 1rem 0 0.25rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.site-legal-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.6rem;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 0.35rem;
+}
+
+.legal-document {
+  display: grid;
+  gap: 1rem;
+}
+
+.legal-document-header h1 {
+  margin: 0.35rem 0;
+}
+
+.legal-document section h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1rem;
+}
+
+.legal-document section p {
+  margin: 0 0 0.65rem;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.age-confirm {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.65rem;
+  align-items: start;
+}
+
+.age-confirm input {
+  margin-top: 0.2rem;
+}
+
 button.inline-link {
   background: none;
   border: none;

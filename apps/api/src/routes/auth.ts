@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { FastifyPluginAsync } from "fastify";
+import { maxBirthYearForMinAge, meetsMinimumAge } from "@garagetalk/shared";
 import { AuthService } from "../services/auth-service.js";
 
 const registerSchema = z.object({
@@ -10,6 +11,8 @@ const registerSchema = z.object({
     .max(32)
     .regex(/^[a-zA-Z0-9_]+$/),
   password: z.string().min(10).max(128),
+  birthYear: z.number().int().min(1900).max(new Date().getUTCFullYear()),
+  ageConfirmed: z.literal(true),
 });
 
 const loginSchema = z.object({
@@ -39,6 +42,18 @@ export const authRoutes: FastifyPluginAsync<{ auth: AuthService }> = async (app,
     config: { rateLimit: { max: 10, timeWindow: "1 minute" } },
     handler: async (req, reply) => {
       const body = registerSchema.parse(req.body);
+      if (!meetsMinimumAge(body.birthYear)) {
+        return reply.code(400).send({
+          error: "underage",
+          message: "Garage Talk is for users 13 and older.",
+        });
+      }
+      if (body.birthYear > maxBirthYearForMinAge()) {
+        return reply.code(400).send({
+          error: "invalid_birth_year",
+          message: "Enter a valid year of birth.",
+        });
+      }
       try {
         const result = await auth.register(body);
         reply.setCookie(SESSION_COOKIE, result.sessionToken, {
@@ -50,6 +65,12 @@ export const authRoutes: FastifyPluginAsync<{ auth: AuthService }> = async (app,
         });
         return { user: result.user };
       } catch (err) {
+        if (err instanceof Error && err.message === "underage") {
+          return reply.code(400).send({
+            error: "underage",
+            message: "Garage Talk is for users 13 and older.",
+          });
+        }
         req.log.warn({ err: String(err) }, "register failed");
         return reply.code(409).send({ error: "could_not_register" });
       }

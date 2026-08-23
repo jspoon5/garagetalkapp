@@ -107,6 +107,9 @@ describe("B6 service records", () => {
         email: "records@example.com",
         username: "recordsuser",
         password: "correct-horse-battery",
+        birthYear: 1995,
+        ageConfirmed: true,
+
       },
     });
     return { cookie: cookieFrom(res) };

@@ -107,7 +107,7 @@ describe("B4 reviews", () => {
     const res = await app.inject({
       method: "POST",
       url: "/auth/register",
-      payload: { email, username, password: "correct-horse-battery" },
+      payload: { email, username, password: "correct-horse-battery", birthYear: 1995, ageConfirmed: true },
     });
     return { cookie: cookieFrom(res) };
   }

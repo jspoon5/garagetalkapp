@@ -4,7 +4,8 @@ import { DotsHorizontalIcon, PersonIcon, VideoIcon } from "../icons";
 import { LanguageSwitcher } from "../components/LanguageSwitcher";
 import { PlatformInstallGuidance } from "../components/PwaInstallPrompt";
 import { Carousel } from "../components/Carousel";
-import { apiGet, apiSend, type User, type Vehicle } from "../api";
+import { apiGet, apiSend, ApiError, type User, type Vehicle } from "../api";
+import { maxBirthYearForMinAge } from "@garagetalk/shared";
 import { roomImage } from "../bays";
 import { images, SectionHeading, VehicleTile } from "./shared";
 
@@ -17,6 +18,7 @@ export function GarageScreen({
   onOpenVehicle,
   onGoLive,
   onOpenBilling,
+  onOpenPrivacy,
 }: {
   user: User | null;
   setUser: (user: User | null) => void;
@@ -24,6 +26,7 @@ export function GarageScreen({
   onOpenVehicle: (id: string) => void;
   onGoLive: () => void;
   onOpenBilling: () => void;
+  onOpenPrivacy: () => void;
 }) {
   return user ? (
     <SignedInGarage
@@ -35,16 +38,24 @@ export function GarageScreen({
       onOpenBilling={onOpenBilling}
     />
   ) : (
-    <SignedOutGarage setUser={setUser} />
+    <SignedOutGarage setUser={setUser} onOpenPrivacy={onOpenPrivacy} />
   );
 }
 
-function SignedOutGarage({ setUser }: { setUser: (user: User) => void }) {
+function SignedOutGarage({
+  setUser,
+  onOpenPrivacy,
+}: {
+  setUser: (user: User) => void;
+  onOpenPrivacy: () => void;
+}) {
   const { t } = useTranslation();
   const [mode, setMode] = useState<"login" | "register" | "forgot" | "reset">("login");
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [birthYear, setBirthYear] = useState(String(maxBirthYearForMinAge() - 10));
+  const [ageConfirmed, setAgeConfirmed] = useState(false);
   const [token, setToken] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -60,10 +71,29 @@ function SignedOutGarage({ setUser }: { setUser: (user: User) => void }) {
 
   async function register() {
     setError(null);
+    if (!ageConfirmed) {
+      setError(t("auth.ageConfirmRequired"));
+      return;
+    }
+    const parsedBirthYear = Number(birthYear);
+    if (!Number.isInteger(parsedBirthYear)) {
+      setError(t("auth.birthYearInvalid"));
+      return;
+    }
     try {
-      const data = await apiSend<{ user: User }>("/auth/register", "POST", { email, username, password });
+      const data = await apiSend<{ user: User }>("/auth/register", "POST", {
+        email,
+        username,
+        password,
+        birthYear: parsedBirthYear,
+        ageConfirmed: true,
+      });
       setUser(data.user);
-    } catch {
+    } catch (err) {
+      if (err instanceof ApiError && err.code === "underage") {
+        setError(t("auth.underage"));
+        return;
+      }
       setError(t("auth.registerFailed"));
     }
   }
@@ -175,6 +205,41 @@ function SignedOutGarage({ setUser }: { setUser: (user: User) => void }) {
                 minLength={mode === "register" ? 10 : 1}
               />
             </label>
+            {mode === "register" ? (
+              <>
+                <label>
+                  {t("auth.birthYear")}
+                  <select
+                    data-testid="auth-birth-year"
+                    value={birthYear}
+                    onChange={(event) => setBirthYear(event.target.value)}
+                    required
+                  >
+                    {Array.from({ length: 88 }, (_, index) => maxBirthYearForMinAge() - index).map((year) => (
+                      <option key={year} value={year}>
+                        {year}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="age-confirm">
+                  <input
+                    type="checkbox"
+                    data-testid="auth-age-confirm"
+                    checked={ageConfirmed}
+                    onChange={(event) => setAgeConfirmed(event.target.checked)}
+                    required
+                  />
+                  <span>
+                    {t("auth.ageConfirmPrefix")}{" "}
+                    <button type="button" className="inline-link" onClick={onOpenPrivacy}>
+                      {t("auth.privacyPolicy")}
+                    </button>
+                    {t("auth.ageConfirmSuffix")}
+                  </span>
+                </label>
+              </>
+            ) : null}
           </>
         ) : null}
         {mode === "reset" ? (
