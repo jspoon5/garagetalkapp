@@ -21,6 +21,9 @@ describe("garage vehicles", () => {
         email: "garage@example.com",
         username: "garageuser",
         password: "correct-horse-battery",
+        birthYear: 1995,
+        ageConfirmed: true,
+
       },
     });
     const setCookie = reg.headers["set-cookie"];

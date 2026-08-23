@@ -51,6 +51,9 @@ describe("passkeys", () => {
         email: "passkey@example.com",
         username: "passkeyuser",
         password: "correct-horse-battery",
+        birthYear: 1995,
+        ageConfirmed: true,
+
       },
     });
     const setCookie = reg.headers["set-cookie"];

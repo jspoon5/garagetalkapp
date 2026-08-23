@@ -21,7 +21,7 @@ for (const tester of testers) {
   const register = await fetch(`${base}/auth/register`, {
     method: "POST",
     headers,
-    body: JSON.stringify(tester),
+    body: JSON.stringify({ ...tester, birthYear: 1990, ageConfirmed: true }),
   });
 
   if (register.ok) {

@@ -66,7 +66,7 @@ describe("chat and presence A5", () => {
     const res = await app.inject({
       method: "POST",
       url: "/auth/register",
-      payload: { email, username, password: "correct-horse-battery" },
+      payload: { email, username, password: "correct-horse-battery", birthYear: 1995, ageConfirmed: true },
     });
     const setCookie = res.headers["set-cookie"];
     return {

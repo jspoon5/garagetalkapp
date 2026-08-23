@@ -19,6 +19,9 @@ describe("podcasts A4", () => {
         email: "podcaster@example.com",
         username: "podcaster",
         password: "correct-horse-battery",
+        birthYear: 1995,
+        ageConfirmed: true,
+
       },
     });
     const setCookie = reg.headers["set-cookie"];

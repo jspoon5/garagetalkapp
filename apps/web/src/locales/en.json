@@ -38,7 +38,14 @@
     "resetSent": "If that email is on file, a reset link is on the way.",
     "resetDone": "Password updated. Sign in with the new one.",
     "resetFailed": "Could not reset that password",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "birthYear": "Year of birth",
+    "privacyPolicy": "Privacy Policy",
+    "ageConfirmPrefix": "I confirm I am 13 years of age or older and agree to the",
+    "ageConfirmSuffix": ".",
+    "ageConfirmRequired": "Confirm your age and accept the Privacy Policy to continue.",
+    "birthYearInvalid": "Enter a valid year of birth.",
+    "underage": "Garage Talk is for users 13 and older."
   },
   "pwa": {
     "androidTitle": "Install Garage Talk",

@@ -48,6 +48,9 @@ export async function createTestDb(): Promise<{ client: PGlite; db: Database }> 
       admin_totp_secret text,
       suspended_at timestamptz,
       email_verified_at timestamptz,
+      birth_year integer,
+      age_verified_at timestamptz,
+      privacy_policy_accepted_at timestamptz,
       created_at timestamptz NOT NULL DEFAULT now(),
       updated_at timestamptz NOT NULL DEFAULT now(),
       deleted_at timestamptz

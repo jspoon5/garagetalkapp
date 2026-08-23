@@ -26,6 +26,9 @@ describe("media upload presign validation", () => {
         email: "upload@example.com",
         username: "uploaduser",
         password: "correct-horse-battery",
+        birthYear: 1995,
+        ageConfirmed: true,
+
       },
     });
     const setCookie = reg.headers["set-cookie"];
@@ -110,6 +113,9 @@ describe("media upload EXIF strip", () => {
         email: "exif@example.com",
         username: "exifuser",
         password: "correct-horse-battery",
+        birthYear: 1995,
+        ageConfirmed: true,
+
       },
     });
     const userId = reg.json().user.id as string;

@@ -57,6 +57,9 @@ describe("A9 billing and tips", () => {
         email: "payer@example.com",
         username: "payeruser",
         password: "correct-horse-battery",
+        birthYear: 1995,
+        ageConfirmed: true,
+
       },
     });
     payerCookie = cookieFrom(payer);
@@ -69,6 +72,9 @@ describe("A9 billing and tips", () => {
         email: "creator@example.com",
         username: "creatoruser",
         password: "correct-horse-battery",
+        birthYear: 1995,
+        ageConfirmed: true,
+
       },
     });
     creatorId = creator.json().user.id as string;

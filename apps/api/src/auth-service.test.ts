@@ -39,6 +39,9 @@ describe("AuthService", () => {
         admin_totp_secret text,
         suspended_at timestamptz,
         email_verified_at timestamptz,
+        birth_year integer,
+        age_verified_at timestamptz,
+        privacy_policy_accepted_at timestamptz,
         created_at timestamptz NOT NULL DEFAULT now(),
         updated_at timestamptz NOT NULL DEFAULT now(),
         deleted_at timestamptz
@@ -66,6 +69,8 @@ describe("AuthService", () => {
       email: "a@example.com",
       username: "alpha",
       password: "correct-horse-battery",
+      birthYear: 1995,
+      ageConfirmed: true,
     });
     expect(user.username).toBe("alpha");
     expect(sessionToken.length).toBeGreaterThan(10);
@@ -98,6 +103,8 @@ describe("AuthService", () => {
       email: "tester2@garagetalk.app",
       username: "tester2",
       password: "old-password-that-is-long",
+      birthYear: 1995,
+      ageConfirmed: true,
     });
     const repaired = await auth.ensureAmateurTester({
       email: "tester2@garagetalk.app",

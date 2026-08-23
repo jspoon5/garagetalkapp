@@ -18,6 +18,9 @@ describe("spatial chat A6", () => {
         email: "spatial@example.com",
         username: "spatialuser",
         password: "correct-horse-battery",
+        birthYear: 1995,
+        ageConfirmed: true,
+
       },
     });
     const setCookie = reg.headers["set-cookie"];

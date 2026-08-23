@@ -29,6 +29,9 @@ import { MarketplaceScreen } from "./screens/MarketplaceScreen";
 import { RoomsScreen } from "./screens/RoomsScreen";
 import { ComposeSheet } from "./screens/shared";
 import { VehicleScreen } from "./screens/VehicleScreen";
+import { SiteFooter } from "./components/SiteFooter";
+import { LegalDocumentScreen } from "./screens/LegalDocumentScreen";
+import { privacyPolicySections, termsOfUseSections } from "./legal/documents";
 
 export type Screen = "home" | "rooms" | "gearhead" | "market" | "profile";
 
@@ -44,7 +47,9 @@ type Overlay =
   | { kind: "compose" }
   | { kind: "createRoom" }
   | { kind: "goLive" }
-  | { kind: "tip"; toUserId: string };
+  | { kind: "tip"; toUserId: string }
+  | { kind: "privacy" }
+  | { kind: "terms" };
 
 type ExtendedNavigator = Navigator & {
   connection?: { saveData?: boolean };
@@ -72,6 +77,8 @@ const overlayTitles: Record<Overlay["kind"], string> = {
   createRoom: "New bay",
   goLive: "Go live",
   tip: "Tip",
+  privacy: "Privacy Policy",
+  terms: "Terms of Use",
 };
 
 export function App() {
@@ -542,6 +549,10 @@ export function App() {
             />
           ) : overlay?.kind === "billing" ? (
             <BillingScreen user={user} onNeedAccount={() => goSignIn()} />
+          ) : overlay?.kind === "privacy" ? (
+            <LegalDocumentScreen title="Privacy Policy" sections={privacyPolicySections} onClose={() => setOverlay(null)} />
+          ) : overlay?.kind === "terms" ? (
+            <LegalDocumentScreen title="Terms of Use" sections={termsOfUseSections} onClose={() => setOverlay(null)} />
           ) : overlay?.kind === "post" && activePost ? (
             <PostThreadScreen
               post={activePost}
@@ -605,9 +616,14 @@ export function App() {
               onOpenVehicle={(id) => setOverlay({ kind: "vehicle", id })}
               onGoLive={openGoLive}
               onOpenBilling={() => setOverlay({ kind: "billing" })}
+              onOpenPrivacy={() => setOverlay({ kind: "privacy" })}
             />
           )}
         </main>
+        <SiteFooter
+          onOpenPrivacy={() => setOverlay({ kind: "privacy" })}
+          onOpenTerms={() => setOverlay({ kind: "terms" })}
+        />
       </div>
 
       {overlay?.kind === "compose" ? (

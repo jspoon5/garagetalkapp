@@ -10,6 +10,7 @@ import {
   type EmailClient,
 } from "@garagetalk/email";
 import { uuidv7 } from "uuidv7";
+import { meetsMinimumAge } from "@garagetalk/shared";
 
 const ARGON2_OPTS: argon2.Options & { raw?: false } = {
   type: argon2.argon2id,
@@ -98,6 +99,9 @@ export class AuthService {
           passwordHash,
           roles: ["user"],
           tier: "amateur",
+          birthYear: 1990,
+          ageVerifiedAt: new Date(),
+          privacyPolicyAcceptedAt: new Date(),
         })
         .returning();
       if (!user) throw new Error("failed to create tester");
@@ -137,11 +141,17 @@ export class AuthService {
     email: string;
     username: string;
     password: string;
+    birthYear: number;
+    ageConfirmed: true;
   }): Promise<{ user: PublicUser; sessionToken: string }> {
+    if (!input.ageConfirmed || !meetsMinimumAge(input.birthYear)) {
+      throw new Error("underage");
+    }
     const email = input.email.trim().toLowerCase();
     const username = input.username.trim();
     const passwordHash = await argon2.hash(input.password, ARGON2_OPTS);
 
+    const now = new Date();
     const [user] = await this.db
       .insert(users)
       .values({
@@ -150,6 +160,9 @@ export class AuthService {
         username,
         passwordHash,
         roles: ["user"],
+        birthYear: input.birthYear,
+        ageVerifiedAt: now,
+        privacyPolicyAcceptedAt: now,
       })
       .returning();
 

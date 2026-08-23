@@ -79,6 +79,9 @@ describe("Track D1-D4 campus foundations", () => {
         hazardClass: "caution",
         safetyCheckpoints: [{ id: "jackstands", label: "Use jack stands", blocking: true }],
         steps: [{ id: "inspect", label: "Inspect pads" }],
+        birthYear: 1995,
+        ageConfirmed: true,
+
       },
     });
     expect(caution.statusCode).toBe(201);

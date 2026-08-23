@@ -28,6 +28,9 @@ describe("video platform A3", () => {
         email: "video@example.com",
         username: "videouser",
         password: "correct-horse-battery",
+        birthYear: 1995,
+        ageConfirmed: true,
+
       },
     });
     const setCookie = reg.headers["set-cookie"];

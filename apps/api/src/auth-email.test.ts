@@ -27,6 +27,9 @@ describe("auth email flows", () => {
         email: "emailflow@example.com",
         username: "emailuser",
         password: "correct-horse-battery",
+        birthYear: 1995,
+        ageConfirmed: true,
+
       },
     });
     const setCookie = reg.headers["set-cookie"];

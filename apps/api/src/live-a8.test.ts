@@ -38,6 +38,9 @@ describe("A8 live sessions", () => {
         email: "live-host@example.com",
         username: "livehost",
         password: "correct-horse-battery",
+        birthYear: 1995,
+        ageConfirmed: true,
+
       },
     });
     hostCookie = cookieFrom(host);
@@ -63,6 +66,9 @@ describe("A8 live sessions", () => {
         email: "live-viewer@example.com",
         username: "liveviewer",
         password: "correct-horse-battery",
+        birthYear: 1995,
+        ageConfirmed: true,
+
       },
     });
     viewerCookie = cookieFrom(viewer);

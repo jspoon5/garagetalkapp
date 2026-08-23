@@ -102,6 +102,9 @@ describe("Track D5-D11 learning and integrity", () => {
         hostPositionSeconds: 120,
         hostNowMs: 100_000,
         clientClockOffsetsMs: Array.from({ length: 10 }, (_, i) => 98_100 + i * 400),
+        birthYear: 1995,
+        ageConfirmed: true,
+
       },
     });
     const positions = sync.json().positions as number[];
