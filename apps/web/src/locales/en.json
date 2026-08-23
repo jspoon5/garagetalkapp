@@ -47,6 +47,24 @@
     "birthYearInvalid": "Enter a valid year of birth.",
     "underage": "Garage Talk is for users 13 and older."
   },
+  "legal": {
+    "footerLabel": "Legal",
+    "privacyPolicy": "Privacy Policy",
+    "termsOfUse": "Terms of Use",
+    "ageOnly": "{{age}}+ only",
+    "copyright": "© {{year}} {{entity}} All rights reserved. Not directed to children under {{age}}."
+  },
+  "live": {
+    "onAir": "ON AIR",
+    "stopCamera": "Stop camera",
+    "previewReady": "Preview connected. Camera and mic stay off until you go live.",
+    "goLive": "Go live (camera + mic)",
+    "starting": "Starting…",
+    "connecting": "Connecting to live video…",
+    "upgradeToPublish": "Upgrade to publish from this session.",
+    "leaveLive": "Leave live",
+    "leaving": "Leaving…"
+  },
   "pwa": {
     "androidTitle": "Open Garage Talk on your phone",
     "androidBody": "Add Garage Talk to your home screen for quick access to your garage, bays, and live sessions.",

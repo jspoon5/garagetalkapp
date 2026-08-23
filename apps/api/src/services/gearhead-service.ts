@@ -280,7 +280,7 @@ export class GearHeadService {
       throw new PhotosNotAllowedError(entitlement.effectiveTier);
     }
 
-    const user = await this.consumeQuota(entitlement);
+    await this.consumeQuota(entitlement);
     const vehicle = parsed.vehicleId ? await this.getVehicle(userId, parsed.vehicleId) : null;
     if (parsed.vehicleId && !vehicle) throw new Error("vehicle_not_found");
 

@@ -6,6 +6,7 @@ import {
 } from "@livekit/components-react";
 import "@livekit/components-styles";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { apiSend, ApiError } from "../api";
 
 const CLIENT_ID_KEY = "gt_livekit_client_id";
@@ -23,6 +24,7 @@ function getLiveKitClientId(): string {
 }
 
 function HostBroadcastControls({ onAir, setOnAir }: { onAir: boolean; setOnAir: (value: boolean) => void }) {
+  const { t } = useTranslation();
   const room = useRoomContext();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -65,10 +67,10 @@ function HostBroadcastControls({ onAir, setOnAir }: { onAir: boolean; setOnAir: 
     return (
       <div className="livekit-controls">
         <span className="live-pill on-air">
-          <i /> ON AIR
+          <i /> {t("live.onAir")}
         </span>
         <button type="button" disabled={busy} onClick={() => void endBroadcast()}>
-          Stop camera
+          {t("live.stopCamera")}
         </button>
       </div>
     );
@@ -76,16 +78,17 @@ function HostBroadcastControls({ onAir, setOnAir }: { onAir: boolean; setOnAir: 
 
   return (
     <div className="livekit-backstage">
-      <p>Preview connected. Camera and mic stay off until you go live.</p>
+      <p>{t("live.previewReady")}</p>
       {error ? <p className="auth-error">{error}</p> : null}
       <button type="button" className="sell-button" disabled={busy} onClick={() => void goLive()}>
-        {busy ? "Starting…" : "Go live (camera + mic)"}
+        {busy ? t("live.starting") : t("live.goLive")}
       </button>
     </div>
   );
 }
 
 function LeaveLiveControl({ onLeave }: { onLeave?: () => void }) {
+  const { t } = useTranslation();
   const room = useRoomContext();
   const [busy, setBusy] = useState(false);
 
@@ -104,7 +107,7 @@ function LeaveLiveControl({ onLeave }: { onLeave?: () => void }) {
   return (
     <div className="livekit-controls">
       <button type="button" disabled={busy} onClick={() => void leave()}>
-        {busy ? "Leaving…" : "Leave live"}
+        {busy ? t("live.leaving") : t("live.leaveLive")}
       </button>
     </div>
   );
@@ -125,6 +128,7 @@ export function LiveKitSession({
   onUpgradeRequired?: () => void;
   onLeave?: () => void;
 }) {
+  const { t } = useTranslation();
   const [token, setToken] = useState<string | null>(null);
   const [livekitUrl, setLivekitUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -158,7 +162,7 @@ export function LiveKitSession({
   }, [sessionId, isHost, userId]);
 
   if (error) return <p className="auth-error">{error}</p>;
-  if (!token) return <p className="empty-state">Connecting to live video…</p>;
+  if (!token) return <p className="empty-state">{t("live.connecting")}</p>;
 
   const serverUrl = livekitUrl ?? "wss://mock.livekit.local";
 
@@ -176,7 +180,7 @@ export function LiveKitSession({
           canHostLive ? (
             <HostBroadcastControls onAir={onAir} setOnAir={setOnAir} />
           ) : (
-            <p className="empty-state">Upgrade to publish from this session.</p>
+            <p className="empty-state">{t("live.upgradeToPublish")}</p>
           )
         ) : null}
         <LeaveLiveControl onLeave={onLeave} />

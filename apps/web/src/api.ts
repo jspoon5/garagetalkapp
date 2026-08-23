@@ -236,8 +236,8 @@ async function apiErrorFrom(res: Response): Promise<ApiError> {
 async function errorBody(res: Response): Promise<{ code: string; details?: Record<string, unknown> }> {
   try {
     const data = (await res.json()) as Record<string, unknown>;
-    const code = typeof data.error === "string" ? data.error : `http_${res.status}`;
-    const { error: _ignored, ...rest } = data;
+    const { error, ...rest } = data;
+    const code = typeof error === "string" ? error : `http_${res.status}`;
     return { code, details: Object.keys(rest).length > 0 ? rest : undefined };
   } catch {
     return { code: `http_${res.status}` };

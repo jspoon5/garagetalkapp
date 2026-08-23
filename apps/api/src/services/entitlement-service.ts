@@ -196,7 +196,9 @@ export class EntitlementService {
     const paid = tier !== "amateur" && (status === "active" || status === "trialing");
     const effectiveTier: AiPlanId = paid ? tier : "amateur";
     const plan = AI_PLANS[effectiveTier];
-    const entitlementStatus = paid ? status : "canceled";
+    const entitlementStatus: "active" | "canceled" | "past_due" | "trialing" = paid
+      ? status
+      : "canceled";
     const providerSubscriptionId = `manual:${userId}`;
 
     const [existing] = await this.db
