@@ -3,7 +3,14 @@ import { and, eq, isNull, or, desc } from "drizzle-orm";
 import type { Database } from "@garagetalk/db";
 import { videos, webhookEvents } from "@garagetalk/db";
 import { uuidv7 } from "uuidv7";
-import { createStreamDirectUpload, readStreamConfig } from "./cloudflare-stream.js";
+import {
+  createStreamDirectUpload,
+  getStreamVideo,
+  isStubStreamUploadUrl,
+  playbackUrlForUid,
+  readStreamConfig,
+  streamProviderIsCloudflare,
+} from "./cloudflare-stream.js";
 import { MediaUploadService } from "./media-upload-service.js";
 import { VideoCatalog } from "./video-catalog.js";
 export {
@@ -29,6 +36,10 @@ function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
 
+function allowTestFallback(): boolean {
+  return process.env.NODE_ENV === "test";
+}
+
 export class VideoService extends VideoCatalog {
   private readonly streamWebhookTokens = new Map<string, Date>();
   private readonly media: MediaUploadService;
@@ -47,12 +58,15 @@ export class VideoService extends VideoCatalog {
     const videoId = uuidv7();
     const stream = readStreamConfig();
 
-    if (stream) {
+    if (streamProviderIsCloudflare() && stream) {
       const direct = await createStreamDirectUpload({
         accountId: stream.accountId,
         token: stream.token,
         videoId,
       });
+      if (isStubStreamUploadUrl(direct.uploadUrl)) {
+        throw new Error("stream_stub_rejected");
+      }
       const [video] = await this.db
         .insert(videos)
         .values({
@@ -79,6 +93,11 @@ export class VideoService extends VideoCatalog {
       };
     }
 
+    if (streamProviderIsCloudflare() && !stream && !allowTestFallback()) {
+      throw new Error("stream_not_configured");
+    }
+
+    // Test-only (or non-cloudflare provider) fallback: R2 / stub R2 — never cloudflare_stream stubs.
     const sizeBytes = parsed.sizeBytes ?? 32 * 1024 * 1024;
     const presigned = await this.media.createPresignedUpload(
       ownerId,
@@ -87,7 +106,7 @@ export class VideoService extends VideoCatalog {
         mimeType: parsed.mimeType,
         sizeBytes,
       },
-      { allowStub: process.env.NODE_ENV !== "production" },
+      { allowStub: allowTestFallback() || process.env.NODE_ENV !== "production" },
     );
 
     const [video] = await this.db
@@ -127,12 +146,40 @@ export class VideoService extends VideoCatalog {
       .limit(1);
     if (!video) return null;
 
+    const stream = readStreamConfig();
+    const streamUid = video.streamAssetId;
+    const isStreamAsset = Boolean(streamUid && !streamUid.startsWith("r2_"));
+
+    if (isStreamAsset && stream && streamUid) {
+      const details = await getStreamVideo({
+        accountId: stream.accountId,
+        token: stream.token,
+        uid: streamUid,
+        customerSubdomain: stream.customerSubdomain,
+      });
+      if (!details.readyToStream || !details.hlsUrl) {
+        throw new Error("stream_still_processing");
+      }
+      const [updated] = await this.db
+        .update(videos)
+        .set({
+          status: "ready",
+          hlsUrl: details.hlsUrl,
+          thumbUrl: details.thumbUrl ?? video.thumbUrl,
+          durationSeconds: details.durationSeconds ?? video.durationSeconds,
+          updatedAt: new Date(),
+        })
+        .where(eq(videos.id, videoId))
+        .returning();
+      return updated ?? null;
+    }
+
     let playbackUrl = video.hlsUrl;
     if (assetId) {
       const asset = await this.media.markUploadComplete(ownerId, assetId);
       if (!asset) return null;
       playbackUrl = asset.publicUrl ?? this.media.publicUrlFor(asset.storageKey, asset.id);
-    } else if (!playbackUrl && process.env.NODE_ENV !== "production") {
+    } else if (!playbackUrl && allowTestFallback()) {
       playbackUrl = "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4";
     }
 
@@ -189,11 +236,16 @@ export class VideoService extends VideoCatalog {
       ? eq(videos.id, videoId)
       : eq(videos.streamAssetId, parsed.uid);
 
+    const stream = readStreamConfig();
+    const hls =
+      parsed.playback?.hls ??
+      playbackUrlForUid(parsed.uid, stream?.customerSubdomain ?? null);
+
     const [video] = await this.db
       .update(videos)
       .set({
         status: "ready",
-        hlsUrl: parsed.playback?.hls ?? `https://videodelivery.net/${parsed.uid}/manifest/video.m3u8`,
+        hlsUrl: hls,
         thumbUrl: parsed.thumbnail ?? null,
         durationSeconds: parsed.duration ?? null,
         updatedAt: new Date(),

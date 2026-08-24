@@ -41,6 +41,17 @@ export class VideoCatalog {
       .then((rows) => rows[0] ?? null);
   }
 
+  getOwned(ownerId: string, videoId: string) {
+    return this.db
+      .select()
+      .from(videos)
+      .where(
+        and(eq(videos.id, videoId), eq(videos.ownerId, ownerId), isNull(videos.deletedAt)),
+      )
+      .limit(1)
+      .then((rows) => rows[0] ?? null);
+  }
+
   async update(ownerId: string, videoId: string, input: z.infer<typeof updateVideoSchema>) {
     const parsed = updateVideoSchema.parse(input);
     const [row] = await this.db

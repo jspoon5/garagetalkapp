@@ -119,6 +119,8 @@ projects:
                 sync: false
               - key: CLOUDFLARE_STREAM_TOKEN
                 sync: false
+              - key: CLOUDFLARE_STREAM_CUSTOMER_SUBDOMAIN
+                sync: false
 
           - type: keyvalue
             name: garagetalk-redis

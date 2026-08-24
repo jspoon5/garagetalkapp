@@ -62,10 +62,11 @@ describe("video platform A3", () => {
     expect(session.statusCode).toBe(201);
     const { video, upload } = session.json() as {
       video: { id: string; streamAssetId: string; status: string };
-      upload: { streamAssetId: string; provider: string; assetId: string | null };
+      upload: { streamAssetId: string; provider: string; assetId: string | null; uploadUrl: string };
     };
     expect(video.status).toBe("processing");
     expect(upload.provider).not.toBe("cloudflare_stream");
+    expect(upload.uploadUrl).not.toMatch(/upload\.videodelivery\.net\/stub/);
 
     // Stub/R2 path: complete after client PUT (stub skips real PUT).
     const completed = await app.inject({
@@ -103,7 +104,7 @@ describe("video platform A3", () => {
         uid: streamVideo.streamAssetId,
         status: { state: "ready" },
         duration: 180,
-        playback: { hls: "https://videodelivery.net/stub/manifest/video.m3u8" },
+        playback: { hls: "https://videodelivery.net/fixture/manifest/video.m3u8" },
         thumbnail: "https://cdn.example/thumb.jpg",
         meta: { videoId: streamVideo.id },
       },
@@ -224,5 +225,49 @@ describe("video platform A3", () => {
       url: `/videos/${video.id}`,
     });
     expect(gone.statusCode).toBe(404);
+  });
+
+  it("uses real Stream direct upload when credentials are present", async () => {
+    const prevAccount = process.env.CLOUDFLARE_ACCOUNT_ID;
+    const prevToken = process.env.CLOUDFLARE_STREAM_TOKEN;
+    const prevFetch = globalThis.fetch;
+    process.env.CLOUDFLARE_ACCOUNT_ID = "acct_test";
+    process.env.CLOUDFLARE_STREAM_TOKEN = "tok_test";
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes("/stream/direct_upload")) {
+        return Response.json({
+          success: true,
+          result: {
+            uid: "cf_real_uid_1",
+            uploadURL: "https://upload.videodelivery.net/real-token-abc",
+          },
+        });
+      }
+      return prevFetch(input, init);
+    }) as typeof fetch;
+
+    try {
+      const session = await app.inject({
+        method: "POST",
+        url: "/videos/upload-session",
+        headers: { cookie },
+        payload: { title: "Live Stream path", category: "diy", mimeType: "video/mp4", sizeBytes: 2048 },
+      });
+      expect(session.statusCode).toBe(201);
+      const body = session.json() as {
+        upload: { provider: string; uploadUrl: string; streamAssetId: string };
+      };
+      expect(body.upload.provider).toBe("cloudflare_stream");
+      expect(body.upload.uploadUrl).toBe("https://upload.videodelivery.net/real-token-abc");
+      expect(body.upload.uploadUrl).not.toMatch(/\/stub\//);
+      expect(body.upload.streamAssetId).toBe("cf_real_uid_1");
+    } finally {
+      globalThis.fetch = prevFetch;
+      if (prevAccount === undefined) delete process.env.CLOUDFLARE_ACCOUNT_ID;
+      else process.env.CLOUDFLARE_ACCOUNT_ID = prevAccount;
+      if (prevToken === undefined) delete process.env.CLOUDFLARE_STREAM_TOKEN;
+      else process.env.CLOUDFLARE_STREAM_TOKEN = prevToken;
+    }
   });
 });

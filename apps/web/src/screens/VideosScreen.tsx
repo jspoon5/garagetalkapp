@@ -1,6 +1,27 @@
 import { useEffect, useState } from "react";
 import { apiGet, apiSend, ApiError, type VideoItem } from "../api";
 
+async function wait(ms: number) {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function finalizeStreamUpload(videoId: string): Promise<VideoItem | null> {
+  // Stream may still be encoding; poll complete a few times.
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const data = await apiSend<{ video: VideoItem | null; error?: string }>(
+      `/videos/${videoId}/complete`,
+      "POST",
+      {},
+    );
+    if (data.video?.status === "ready" && data.video.hlsUrl) return data.video;
+    if (data.error && data.error !== "stream_still_processing") {
+      throw new ApiError(400, data.error);
+    }
+    await wait(1500);
+  }
+  return null;
+}
+
 export function VideosScreen({
   signedIn,
   onNeedAccount,
@@ -39,6 +60,10 @@ export function VideosScreen({
       setError("Choose a video file to upload.");
       return;
     }
+    if (file.size > 200 * 1024 * 1024) {
+      setError("This upload path supports files up to 200 MB. Use a smaller clip.");
+      return;
+    }
 
     setBusy(true);
     setError(null);
@@ -60,12 +85,23 @@ export function VideosScreen({
         sizeBytes: file.size,
       });
 
+      if (/upload\.videodelivery\.net\/stub/i.test(session.upload.uploadUrl)) {
+        setError("Stream not configured");
+        return;
+      }
+
       if (session.upload.provider === "cloudflare_stream") {
         const body = new FormData();
         body.append("file", file);
         const put = await fetch(session.upload.uploadUrl, { method: "POST", body });
         if (!put.ok) throw new Error("stream_put_failed");
-        setNotice("Upload received. Transcoding usually finishes in a minute — pull to refresh.");
+        setNotice("Upload received — waiting for Stream to finish encoding…");
+        const ready = await finalizeStreamUpload(session.video.id);
+        setNotice(
+          ready
+            ? "Upload complete — your clip is ready to watch."
+            : "Upload received. Encoding is still running — refresh in a minute.",
+        );
       } else if (session.upload.uploadUrl.includes("stub-r2.local")) {
         await apiSend(`/videos/${session.video.id}/complete`, "POST", {
           assetId: session.upload.assetId,
@@ -88,8 +124,11 @@ export function VideosScreen({
       setFile(null);
       await refreshVideos();
     } catch (err) {
-      if (err instanceof ApiError && err.code === "upload_storage_unconfigured") {
-        setError("Video storage isn’t configured on the server yet (needs R2 or Cloudflare Stream).");
+      if (
+        err instanceof ApiError &&
+        (err.code === "stream_not_configured" || err.code === "upload_storage_unconfigured")
+      ) {
+        setError("Stream not configured");
       } else {
         setError("Could not finish the upload. Try again in a moment.");
       }

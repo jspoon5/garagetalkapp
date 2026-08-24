@@ -40,11 +40,18 @@ export const videoRoutes: FastifyPluginAsync<{ video: VideoService }> = async (a
         return reply.code(201).send(session);
       } catch (err) {
         const message = err instanceof Error ? err.message : "upload_failed";
+        if (message === "stream_not_configured" || message === "stream_stub_rejected") {
+          return reply.code(503).send({
+            error: "stream_not_configured",
+            message:
+              "Stream not configured. Set CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_STREAM_TOKEN on the API.",
+          });
+        }
         if (message === "upload_storage_unconfigured") {
           return reply.code(503).send({
             error: "upload_storage_unconfigured",
             message:
-              "Video storage is not configured. Set Cloudflare Stream or R2 credentials on the API.",
+              "Video storage is not configured. Set Cloudflare Stream credentials on the API.",
           });
         }
         throw err;
@@ -64,6 +71,13 @@ export const videoRoutes: FastifyPluginAsync<{ video: VideoService }> = async (a
         return { video: row };
       } catch (err) {
         const message = err instanceof Error ? err.message : "complete_failed";
+        if (message === "stream_still_processing") {
+          const pending = await video.getOwned(req.user.id, id);
+          return reply.code(202).send({
+            error: "stream_still_processing",
+            video: pending,
+          });
+        }
         if (message === "playback_url_missing") {
           return reply.code(400).send({ error: "playback_url_missing" });
         }
