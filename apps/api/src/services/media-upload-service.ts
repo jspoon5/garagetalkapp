@@ -10,11 +10,24 @@ import { z } from "zod";
 
 /** Allowed image MIME types for presigned uploads. */
 export const ALLOWED_IMAGE_MIMES = ["image/jpeg", "image/png", "image/webp"] as const;
+export const ALLOWED_VIDEO_MIMES = ["video/mp4", "video/webm", "video/quicktime"] as const;
 
 export const presignInputSchema = z.object({
-  kind: z.enum(["avatar", "vehicle_photo", "video_thumb", "generic"]),
-  mimeType: z.enum(ALLOWED_IMAGE_MIMES),
-  sizeBytes: z.number().int().min(1).max(20 * 1024 * 1024),
+  kind: z.enum(["avatar", "vehicle_photo", "video_thumb", "generic", "video"]),
+  mimeType: z.union([z.enum(ALLOWED_IMAGE_MIMES), z.enum(ALLOWED_VIDEO_MIMES)]),
+  sizeBytes: z.number().int().min(1).max(512 * 1024 * 1024),
+}).superRefine((value, ctx) => {
+  const image = (ALLOWED_IMAGE_MIMES as readonly string[]).includes(value.mimeType);
+  const video = (ALLOWED_VIDEO_MIMES as readonly string[]).includes(value.mimeType);
+  if (value.kind === "video" && !video) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "video kind requires a video mime type" });
+  }
+  if (value.kind !== "video" && !image) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "image kinds require an image mime type" });
+  }
+  if (value.kind !== "video" && value.sizeBytes > 20 * 1024 * 1024) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "image uploads max 20MB" });
+  }
 });
 
 export type PresignInput = z.infer<typeof presignInputSchema>;
@@ -104,12 +117,30 @@ function buildStubSignature(assetId: string, storageKey: string): string {
 export class MediaUploadService {
   constructor(private readonly db: Database) {}
 
-  async createPresignedUpload(ownerId: string, input: PresignInput): Promise<PresignedUpload> {
+  /** True when live R2 credentials are present (not stub mode). */
+  hasR2(): boolean {
+    return Boolean(readR2Config());
+  }
+
+  publicUrlFor(storageKey: string, assetId: string): string {
+    return publicUrlForKey(readR2Config(), storageKey, assetId);
+  }
+
+  async createPresignedUpload(
+    ownerId: string,
+    input: PresignInput,
+    opts: { allowStub?: boolean } = {},
+  ): Promise<PresignedUpload> {
     const parsed = presignInputSchema.parse(input);
     const assetId = uuidv7();
     const storageKey = `uploads/${ownerId}/${parsed.kind}/${assetId}`;
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
     const r2 = readR2Config();
+    const allowStub = opts.allowStub ?? process.env.NODE_ENV !== "production";
+
+    if (!r2 && !allowStub) {
+      throw new Error("upload_storage_unconfigured");
+    }
 
     await this.db.insert(mediaAssets).values({
       id: assetId,

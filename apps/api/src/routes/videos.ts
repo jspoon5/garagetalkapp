@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from "fastify";
 import {
   commentInputSchema,
+  completeVideoUploadSchema,
   heartbeatInputSchema,
   updateVideoSchema,
   uploadSessionSchema,
@@ -18,7 +19,9 @@ export const videoRoutes: FastifyPluginAsync<{ video: VideoService }> = async (a
     return { items };
   });
 
-  app.get("/videos", async () => ({ videos: await video.listPublic() }));
+  app.get("/videos", async (req) => ({
+    videos: await video.listForViewer(req.user?.id ?? null),
+  }));
 
   app.get("/videos/:id", async (req, reply) => {
     const { id } = req.params as { id: string };
@@ -31,9 +34,41 @@ export const videoRoutes: FastifyPluginAsync<{ video: VideoService }> = async (a
     config: { rateLimit: { max: 10, timeWindow: "1 minute" } },
     handler: async (req, reply) => {
       if (!req.user) return reply.code(401).send({ error: "unauthorized" });
-      const body = uploadSessionSchema.parse(req.body);
-      const session = await video.createUploadSession(req.user.id, body);
-      return reply.code(201).send(session);
+      try {
+        const body = uploadSessionSchema.parse(req.body);
+        const session = await video.createUploadSession(req.user.id, body);
+        return reply.code(201).send(session);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "upload_failed";
+        if (message === "upload_storage_unconfigured") {
+          return reply.code(503).send({
+            error: "upload_storage_unconfigured",
+            message:
+              "Video storage is not configured. Set Cloudflare Stream or R2 credentials on the API.",
+          });
+        }
+        throw err;
+      }
+    },
+  });
+
+  app.post("/videos/:id/complete", {
+    config: { rateLimit: { max: 20, timeWindow: "1 minute" } },
+    handler: async (req, reply) => {
+      if (!req.user) return reply.code(401).send({ error: "unauthorized" });
+      const { id } = req.params as { id: string };
+      const body = completeVideoUploadSchema.parse(req.body ?? {});
+      try {
+        const row = await video.completeUpload(req.user.id, id, body.assetId);
+        if (!row) return reply.code(404).send({ error: "not_found" });
+        return { video: row };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "complete_failed";
+        if (message === "playback_url_missing") {
+          return reply.code(400).send({ error: "playback_url_missing" });
+        }
+        throw err;
+      }
     },
   });
 

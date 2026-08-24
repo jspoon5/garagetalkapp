@@ -115,6 +115,10 @@ projects:
                 sync: false
               - key: R2_PUBLIC_BASE_URL
                 sync: false
+              - key: CLOUDFLARE_ACCOUNT_ID
+                sync: false
+              - key: CLOUDFLARE_STREAM_TOKEN
+                sync: false
 
           - type: keyvalue
             name: garagetalk-redis
