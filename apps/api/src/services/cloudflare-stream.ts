@@ -58,6 +58,11 @@ export function streamProviderIsCloudflare(env: NodeJS.ProcessEnv = process.env)
   return provider === "cloudflare";
 }
 
+/** True when uploads should use R2 direct storage instead of Cloudflare Stream. */
+export function streamProviderIsR2(env: NodeJS.ProcessEnv = process.env): boolean {
+  return (env.STREAM_PROVIDER ?? "").trim().toLowerCase() === "r2";
+}
+
 export function isStubStreamUploadUrl(url: string): boolean {
   return /upload\.videodelivery\.net\/stub\b/i.test(url) || /\/stub\/cf_/i.test(url);
 }

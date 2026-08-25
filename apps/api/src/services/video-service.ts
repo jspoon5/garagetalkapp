@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { and, eq, isNull, or, desc } from "drizzle-orm";
+import { and, desc, eq, isNull, lt, or } from "drizzle-orm";
 import type { Database } from "@garagetalk/db";
 import { videos, webhookEvents } from "@garagetalk/db";
 import { uuidv7 } from "uuidv7";
@@ -10,6 +10,7 @@ import {
   playbackUrlForUid,
   readStreamConfig,
   streamProviderIsCloudflare,
+  streamProviderIsR2,
 } from "./cloudflare-stream.js";
 import { MediaUploadService } from "./media-upload-service.js";
 import { VideoCatalog } from "./video-catalog.js";
@@ -68,7 +69,7 @@ export class VideoService extends VideoCatalog {
     const videoId = uuidv7();
     const stream = readStreamConfig();
 
-    if (streamProviderIsCloudflare() && stream) {
+    if (streamProviderIsCloudflare() && !streamProviderIsR2() && stream) {
       try {
         const direct = await createStreamDirectUpload({
           accountId: stream.accountId,
@@ -302,5 +303,31 @@ export class VideoService extends VideoCatalog {
     const expires = this.streamWebhookTokens.get(hashToken(token));
     if (!expires) return false;
     return expires.getTime() > Date.now();
+  }
+
+  /**
+   * Soft-delete upload rows that never finished (no playback URL) after a grace period.
+   * Cleans up legacy Cloudflare Stream orphans and abandoned R2 sessions.
+   */
+  async purgeAbandonedUploads(maxAgeMs = 60 * 60 * 1000) {
+    const cutoff = new Date(Date.now() - maxAgeMs);
+    return this.db
+      .update(videos)
+      .set({ deletedAt: new Date(), updatedAt: new Date() })
+      .where(
+        and(
+          eq(videos.status, "processing"),
+          isNull(videos.deletedAt),
+          isNull(videos.hlsUrl),
+          lt(videos.createdAt, cutoff),
+        ),
+      )
+      .returning({
+        id: videos.id,
+        title: videos.title,
+        streamAssetId: videos.streamAssetId,
+        ownerId: videos.ownerId,
+        createdAt: videos.createdAt,
+      });
   }
 }

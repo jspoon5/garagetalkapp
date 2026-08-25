@@ -3,6 +3,7 @@ import { createDb } from "@garagetalk/db";
 import { AuthService } from "./services/auth-service.js";
 import { seedHardcodedAmateurTesters } from "./seed-testers.js";
 import { buildApp } from "./app.js";
+import { VideoService } from "./services/video-service.js";
 import {
   createDefaultGearHeadProvider,
   GearHeadService,
@@ -51,6 +52,16 @@ async function main() {
       app.log.info({ usernames }, "seeded amateur tester accounts");
     } catch (err) {
       app.log.error({ err }, "tester seed failed");
+    }
+
+    try {
+      const video = new VideoService(db);
+      const purged = await video.purgeAbandonedUploads(60 * 60 * 1000);
+      if (purged.length > 0) {
+        app.log.info({ count: purged.length, ids: purged.map((row) => row.id) }, "purged abandoned video uploads");
+      }
+    } catch (err) {
+      app.log.error({ err }, "abandoned video purge failed");
     }
   }
 

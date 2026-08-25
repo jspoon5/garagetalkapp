@@ -227,6 +227,20 @@ describe("video platform A3", () => {
     expect(gone.statusCode).toBe(404);
   });
 
+  it("purges abandoned processing uploads after the grace window", async () => {
+    const session = await app.inject({
+      method: "POST",
+      url: "/videos/upload-session",
+      headers: { cookie },
+      payload: { title: "Abandoned", category: "diy", mimeType: "video/mp4", sizeBytes: 1024 },
+    });
+    const { video } = session.json() as { video: { id: string } };
+    const purged = await videoService.purgeAbandonedUploads(0);
+    expect(purged.some((row) => row.id === video.id)).toBe(true);
+    const listed = await app.inject({ method: "GET", url: "/videos", headers: { cookie } });
+    expect(listed.json().videos.some((row: { id: string }) => row.id === video.id)).toBe(false);
+  });
+
   it("uses real Stream direct upload when credentials are present", async () => {
     const prevAccount = process.env.CLOUDFLARE_ACCOUNT_ID;
     const prevToken = process.env.CLOUDFLARE_STREAM_TOKEN;
