@@ -81,12 +81,22 @@ const overlayTitles: Record<Overlay["kind"], string> = {
   terms: "Terms of Use",
 };
 
+const LIVE_PATH_RE = /^\/live\/([0-9a-fA-F-]{36})\/?$/;
+
+function liveIdFromPath(pathname = window.location.pathname): string | null {
+  const match = LIVE_PATH_RE.exec(pathname);
+  return match?.[1] ?? null;
+}
+
 export function App() {
   const appRef = useRef<HTMLDivElement>(null);
   const [layoutClasses, setLayoutClasses] = useState("phone-compact");
   const [screen, setScreen] = useState<Screen>("home");
   const [roomId, setRoomId] = useState<string | null>(null);
-  const [overlay, setOverlay] = useState<Overlay | null>(null);
+  const [overlay, setOverlay] = useState<Overlay | null>(() => {
+    const liveId = liveIdFromPath();
+    return liveId ? { kind: "live", id: liveId } : null;
+  });
   const [pendingRoom, setPendingRoom] = useState<{ id: string; from: Screen } | null>(null);
   const [noticesOpen, setNoticesOpen] = useState(false);
   const [vehicleFilter, setVehicleFilter] = useState("All");
@@ -98,6 +108,7 @@ export function App() {
   const [entitlement, setEntitlement] = useState<UserEntitlement | null>(null);
   const [draft, setDraft] = useState("");
   const [tipAmount, setTipAmount] = useState("500");
+  const skippingUrlSync = useRef(false);
 
   const activeRoom = rooms.find((room) => room.id === roomId) ?? null;
   const activePost = overlay?.kind === "post" ? (posts.find((post) => post.id === overlay.id) ?? null) : null;
@@ -118,16 +129,36 @@ export function App() {
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
     setRoomId(null);
     setOverlay(null);
+    clearLivePath();
     setNoticesOpen(false);
     setPendingRoom(null);
     if (next === "rooms" || next === "market") setVehicleFilter("All");
     setScreen(next);
   };
 
+  const openLive = (id: string, opts?: { replace?: boolean }) => {
+    setNoticesOpen(false);
+    setRoomId(null);
+    setOverlay({ kind: "live", id });
+    const path = `/live/${id}`;
+    if (opts?.replace) {
+      window.history.replaceState({ overlay: { kind: "live", id } }, "", path);
+    } else if (window.location.pathname !== path) {
+      window.history.pushState({ overlay: { kind: "live", id } }, "", path);
+    }
+  };
+
+  const clearLivePath = () => {
+    if (LIVE_PATH_RE.test(window.location.pathname)) {
+      window.history.pushState({}, "", "/");
+    }
+  };
+
   const goSignIn = (returnRoom?: string | null) => {
     if (returnRoom) setPendingRoom({ id: returnRoom, from: screen });
     setRoomId(null);
     setOverlay(null);
+    clearLivePath();
     setNoticesOpen(false);
     setScreen("profile");
   };
@@ -135,6 +166,7 @@ export function App() {
   const enterRoom = (id: string) => {
     setNoticesOpen(false);
     setOverlay(null);
+    clearLivePath();
     setRoomId(id);
   };
 
@@ -145,12 +177,48 @@ export function App() {
   };
 
   const goBack = () => {
+    if (overlay?.kind === "live" && LIVE_PATH_RE.test(window.location.pathname)) {
+      skippingUrlSync.current = true;
+      window.history.back();
+      return;
+    }
     if (overlay) {
       setOverlay(null);
+      clearLivePath();
       return;
     }
     setRoomId(null);
   };
+
+  useEffect(() => {
+    const onPopState = () => {
+      if (skippingUrlSync.current) {
+        skippingUrlSync.current = false;
+      }
+      const liveId = liveIdFromPath();
+      if (liveId) {
+        setRoomId(null);
+        setOverlay({ kind: "live", id: liveId });
+        return;
+      }
+      setOverlay((current) => (current?.kind === "live" ? null : current));
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
+  useEffect(() => {
+    if (overlay?.kind === "live") {
+      const path = `/live/${overlay.id}`;
+      if (window.location.pathname !== path) {
+        window.history.replaceState({ overlay }, "", path);
+      }
+      return;
+    }
+    if (!overlay && LIVE_PATH_RE.test(window.location.pathname) && !skippingUrlSync.current) {
+      window.history.replaceState({}, "", "/");
+    }
+  }, [overlay]);
 
   async function loadEntitlement() {
     if (!user) {
@@ -363,7 +431,7 @@ export function App() {
       setLiveNote(data.rtmp.url ? `OBS ingest: ${data.rtmp.url}` : "Session created — go live in app when ready.");
       setDraft("");
       await refresh();
-      setOverlay({ kind: "live", id: data.session.id });
+      openLive(data.session.id);
     } catch (err) {
       if (err instanceof ApiError && err.status === 402) {
         setLiveNote("Live hosting requires a paid plan. Free accounts can watch only.");
@@ -416,7 +484,7 @@ export function App() {
         id: `live:${session.id}`,
         title: session.title ?? session.roomName,
         body: `${session.kind} is live now.`,
-        onClick: () => setOverlay({ kind: "live", id: session.id }),
+        onClick: () => openLive(session.id),
       }));
     const roomNotices = rooms.slice(0, 2).map((room) => ({
       id: `room:${room.id}`,
@@ -532,7 +600,10 @@ export function App() {
               }}
               onJoinBay={(roomName) => joinBayFromLive(roomName)}
               onTip={(hostId) => setOverlay({ kind: "tip", toUserId: hostId })}
-              onLeaveLive={() => setOverlay(null)}
+              onLeaveLive={() => {
+                setOverlay(null);
+                clearLivePath();
+              }}
             />
           ) : overlay?.kind === "videos" ? (
             <VideosScreen signedIn={Boolean(user)} onNeedAccount={() => goSignIn()} />
@@ -579,7 +650,7 @@ export function App() {
               onOpenRooms={() => navigate("rooms")}
               onOpenGearHead={() => navigate("gearhead")}
               onOpenLive={() =>
-                lives[0] ? setOverlay({ kind: "live", id: lives[0].id }) : navigate("rooms")
+                lives[0] ? openLive(lives[0].id) : navigate("rooms")
               }
               onOpenSearch={() => setOverlay({ kind: "search" })}
               onOpenVideos={() => setOverlay({ kind: "videos" })}
