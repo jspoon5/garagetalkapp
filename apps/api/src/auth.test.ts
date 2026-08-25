@@ -130,7 +130,7 @@ describe("auth HTTP loop", () => {
     expect(routes.some((r) => r.url === "/auth/register")).toBe(true);
   });
 
-  it("rejects invalid usernames that look like email addresses", async () => {
+  it("allows email-shaped usernames", async () => {
     const reg = await app.inject({
       method: "POST",
       url: "/auth/register",
@@ -142,8 +142,8 @@ describe("auth HTTP loop", () => {
         ageConfirmed: true,
       },
     });
-    expect(reg.statusCode).toBe(400);
-    expect(reg.json().error).toBe("invalid_username");
+    expect(reg.statusCode).toBe(200);
+    expect(reg.json().user.username).toBe("garagegroupholdings@outlook.com");
   });
 
   it("rejects registration for users under 13", async () => {

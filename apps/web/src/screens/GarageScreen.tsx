@@ -218,9 +218,8 @@ function SignedOutGarage({
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}
                 required
-                minLength={mode === "register" ? 3 : 1}
-                maxLength={mode === "register" ? 32 : 128}
-                pattern={mode === "register" ? "[A-Za-z0-9_]+" : undefined}
+                minLength={1}
+                maxLength={mode === "register" ? 64 : 128}
                 title={mode === "register" ? t("auth.invalidUsername") : undefined}
               />
             </label>

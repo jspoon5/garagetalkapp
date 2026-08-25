@@ -49,8 +49,7 @@ export const authRoutes: FastifyPluginAsync<{ auth: AuthService }> = async (app,
         if (usernameIssue) {
           return reply.code(400).send({
             error: "invalid_username",
-            message:
-              "Username must be 3–32 characters and use only letters, numbers, and underscores (no @ or spaces).",
+            message: "Username must be between 1 and 64 characters.",
           });
         }
         return reply.code(400).send({

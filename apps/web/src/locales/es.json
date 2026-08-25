@@ -28,7 +28,7 @@
     "exportData": "Export my data",
     "deleteAccount": "Delete my account",
     "registerFailed": "Could not register",
-    "invalidUsername": "El usuario debe tener 3–32 caracteres y solo letras, números y guiones bajos (no tu correo).",
+    "invalidUsername": "El usuario debe tener entre 1 y 64 caracteres.",
     "emailTaken": "Ese correo ya está registrado. Inicia sesión o usa otro correo.",
     "usernameTaken": "Ese usuario ya existe. Elige otro.",
     "loginHint": "Correo o usuario",
