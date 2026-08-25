@@ -15,7 +15,7 @@ export const uploadSessionSchema = z.object({
   category: z.enum(VIDEO_CATEGORIES),
   tags: z.array(z.string().min(1).max(48)).max(20).optional(),
   mimeType: z.enum(["video/mp4", "video/webm", "video/quicktime"]).default("video/mp4"),
-  sizeBytes: z.number().int().min(1).max(512 * 1024 * 1024).optional(),
+  sizeBytes: z.number().int().min(1).max(2 * 1024 * 1024 * 1024).optional(),
 });
 
 export const completeVideoUploadSchema = z.object({

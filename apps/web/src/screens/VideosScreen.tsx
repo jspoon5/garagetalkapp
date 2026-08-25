@@ -98,8 +98,8 @@ export function VideosScreen({
       setError("Choose a video file to upload.");
       return;
     }
-    if (file.size > 200 * 1024 * 1024) {
-      setError("This upload path supports files up to 200 MB. Use a smaller clip.");
+    if (file.size > 2 * 1024 * 1024 * 1024) {
+      setError("This upload path supports files up to 2 GB. Use a smaller clip.");
       return;
     }
 
