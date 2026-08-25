@@ -121,6 +121,8 @@ projects:
                 sync: false
               - key: CLOUDFLARE_STREAM_CUSTOMER_SUBDOMAIN
                 sync: false
+              - key: CLOUDFLARE_STREAM_WEBHOOK_SECRET
+                sync: false
 
           - type: keyvalue
             name: garagetalk-redis

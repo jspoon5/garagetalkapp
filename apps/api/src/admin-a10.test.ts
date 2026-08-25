@@ -4,6 +4,7 @@ import { describe, expect, it, beforeAll, afterAll } from "vitest";
 import { eq } from "drizzle-orm";
 import { uuidv7 } from "uuidv7";
 import { buildApp } from "./app.js";
+import { EntitlementService } from "./services/entitlement-service.js";
 import { createTestDb } from "./test/pglite.js";
 
 function cookieFrom(response: {
@@ -186,6 +187,38 @@ describe("A10 admin", () => {
         "admin.user.delete",
       ]),
     );
+  });
+
+  it("admin tier override grants live_host without Stripe", async () => {
+    const tester = await app.inject({
+      method: "POST",
+      url: "/auth/register",
+      payload: {
+        email: "manual-pro@example.com",
+        username: "manualpro",
+        password: "correct-horse-battery",
+        birthYear: 1995,
+        ageConfirmed: true,
+      },
+    });
+    const testerId = tester.json().user.id as string;
+
+    const before = await new EntitlementService(ctx.db).resolveForUser(testerId);
+    expect(before?.canHostLive).toBe(false);
+
+    const upgraded = await app.inject({
+      method: "PATCH",
+      url: `/admin/users/${testerId}/tier`,
+      headers: adminHeaders(),
+      payload: { tier: "pro", status: "active" },
+    });
+    expect(upgraded.statusCode).toBe(200);
+    expect(upgraded.json().user.tier).toBe("pro");
+
+    const after = await new EntitlementService(ctx.db).resolveForUser(testerId);
+    expect(after?.effectiveTier).toBe("pro");
+    expect(after?.canHostLive).toBe(true);
+    expect(after?.photosAllowed).toBe(true);
   });
 
   function adminHeaders() {

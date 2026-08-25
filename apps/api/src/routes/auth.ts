@@ -123,9 +123,17 @@ export const authRoutes: FastifyPluginAsync<{ auth: AuthService }> = async (app,
   app.patch("/auth/profile", async (req, reply) => {
     if (!req.user) return reply.code(401).send({ error: "unauthorized" });
     const body = profileSchema.parse(req.body ?? {});
-    const user = await auth.updateProfile(req.user.id, body);
-    if (!user) return reply.code(404).send({ error: "not_found" });
-    return { user };
+    try {
+      const user = await auth.updateProfile(req.user.id, body);
+      if (!user) return reply.code(404).send({ error: "not_found" });
+      return { user };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "";
+      if (/unique|duplicate/i.test(message)) {
+        return reply.code(409).send({ error: "username_taken", message: "That username is already taken." });
+      }
+      throw err;
+    }
   });
 
   app.post("/auth/delete-account", async (req, reply) => {

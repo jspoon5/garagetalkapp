@@ -11,21 +11,38 @@ import { z } from "zod";
 /** Allowed image MIME types for presigned uploads. */
 export const ALLOWED_IMAGE_MIMES = ["image/jpeg", "image/png", "image/webp"] as const;
 export const ALLOWED_VIDEO_MIMES = ["video/mp4", "video/webm", "video/quicktime"] as const;
+export const ALLOWED_AUDIO_MIMES = [
+  "audio/mpeg",
+  "audio/mp4",
+  "audio/aac",
+  "audio/wav",
+  "audio/webm",
+] as const;
+
+const IMAGE_KINDS = ["avatar", "vehicle_photo", "video_thumb", "generic"] as const;
 
 export const presignInputSchema = z.object({
-  kind: z.enum(["avatar", "vehicle_photo", "video_thumb", "generic", "video"]),
-  mimeType: z.union([z.enum(ALLOWED_IMAGE_MIMES), z.enum(ALLOWED_VIDEO_MIMES)]),
+  kind: z.enum(["avatar", "vehicle_photo", "video_thumb", "generic", "video", "podcast_audio"]),
+  mimeType: z.union([
+    z.enum(ALLOWED_IMAGE_MIMES),
+    z.enum(ALLOWED_VIDEO_MIMES),
+    z.enum(ALLOWED_AUDIO_MIMES),
+  ]),
   sizeBytes: z.number().int().min(1).max(512 * 1024 * 1024),
 }).superRefine((value, ctx) => {
   const image = (ALLOWED_IMAGE_MIMES as readonly string[]).includes(value.mimeType);
   const video = (ALLOWED_VIDEO_MIMES as readonly string[]).includes(value.mimeType);
+  const audio = (ALLOWED_AUDIO_MIMES as readonly string[]).includes(value.mimeType);
   if (value.kind === "video" && !video) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: "video kind requires a video mime type" });
   }
-  if (value.kind !== "video" && !image) {
+  if (value.kind === "podcast_audio" && !audio) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "podcast_audio requires an audio mime type" });
+  }
+  if ((IMAGE_KINDS as readonly string[]).includes(value.kind) && !image) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: "image kinds require an image mime type" });
   }
-  if (value.kind !== "video" && value.sizeBytes > 20 * 1024 * 1024) {
+  if ((IMAGE_KINDS as readonly string[]).includes(value.kind) && value.sizeBytes > 20 * 1024 * 1024) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: "image uploads max 20MB" });
   }
 });

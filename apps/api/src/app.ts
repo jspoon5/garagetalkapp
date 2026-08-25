@@ -92,8 +92,8 @@ export async function buildApp(opts: BuildAppOptions) {
   });
   const garage = new GarageService(opts.db, { nhtsa: opts.nhtsa });
   const media = new MediaUploadService(opts.db);
-  const video = opts.video ?? new VideoService(opts.db);
-  const podcasts = opts.podcasts ?? new PodcastService(opts.db);
+  const video = opts.video ?? new VideoService(opts.db, media);
+  const podcasts = opts.podcasts ?? new PodcastService(opts.db, media);
   const rooms = opts.rooms ?? new RoomService(opts.db);
   const spatial = opts.spatial ?? new SpatialService(opts.db);
   const gearhead = opts.gearhead ?? new GearHeadService(opts.db);

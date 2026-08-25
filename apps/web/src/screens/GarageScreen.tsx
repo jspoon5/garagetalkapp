@@ -365,11 +365,19 @@ function SignedInGarage({
   }, []);
 
   async function saveProfile() {
-    const data = await apiSend<{ user: User }>("/auth/profile", "PATCH", {
-      bio: bio || null,
-      cityText: cityText || null,
-    });
-    setUser(data.user);
+    try {
+      const data = await apiSend<{ user: User }>("/auth/profile", "PATCH", {
+        bio: bio || null,
+        cityText: cityText || null,
+      });
+      setUser(data.user);
+    } catch (err) {
+      if (err instanceof ApiError && err.code === "username_taken") {
+        setVehicleError("That username is already taken.");
+        return;
+      }
+      setVehicleError("Could not save your garage profile. Try again.");
+    }
   }
 
   async function exportAccount() {
@@ -390,19 +398,29 @@ function SignedInGarage({
       return;
     }
     setVehicleError(null);
-    await apiSend("/garage/vehicles", "POST", {
-      type,
-      fuelType,
-      make: make.trim(),
-      model: model.trim(),
-      year: parsedYear,
-      nickname: nickname.trim() || null,
-      isPrimary: vehicles.length === 0,
-    });
-    setMake("");
-    setModel("");
-    setNickname("");
-    await loadVehicles();
+    try {
+      await apiSend("/garage/vehicles", "POST", {
+        type,
+        fuelType,
+        make: make.trim(),
+        model: model.trim(),
+        year: parsedYear,
+        nickname: nickname.trim() || null,
+        isPrimary: vehicles.length === 0,
+      });
+      setMake("");
+      setModel("");
+      setNickname("");
+      await loadVehicles();
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setVehicleError(err.details?.message && typeof err.details.message === "string"
+          ? err.details.message
+          : "Could not save that vehicle. Try again.");
+        return;
+      }
+      setVehicleError("Could not save that vehicle. Try again.");
+    }
   }
 
   async function removeVehicle(id: string) {

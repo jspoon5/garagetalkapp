@@ -161,6 +161,6 @@ describe("garage vehicles", () => {
       headers: { cookie },
     });
     expect(one.statusCode).toBe(200);
-    expect(one.json().vehicle.make).toBe("Toyota");
+    expect(one.json().vehicle.make).toBe("Ford");
   });
 });

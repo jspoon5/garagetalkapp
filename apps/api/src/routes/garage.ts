@@ -1,7 +1,7 @@
 import type { FastifyPluginAsync } from "fastify";
+import { z, ZodError } from "zod";
 import { vehicleInputSchema } from "../services/garage-service.js";
 import type { GarageService } from "../services/garage-service.js";
-import { z } from "zod";
 
 export const garageRoutes: FastifyPluginAsync<{ garage: GarageService }> = async (app, opts) => {
   const garage = opts.garage;
@@ -21,9 +21,20 @@ export const garageRoutes: FastifyPluginAsync<{ garage: GarageService }> = async
 
   app.post("/garage/vehicles", async (req, reply) => {
     if (!req.user) return reply.code(401).send({ error: "unauthorized" });
-    const body = vehicleInputSchema.parse(req.body);
-    const vehicle = await garage.create(req.user.id, body);
-    return reply.code(201).send({ vehicle });
+    try {
+      const body = vehicleInputSchema.parse(req.body);
+      const vehicle = await garage.create(req.user.id, body);
+      return reply.code(201).send({ vehicle });
+    } catch (err) {
+      if (err instanceof ZodError) {
+        return reply.code(400).send({ error: "validation_error", message: "Invalid vehicle details." });
+      }
+      req.log.error({ err }, "garage vehicle create failed");
+      return reply.code(500).send({
+        error: "vehicle_create_failed",
+        message: "Could not save that vehicle.",
+      });
+    }
   });
 
   app.patch("/garage/vehicles/:id", async (req, reply) => {

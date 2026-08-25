@@ -109,6 +109,19 @@ export const liveRoutes: FastifyPluginAsync<{ live: LiveService; gifts?: GiftSer
     return result;
   });
 
+  /** Free / anonymous watch — no auth, viewer-only. */
+  app.post("/live/sessions/:id/viewer-token", {
+    config: { rateLimit: { max: 60, timeWindow: "1 minute" } },
+    handler: async (req, reply) => {
+      const { id } = idParamSchema.parse(req.params);
+      const body = z.object({ clientId: z.string().min(8).max(64) }).parse(req.body ?? {});
+      const result = await live.issueAnonymousViewerToken(id, body.clientId);
+      if (!result) return reply.code(404).send({ error: "not_found" });
+      if ("error" in result) return reply.code(400).send({ error: result.error });
+      return result;
+    },
+  });
+
   app.post("/live/sessions/:id/guest-requests", async (req, reply) => {
     if (!req.user) return reply.code(401).send({ error: "unauthorized" });
     const { id } = idParamSchema.parse(req.params);

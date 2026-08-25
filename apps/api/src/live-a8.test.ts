@@ -105,8 +105,9 @@ describe("A8 live sessions", () => {
     expect(created.statusCode).toBe(201);
     expect(emailClient.sent).toHaveLength(1);
     const sessionId = created.json().session.id as string;
-    expect(created.json().rtmp.url).toBe("rtmp://rtmp.livekit.local/live");
-    expect(created.json().rtmp.key).toMatch(/^gt_/);
+    // Mock livekit.local ingest is intentionally disabled (null) until LIVEKIT_RTMP_URL is real.
+    expect(created.json().rtmp.url).toBeNull();
+    expect(created.json().rtmp.key).toBeNull();
 
     const blocked = await app.inject({
       method: "POST",
@@ -125,6 +126,15 @@ describe("A8 live sessions", () => {
     expect(viewerToken.statusCode).toBe(200);
     expect(viewerToken.json().role).toBe("viewer");
     expect(verifyMockLiveKitToken(viewerToken.json().token as string)).toBe(true);
+
+    const guestWatch = await app.inject({
+      method: "POST",
+      url: `/live/sessions/${sessionId}/viewer-token`,
+      payload: { clientId: "guestclient01" },
+    });
+    expect(guestWatch.statusCode).toBe(200);
+    expect(guestWatch.json().role).toBe("viewer");
+    expect(verifyMockLiveKitToken(guestWatch.json().token as string)).toBe(true);
 
     const assigned = await app.inject({
       method: "POST",
@@ -149,7 +159,7 @@ describe("A8 live sessions", () => {
       headers: { cookie: viewerCookie },
     });
     expect(rtmp.statusCode).toBe(200);
-    expect(rtmp.json().rtmp.key).toBe(created.json().rtmp.key);
+    expect(rtmp.json().rtmp.url).toBeNull();
   });
 
   it("moves recordings through egress, R2 upload, and replay states", async () => {

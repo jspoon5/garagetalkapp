@@ -193,10 +193,10 @@ export function LiveSessionScreen({
         </div>
       ) : null}
 
-      {user && live ? (
+      {live ? (
         <LiveKitSession
           sessionId={sessionId}
-          userId={user.id}
+          userId={user?.id ?? null}
           isHost={isHost}
           canHostLive={canHostLive}
           onUpgradeRequired={onUpgradeRequired}
@@ -205,7 +205,7 @@ export function LiveSessionScreen({
       ) : (
         <p className="empty-state">
           {livekitUrl
-            ? "Sign in and wait for the host to go live for in-app video."
+            ? "Waiting for the host to go live."
             : "Mock LiveKit mode — set LIVEKIT_URL for real WebRTC. RTMP ingest still works for OBS."}
         </p>
       )}

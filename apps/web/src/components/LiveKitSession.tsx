@@ -119,7 +119,7 @@ export function LiveKitSession({
   onLeave,
 }: {
   sessionId: string;
-  userId: string;
+  userId: string | null;
   isHost: boolean;
   canHostLive: boolean;
   onUpgradeRequired?: () => void;
@@ -133,11 +133,13 @@ export function LiveKitSession({
   useEffect(() => {
     let cancelled = false;
     const clientId = getLiveKitClientId();
-    void apiSend<{ token: string; livekitUrl?: string | null; role: string }>(
-      `/live/sessions/${sessionId}/token`,
-      "POST",
-      { role: isHost ? "host" : "viewer", clientId },
-    )
+    const path = userId
+      ? `/live/sessions/${sessionId}/token`
+      : `/live/sessions/${sessionId}/viewer-token`;
+    const body = userId
+      ? { role: isHost ? "host" : "viewer", clientId }
+      : { clientId };
+    void apiSend<{ token: string; livekitUrl?: string | null; role: string }>(path, "POST", body)
       .then((result) => {
         if (cancelled) return;
         setToken(result.token);

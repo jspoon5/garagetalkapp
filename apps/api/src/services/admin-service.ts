@@ -1,6 +1,16 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import type { Database } from "@garagetalk/db";
-import { auditLogs, featureFlags, liveSessions, moderationActions, reports, subscriptions, users } from "@garagetalk/db";
+import {
+  auditLogs,
+  entitlements,
+  featureFlags,
+  liveSessions,
+  moderationActions,
+  reports,
+  subscriptions,
+  users,
+} from "@garagetalk/db";
+import { AI_PLANS } from "@garagetalk/shared";
 import { verifySync } from "otplib";
 import { uuidv7 } from "uuidv7";
 import { z } from "zod";
@@ -47,9 +57,11 @@ export class AdminService {
   constructor(private readonly db: Database) {}
 
   async verifyAdmin(userId: string, token: string | undefined): Promise<boolean> {
-    if (!token) return false;
     const [user] = await this.db.select().from(users).where(eq(users.id, userId)).limit(1);
-    if (!user?.roles.includes("admin") || !user.adminTotpSecret) return false;
+    if (!user?.roles.includes("admin")) return false;
+    // Session-only admin when 2FA is not enrolled yet (bootstrap / tester ops).
+    if (!user.adminTotpSecret) return true;
+    if (!token) return false;
     return verifySync({ token, secret: user.adminTotpSecret }).valid;
   }
 
@@ -86,11 +98,46 @@ export class AdminService {
     const body = tierOverrideSchema.parse(input);
     const before = await this.findUser(userId);
     if (!before) return null;
+    const status = body.status ?? "active";
     const [after] = await this.db
       .update(users)
-      .set({ tier: body.tier, tierStatus: body.status ?? "active", updatedAt: new Date() })
+      .set({ tier: body.tier, tierStatus: status, updatedAt: new Date() })
       .where(eq(users.id, userId))
       .returning();
+
+    const plan = AI_PLANS[body.tier];
+    const providerSubscriptionId = `manual:${userId}`;
+    const [existing] = await this.db
+      .select()
+      .from(entitlements)
+      .where(
+        and(eq(entitlements.provider, "manual"), eq(entitlements.providerSubscriptionId, providerSubscriptionId)),
+      )
+      .limit(1);
+
+    const entitlementValues = {
+      userId,
+      provider: "manual" as const,
+      providerSubscriptionId,
+      tier: body.tier,
+      status,
+      currentPeriodEnd:
+        body.tier === "amateur" ? new Date(Date.now() - 60_000) : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      aiMonthlyAllowance: plan.monthlyQuestions,
+      featureFlags: {
+        photos: plan.photosAllowed,
+        live_host: body.tier !== "amateur",
+        gifting: true,
+      },
+      updatedAt: new Date(),
+    };
+
+    if (existing) {
+      await this.db.update(entitlements).set(entitlementValues).where(eq(entitlements.id, existing.id));
+    } else {
+      await this.db.insert(entitlements).values({ id: uuidv7(), ...entitlementValues });
+    }
+
     await this.audit(adminId, "admin.user.tier_override", "user", userId, before, after);
     return after ? redactUser(after) : null;
   }

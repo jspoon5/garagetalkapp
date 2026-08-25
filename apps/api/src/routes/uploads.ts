@@ -19,8 +19,21 @@ export const uploadRoutes: FastifyPluginAsync<{ media: MediaUploadService }> = a
       if (!parsed.success) {
         return reply.code(400).send({ error: "validation_error", details: parsed.error.flatten() });
       }
-      const presigned = await media.createPresignedUpload(req.user.id, parsed.data);
-      return reply.code(201).send(presigned);
+      try {
+        const presigned = await media.createPresignedUpload(req.user.id, parsed.data, {
+          allowStub: process.env.NODE_ENV === "test",
+        });
+        return reply.code(201).send(presigned);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "upload_failed";
+        if (message === "upload_storage_unconfigured") {
+          return reply.code(503).send({
+            error: "upload_storage_unconfigured",
+            message: "Photo storage is not configured. Set R2 credentials on the API.",
+          });
+        }
+        throw err;
+      }
     },
   });
 

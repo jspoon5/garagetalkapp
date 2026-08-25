@@ -233,7 +233,7 @@ describe("video platform A3", () => {
     const prevFetch = globalThis.fetch;
     process.env.CLOUDFLARE_ACCOUNT_ID = "acct_test";
     process.env.CLOUDFLARE_STREAM_TOKEN = "tok_test";
-    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
       const url = String(input);
       if (url.includes("/stream/direct_upload")) {
         return Response.json({
@@ -244,7 +244,7 @@ describe("video platform A3", () => {
           },
         });
       }
-      return prevFetch(input, init);
+      return prevFetch(input as never, init);
     }) as typeof fetch;
 
     try {

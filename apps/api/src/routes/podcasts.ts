@@ -42,9 +42,20 @@ export const podcastRoutes: FastifyPluginAsync<{ podcasts: PodcastService }> = a
     handler: async (req, reply) => {
       if (!req.user) return reply.code(401).send({ error: "unauthorized" });
       const body = podcastEpisodeInputSchema.parse(req.body);
-      const session = await podcasts.createEpisodeUploadSession(req.user.id, body);
-      if (!session) return reply.code(404).send({ error: "not_found" });
-      return reply.code(201).send(session);
+      try {
+        const session = await podcasts.createEpisodeUploadSession(req.user.id, body);
+        if (!session) return reply.code(404).send({ error: "not_found" });
+        return reply.code(201).send(session);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "upload_failed";
+        if (message === "upload_storage_unconfigured") {
+          return reply.code(503).send({
+            error: "upload_storage_unconfigured",
+            message: "Podcast storage is not configured. Set R2 credentials on the API.",
+          });
+        }
+        throw err;
+      }
     },
   });
 
@@ -52,9 +63,17 @@ export const podcastRoutes: FastifyPluginAsync<{ podcasts: PodcastService }> = a
     if (!req.user) return reply.code(401).send({ error: "unauthorized" });
     const { id } = idParamSchema.parse(req.params);
     const body = podcastReadyInputSchema.parse(req.body ?? {});
-    const result = await podcasts.markEpisodeReady(req.user.id, id, body);
-    if (!result) return reply.code(404).send({ error: "not_found" });
-    return result;
+    try {
+      const result = await podcasts.markEpisodeReady(req.user.id, id, body);
+      if (!result) return reply.code(404).send({ error: "not_found" });
+      return result;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "ready_failed";
+      if (message === "playback_url_missing") {
+        return reply.code(400).send({ error: "playback_url_missing" });
+      }
+      throw err;
+    }
   });
 
   app.get("/podcasts/episodes/:id", async (req, reply) => {

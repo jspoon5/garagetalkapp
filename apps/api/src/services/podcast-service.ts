@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import type { Database } from "@garagetalk/db";
 import {
@@ -10,6 +9,7 @@ import {
 } from "@garagetalk/db";
 import { uuidv7 } from "uuidv7";
 import { z } from "zod";
+import { MediaUploadService } from "./media-upload-service.js";
 
 const AUDIO_MIMES = ["audio/mpeg", "audio/mp4", "audio/aac", "audio/wav", "audio/webm"] as const;
 
@@ -31,6 +31,7 @@ export const podcastEpisodeInputSchema = z.object({
 
 export const podcastReadyInputSchema = z.object({
   audioUrl: z.string().url().optional(),
+  assetId: z.string().uuid().optional(),
   durationSeconds: z.number().int().min(1).max(24 * 60 * 60).optional(),
   artworkUrl: z.string().url().nullable().optional(),
 });
@@ -47,10 +48,6 @@ export const discussionThreadInputSchema = z.object({
 
 type EpisodeInput = z.infer<typeof podcastEpisodeInputSchema>;
 
-function signUpload(assetId: string, storageKey: string): string {
-  return createHash("sha256").update(`${assetId}:${storageKey}:podcast-audio`).digest("hex").slice(0, 32);
-}
-
 function mediaSessionFor(
   episode: typeof podcastEpisodes.$inferSelect,
   show: typeof podcastShows.$inferSelect,
@@ -65,7 +62,11 @@ function mediaSessionFor(
 }
 
 export class PodcastService {
-  constructor(private readonly db: Database) {}
+  private readonly media: MediaUploadService;
+
+  constructor(private readonly db: Database, media?: MediaUploadService) {
+    this.media = media ?? new MediaUploadService(db);
+  }
 
   createShow(ownerId: string, input: z.infer<typeof podcastShowInputSchema>) {
     const parsed = podcastShowInputSchema.parse(input);
@@ -106,19 +107,24 @@ export class PodcastService {
     if (!show) return null;
 
     const episodeId = uuidv7();
-    const assetId = uuidv7();
-    const storageKey = `uploads/${ownerId}/podcast_audio/${assetId}`;
-
-    await this.db.insert(mediaAssets).values({
-      id: assetId,
+    const presigned = await this.media.createPresignedUpload(
       ownerId,
-      kind: "podcast_audio",
-      mimeType: parsed.mimeType,
-      sizeBytes: parsed.sizeBytes,
-      storageKey,
-      status: "pending",
-      metadata: { episodeId },
-    });
+      {
+        kind: "podcast_audio",
+        mimeType: parsed.mimeType,
+        sizeBytes: parsed.sizeBytes,
+      },
+      { allowStub: process.env.NODE_ENV === "test" },
+    );
+
+    // Attach episode id to asset metadata for later ready marking.
+    await this.db
+      .update(mediaAssets)
+      .set({
+        metadata: { episodeId, provider: this.media.hasR2() ? "r2" : "stub" },
+        updatedAt: new Date(),
+      })
+      .where(eq(mediaAssets.id, presigned.assetId));
 
     const [episode] = await this.db
       .insert(podcastEpisodes)
@@ -127,7 +133,7 @@ export class PodcastService {
         showId: show.id,
         title: parsed.title,
         description: parsed.description ?? null,
-        mediaAssetId: assetId,
+        mediaAssetId: presigned.assetId,
         status: "processing",
         artworkUrl: parsed.artworkUrl ?? null,
         durationSeconds: parsed.durationSeconds ?? null,
@@ -137,14 +143,11 @@ export class PodcastService {
     return {
       episode: episode!,
       upload: {
-        provider: "stub_r2_audio" as const,
-        assetId,
-        uploadUrl: `https://stub-r2.local/${storageKey}?X-Amz-Signature=${signUpload(assetId, storageKey)}`,
-        method: "PUT" as const,
-        headers: {
-          "Content-Type": parsed.mimeType,
-          "Content-Length": String(parsed.sizeBytes),
-        },
+        provider: (this.media.hasR2() ? "r2" : "stub_r2") as "r2" | "stub_r2",
+        assetId: presigned.assetId,
+        uploadUrl: presigned.uploadUrl,
+        method: presigned.method,
+        headers: presigned.headers,
       },
     };
   }
@@ -157,7 +160,22 @@ export class PodcastService {
     const parsed = podcastReadyInputSchema.parse(input);
     const owned = await this.getOwnedEpisode(ownerId, episodeId);
     if (!owned) return null;
-    const audioUrl = parsed.audioUrl ?? `https://stub-r2.local/cdn/${owned.episode.mediaAssetId}`;
+
+    let audioUrl = parsed.audioUrl ?? null;
+    const assetId = parsed.assetId ?? owned.episode.mediaAssetId;
+    if (assetId) {
+      const asset = await this.media.markUploadComplete(ownerId, assetId);
+      if (asset) {
+        audioUrl = asset.publicUrl ?? this.media.publicUrlFor(asset.storageKey, asset.id);
+      }
+    }
+    if (!audioUrl) {
+      if (process.env.NODE_ENV === "test") {
+        audioUrl = `https://stub-r2.local/cdn/${owned.episode.mediaAssetId}`;
+      } else {
+        throw new Error("playback_url_missing");
+      }
+    }
 
     const [episode] = await this.db
       .update(podcastEpisodes)

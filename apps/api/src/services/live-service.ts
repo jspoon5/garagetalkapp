@@ -334,6 +334,31 @@ export class LiveService {
     };
   }
 
+  /** Unauthenticated viewer join — free/guest watch without signup or paywall. */
+  async issueAnonymousViewerToken(sessionId: string, clientId: string) {
+    const session = await this.getSession(sessionId);
+    if (!session) return null;
+    const safeClient = clientId.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 32);
+    if (safeClient.length < 8) return { error: "invalid_client" as const };
+    const identity = `guest_${safeClient}`;
+    const token = await signLiveKitToken({
+      apiKey: process.env.LIVEKIT_API_KEY ?? DEFAULT_KEY,
+      secret: process.env.LIVEKIT_API_SECRET ?? DEFAULT_SECRET,
+      roomName: session.roomName,
+      role: "viewer",
+      userId: identity,
+      username: "Guest",
+      identity,
+    });
+    return {
+      token,
+      role: "viewer" as const,
+      roomName: session.roomName,
+      livekitUrl: this.liveKitUrl(),
+      identity,
+    };
+  }
+
   async requestGuest(sessionId: string, userId: string, message?: string) {
     const session = await this.getSession(sessionId);
     if (!session || session.endedAt) return { error: "session_not_found" as const };
