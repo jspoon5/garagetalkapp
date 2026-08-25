@@ -40,6 +40,16 @@ function allowTestFallback(): boolean {
   return process.env.NODE_ENV === "test";
 }
 
+function shouldFallBackToR2(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err);
+  return (
+    message === "stream_stub_rejected" ||
+    message.startsWith("stream_http_413") ||
+    message.startsWith("stream_http_4") ||
+    /allocated 0 minutes|quota/i.test(message)
+  );
+}
+
 export class VideoService extends VideoCatalog {
   private readonly streamWebhookTokens = new Map<string, Date>();
   private readonly media: MediaUploadService;
@@ -59,45 +69,49 @@ export class VideoService extends VideoCatalog {
     const stream = readStreamConfig();
 
     if (streamProviderIsCloudflare() && stream) {
-      const direct = await createStreamDirectUpload({
-        accountId: stream.accountId,
-        token: stream.token,
-        videoId,
-      });
-      if (isStubStreamUploadUrl(direct.uploadUrl)) {
-        throw new Error("stream_stub_rejected");
+      try {
+        const direct = await createStreamDirectUpload({
+          accountId: stream.accountId,
+          token: stream.token,
+          videoId,
+        });
+        if (isStubStreamUploadUrl(direct.uploadUrl)) {
+          throw new Error("stream_stub_rejected");
+        }
+        const [video] = await this.db
+          .insert(videos)
+          .values({
+            id: videoId,
+            ownerId,
+            title: parsed.title,
+            description: parsed.description ?? null,
+            category: parsed.category,
+            tags: parsed.tags ?? [],
+            streamAssetId: direct.uid,
+            status: "processing",
+          })
+          .returning();
+        return {
+          video: video!,
+          upload: {
+            provider: "cloudflare_stream" as const,
+            uploadUrl: direct.uploadUrl,
+            method: "POST" as const,
+            headers: {} as Record<string, string>,
+            streamAssetId: direct.uid,
+            assetId: null as string | null,
+          },
+        };
+      } catch (err) {
+        if (!shouldFallBackToR2(err)) throw err;
       }
-      const [video] = await this.db
-        .insert(videos)
-        .values({
-          id: videoId,
-          ownerId,
-          title: parsed.title,
-          description: parsed.description ?? null,
-          category: parsed.category,
-          tags: parsed.tags ?? [],
-          streamAssetId: direct.uid,
-          status: "processing",
-        })
-        .returning();
-      return {
-        video: video!,
-        upload: {
-          provider: "cloudflare_stream" as const,
-          uploadUrl: direct.uploadUrl,
-          method: "POST" as const,
-          headers: {} as Record<string, string>,
-          streamAssetId: direct.uid,
-          assetId: null as string | null,
-        },
-      };
     }
 
     if (streamProviderIsCloudflare() && !stream && !allowTestFallback()) {
       throw new Error("stream_not_configured");
     }
 
-    // Test-only (or non-cloudflare provider) fallback: R2 / stub R2 — never cloudflare_stream stubs.
+    // R2 when Stream is off, or when Stream quota/4xx blocks a live upload.
     const sizeBytes = parsed.sizeBytes ?? 32 * 1024 * 1024;
     const presigned = await this.media.createPresignedUpload(
       ownerId,
