@@ -126,6 +126,7 @@ export type PodcastEpisode = {
 
 export type Shop = {
   id: string;
+  ownerUserId?: string;
   name: string;
   slug: string;
   about: string | null;
