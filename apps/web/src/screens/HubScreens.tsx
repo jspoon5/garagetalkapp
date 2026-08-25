@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   apiGet,
   apiSend,
   ApiError,
   formatUsd,
+  uploadImageFile,
   type PodcastEpisode,
   type Shop,
   type ShopService,
@@ -66,18 +67,20 @@ type ShopFormState = {
   name: string;
   slug: string;
   about: string;
+  city: string;
   serviceArea: string;
   specialties: string;
-  photoUrl: string;
+  photos: string[];
 };
 
 const emptyShopForm = (): ShopFormState => ({
   name: "",
   slug: "",
   about: "",
+  city: "",
   serviceArea: "",
   specialties: "",
-  photoUrl: "",
+  photos: [],
 });
 
 function formFromShop(shop: Shop): ShopFormState {
@@ -85,10 +88,17 @@ function formFromShop(shop: Shop): ShopFormState {
     name: shop.name,
     slug: shop.slug,
     about: shop.about ?? "",
+    city: shop.address?.city ?? "",
     serviceArea: shop.serviceArea ?? "",
     specialties: shop.specialties.join(", "),
-    photoUrl: shop.photos[0] ?? "",
+    photos: shop.photos.slice(0, 10),
   };
+}
+
+function shopLocationLabel(shop: Shop): string {
+  const city = shop.address?.city?.trim();
+  if (city && shop.serviceArea) return `${city} · ${shop.serviceArea}`;
+  return city ?? shop.serviceArea ?? shop.about ?? "Independent shop";
 }
 
 export function ShopsScreen({
@@ -116,6 +126,9 @@ export function ShopsScreen({
   const [serviceMinutes, setServiceMinutes] = useState("60");
   const [servicePrice, setServicePrice] = useState("");
   const [ownerServices, setOwnerServices] = useState<ShopService[]>([]);
+  const [shopsLoaded, setShopsLoaded] = useState(false);
+  const [uploadingPhotos, setUploadingPhotos] = useState(false);
+  const autoOpenedRef = useRef(false);
 
   const myShops = useMemo(
     () => (user ? shops.filter((shop) => shop.ownerUserId === user.id) : []),
@@ -125,6 +138,7 @@ export function ShopsScreen({
   async function refreshShops() {
     const data = await apiGet<{ shops: Shop[] }>("/shops");
     setShops(data.shops);
+    setShopsLoaded(true);
     return data.shops;
   }
 
@@ -136,6 +150,14 @@ export function ShopsScreen({
         .catch(() => undefined);
     }
   }, [user]);
+
+  useEffect(() => {
+    if (!user || !shopsLoaded || autoOpenedRef.current) return;
+    if (myShops.length === 0) {
+      autoOpenedRef.current = true;
+      startCreate();
+    }
+  }, [user, shopsLoaded, myShops.length]);
 
   async function openShop(shop: Shop) {
     setOpen(shop);
@@ -211,8 +233,13 @@ export function ShopsScreen({
     }
     const name = form.name.trim();
     const slug = (form.slug.trim() || slugify(name)).slice(0, 120);
+    const city = form.city.trim();
     if (name.length < 1 || slug.length < 3) {
       setError("Add a shop name (slug needs at least 3 characters).");
+      return;
+    }
+    if (!city) {
+      setError("Add the city where your shop is located.");
       return;
     }
     setBusy(true);
@@ -224,14 +251,14 @@ export function ShopsScreen({
         .map((part) => part.trim())
         .filter(Boolean)
         .slice(0, 30);
-      const photos = form.photoUrl.trim() ? [form.photoUrl.trim()] : [];
       const payload = {
         name,
         slug,
         about: form.about.trim() || null,
+        address: { city },
         serviceArea: form.serviceArea.trim() || null,
         specialties,
-        photos,
+        photos: form.photos.slice(0, 10),
       };
       const data = editing
         ? await apiSend<{ shop: Shop }>(`/shops/${editing.id}`, "PATCH", payload)
@@ -253,6 +280,43 @@ export function ShopsScreen({
     } finally {
       setBusy(false);
     }
+  }
+
+  async function addPhotos(files: FileList | null) {
+    if (!files?.length) return;
+    if (!user) {
+      onNeedAccount();
+      return;
+    }
+    setUploadingPhotos(true);
+    setError(null);
+    try {
+      const next = [...form.photos];
+      for (const file of Array.from(files)) {
+        if (next.length >= 10) break;
+        const url = await uploadImageFile(file);
+        next.push(url);
+      }
+      setForm((current) => ({ ...current, photos: next }));
+      setNotice("Photos uploaded.");
+    } catch (err) {
+      if (err instanceof ApiError && err.code === "upload_storage_unconfigured") {
+        setError("Photo storage is not configured on the server yet.");
+      } else if (err instanceof ApiError && err.code === "file_too_large") {
+        setError("Each shop photo must be 20 MB or smaller.");
+      } else {
+        setError("Could not upload that photo. Use JPG, PNG, or WebP.");
+      }
+    } finally {
+      setUploadingPhotos(false);
+    }
+  }
+
+  function removePhoto(index: number) {
+    setForm((current) => ({
+      ...current,
+      photos: current.photos.filter((_, photoIndex) => photoIndex !== index),
+    }));
   }
 
   async function addService() {
@@ -297,30 +361,40 @@ export function ShopsScreen({
       <div className="screen-intro">
         <span>LOCAL SHOPS</span>
         <h1>Book a real bay.</h1>
-        <p>Find independent shops — or list yours and publish the business info customers need.</p>
+        <p>List your shop below — city, specialties, and photos of your location.</p>
       </div>
       {error ? <p className="auth-error">{error}</p> : null}
       {notice ? <p className="empty-state">{notice}</p> : null}
 
-      <div className="profile-actions">
-        <button
-          type="button"
-          className="sell-button"
-          onClick={() => {
-            if (!user) onNeedAccount();
-            else if (myShops[0]) void startEdit(myShops[0]);
-            else startCreate();
-          }}
-        >
-          {user
-            ? myShops.length > 0
-              ? "Manage my business"
-              : "List my shop"
-            : "Sign in to list a shop"}
-        </button>
-      </div>
+      {!user ? (
+        <div className="auth-card">
+          <span>LIST YOUR SHOP</span>
+          <strong>Sign in to add your business</strong>
+          <p className="empty-state">
+            Enter your shop name, city, specialties, and upload photos of your bay so customers can find you.
+          </p>
+          <button type="button" className="sell-button" onClick={onNeedAccount}>
+            Sign in to list a shop
+          </button>
+        </div>
+      ) : null}
 
-      {managing ? (
+      {user && !managing ? (
+        <div className="profile-actions">
+          <button
+            type="button"
+            className="sell-button"
+            onClick={() => {
+              if (myShops[0]) void startEdit(myShops[0]);
+              else startCreate();
+            }}
+          >
+            {myShops.length > 0 ? "Manage my business" : "List my shop"}
+          </button>
+        </div>
+      ) : null}
+
+      {user && managing ? (
         <form
           className="auth-card"
           onSubmit={(event) => {
@@ -331,7 +405,7 @@ export function ShopsScreen({
           <span>BUSINESS CENTER</span>
           <strong>{editing ? "Edit shop listing" : "Create your shop listing"}</strong>
           <p className="empty-state">
-            Name, about, service area, specialties, and a photo URL. Save first, then add bookable services.
+            Add your business details, city, specialties, and location photos. Save first, then add bookable services.
           </p>
           <label>
             Shop name
@@ -371,13 +445,24 @@ export function ShopsScreen({
             />
           </label>
           <label>
+            City
+            <input
+              value={form.city}
+              onChange={(event) => setForm((current) => ({ ...current, city: event.target.value }))}
+              maxLength={120}
+              disabled={busy}
+              placeholder="e.g. Detroit"
+              required
+            />
+          </label>
+          <label>
             Service area
             <input
               value={form.serviceArea}
               onChange={(event) => setForm((current) => ({ ...current, serviceArea: event.target.value }))}
               maxLength={500}
               disabled={busy}
-              placeholder="e.g. Metro Detroit · mobile within 25 mi"
+              placeholder="e.g. Metro area · mobile within 25 mi"
             />
           </label>
           <label>
@@ -390,15 +475,33 @@ export function ShopsScreen({
             />
           </label>
           <label>
-            Shop photo URL
+            Location photos
             <input
-              type="url"
-              value={form.photoUrl}
-              onChange={(event) => setForm((current) => ({ ...current, photoUrl: event.target.value }))}
-              disabled={busy}
-              placeholder="https://…"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              multiple
+              disabled={busy || uploadingPhotos || form.photos.length >= 10}
+              onChange={(event) => {
+                void addPhotos(event.target.files);
+                event.target.value = "";
+              }}
             />
           </label>
+          {uploadingPhotos ? <p className="empty-state">Uploading photos…</p> : null}
+          {form.photos.length > 0 ? (
+            <div className="profile-actions" style={{ flexWrap: "wrap" }}>
+              {form.photos.map((photo, index) => (
+                <figure key={`${photo}-${index}`} style={{ margin: 0, width: "7rem" }}>
+                  <img src={photo} alt="" style={{ width: "100%", borderRadius: "0.5rem" }} />
+                  <button type="button" disabled={busy || uploadingPhotos} onClick={() => removePhoto(index)}>
+                    Remove
+                  </button>
+                </figure>
+              ))}
+            </div>
+          ) : (
+            <p className="empty-state">Upload photos of your shop, bay, or storefront (up to 10).</p>
+          )}
           <div className="profile-actions">
             <button type="submit" className="sell-button" disabled={busy}>
               {busy ? "Saving…" : editing ? "Save business info" : "Create shop listing"}
@@ -487,10 +590,13 @@ export function ShopsScreen({
         <article className="feed-card" key={shop.id}>
           <strong>{shop.name}</strong>
           <p>
-            {shop.serviceArea ?? shop.about ?? "Independent shop"}
+            {shopLocationLabel(shop)}
             {shop.unverified ? " · unverified" : ""}
             {user && shop.ownerUserId === user.id ? " · yours" : ""}
           </p>
+          {shop.photos[0] ? (
+            <img src={shop.photos[0]} alt="" style={{ width: "100%", borderRadius: "0.5rem" }} />
+          ) : null}
           <div className="profile-actions">
             <button type="button" onClick={() => void openShop(shop)}>
               View & book
@@ -503,7 +609,12 @@ export function ShopsScreen({
           </div>
         </article>
       ))}
-      {shops.length === 0 ? <p className="empty-state">No shops listed yet. Be the first bay on the board.</p> : null}
+      {shops.length === 0 && user ? (
+        <p className="empty-state">No other shops listed yet. Finish your listing above to be the first bay on the board.</p>
+      ) : null}
+      {shops.length === 0 && !user ? (
+        <p className="empty-state">No shops listed yet. Sign in above to add yours.</p>
+      ) : null}
 
       {open ? (
         <div className="sheet-scrim" role="presentation" onClick={() => setOpen(null)}>
@@ -518,6 +629,7 @@ export function ShopsScreen({
             <span>{open.slug}</span>
             <h2>{open.name}</h2>
             <p>{open.about ?? "No shop write-up yet."}</p>
+            {open.address?.city ? <p>{open.address.city}</p> : null}
             {open.serviceArea ? <p>{open.serviceArea}</p> : null}
             {open.specialties.length > 0 ? <p>{open.specialties.join(" · ")}</p> : null}
             {open.photos[0] ? (

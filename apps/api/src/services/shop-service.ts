@@ -11,10 +11,17 @@ import {
 import { uuidv7 } from "uuidv7";
 import { z } from "zod";
 
+const shopAddressSchema = z.object({
+  city: z.string().min(1).max(120).optional(),
+  state: z.string().max(80).optional(),
+  line1: z.string().max(200).optional(),
+});
+
 export const shopInputSchema = z.object({
   name: z.string().min(1).max(160),
   slug: z.string().min(3).max(120).regex(/^[a-z0-9-]+$/),
   about: z.string().max(4000).nullable().optional(),
+  address: shopAddressSchema.optional(),
   serviceArea: z.string().max(500).nullable().optional(),
   specialties: z.array(z.string().min(1).max(80)).max(30).optional(),
   photos: z.array(z.string().url()).max(30).optional(),
@@ -81,6 +88,7 @@ export class ShopService {
         name: body.name,
         slug: body.slug,
         about: body.about ?? null,
+        address: body.address ?? {},
         serviceArea: body.serviceArea ?? null,
         specialties: body.specialties ?? [],
         photos: body.photos ?? [],

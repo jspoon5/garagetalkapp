@@ -124,12 +124,19 @@ export type PodcastEpisode = {
   status: string;
 };
 
+export type ShopAddress = {
+  city?: string;
+  state?: string;
+  line1?: string;
+};
+
 export type Shop = {
   id: string;
   ownerUserId?: string;
   name: string;
   slug: string;
   about: string | null;
+  address?: ShopAddress;
   serviceArea: string | null;
   specialties: string[];
   photos: string[];
@@ -220,6 +227,41 @@ async function errorBody(res: Response): Promise<{ code: string; details?: Recor
 
 export function formatUsd(cents: number): string {
   return `$${(cents / 100).toFixed(cents % 100 === 0 ? 0 : 2)}`;
+}
+
+const IMAGE_UPLOAD_MIMES = ["image/jpeg", "image/png", "image/webp"] as const;
+
+export async function uploadImageFile(file: File): Promise<string> {
+  if (!(IMAGE_UPLOAD_MIMES as readonly string[]).includes(file.type)) {
+    throw new ApiError(400, "invalid_mime");
+  }
+  if (file.size > 20 * 1024 * 1024) {
+    throw new ApiError(400, "file_too_large");
+  }
+  const presigned = await apiSend<{
+    assetId: string;
+    uploadUrl: string;
+    method: "PUT";
+    headers: Record<string, string>;
+  }>("/uploads/presign", "POST", {
+    kind: "generic",
+    mimeType: file.type,
+    sizeBytes: file.size,
+  });
+  const put = await fetch(presigned.uploadUrl, {
+    method: presigned.method,
+    headers: presigned.headers,
+    body: file,
+  });
+  if (!put.ok) throw new ApiError(put.status, "upload_put_failed");
+  const completed = await apiSend<{ asset: { publicUrl: string | null } }>(
+    `/uploads/${presigned.assetId}/complete`,
+    "POST",
+  );
+  if (!completed.asset.publicUrl) {
+    throw new ApiError(503, "upload_storage_unconfigured");
+  }
+  return completed.asset.publicUrl;
 }
 
 export function checkoutUrl(payload: {
