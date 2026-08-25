@@ -91,7 +91,7 @@ export const authRoutes: FastifyPluginAsync<{ auth: AuthService }> = async (app,
           if (err.message === "email_taken") {
             return reply.code(409).send({
               error: "email_taken",
-              message: "That email is already registered. Sign in or use a different email.",
+              message: "That email is already registered and verified. Sign in or use Forgot password.",
             });
           }
           if (err.message === "username_taken") {
@@ -101,8 +101,25 @@ export const authRoutes: FastifyPluginAsync<{ auth: AuthService }> = async (app,
             });
           }
         }
+        // Surface drizzle unique races that weren't remapped.
+        const raw = String(err);
+        if (/email/i.test(raw) && /unique|duplicate/i.test(raw)) {
+          return reply.code(409).send({
+            error: "email_taken",
+            message: "That email is already registered. Sign in or use Forgot password.",
+          });
+        }
+        if (/username/i.test(raw) && /unique|duplicate/i.test(raw)) {
+          return reply.code(409).send({
+            error: "username_taken",
+            message: "That username is taken. Pick another one.",
+          });
+        }
         req.log.warn({ err: String(err) }, "register failed");
-        return reply.code(409).send({ error: "could_not_register" });
+        return reply.code(409).send({
+          error: "could_not_register",
+          message: "Could not register. Try signing in — this email may already have an account.",
+        });
       }
     },
   });

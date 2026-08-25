@@ -146,6 +146,50 @@ describe("auth HTTP loop", () => {
     expect(reg.json().user.username).toBe("garagegroupholdings@outlook.com");
   });
 
+  it("lets an unverified email reclaim the account on register", async () => {
+    const first = await app.inject({
+      method: "POST",
+      url: "/auth/register",
+      payload: {
+        email: "reclaim@example.com",
+        username: "old_name",
+        password: "correct-horse-battery",
+        birthYear: 1990,
+        ageConfirmed: true,
+      },
+    });
+    expect(first.statusCode).toBe(200);
+
+    const second = await app.inject({
+      method: "POST",
+      url: "/auth/register",
+      payload: {
+        email: "reclaim@example.com",
+        username: "101_garage",
+        password: "brand-new-password",
+        birthYear: 1979,
+        ageConfirmed: true,
+      },
+    });
+    expect(second.statusCode).toBe(200);
+    expect(second.json().user.username).toBe("101_garage");
+    expect(second.json().user.email).toBe("reclaim@example.com");
+
+    const loginOld = await app.inject({
+      method: "POST",
+      url: "/auth/login",
+      payload: { username: "101_garage", password: "correct-horse-battery" },
+    });
+    expect(loginOld.statusCode).toBe(401);
+
+    const loginNew = await app.inject({
+      method: "POST",
+      url: "/auth/login",
+      payload: { username: "101_garage", password: "brand-new-password" },
+    });
+    expect(loginNew.statusCode).toBe(200);
+  });
+
   it("rejects registration for users under 13", async () => {
     const reg = await app.inject({
       method: "POST",

@@ -29,7 +29,7 @@
     "deleteAccount": "Delete my account",
     "registerFailed": "Could not register",
     "invalidUsername": "El usuario debe tener entre 1 y 64 caracteres.",
-    "emailTaken": "Ese correo ya está registrado. Inicia sesión o usa otro correo.",
+    "emailTaken": "Ese correo ya está registrado y verificado. Inicia sesión o usa Olvidé mi contraseña.",
     "usernameTaken": "Ese usuario ya existe. Elige otro.",
     "loginHint": "Correo o usuario",
     "loginFailed": "Invalid credentials",

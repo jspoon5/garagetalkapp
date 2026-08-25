@@ -54,20 +54,38 @@ function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
 
+function errorChain(err: unknown): unknown[] {
+  const chain: unknown[] = [];
+  let current: unknown = err;
+  const seen = new Set<unknown>();
+  while (current && typeof current === "object" && !seen.has(current)) {
+    seen.add(current);
+    chain.push(current);
+    current = "cause" in current ? (current as { cause: unknown }).cause : null;
+  }
+  return chain;
+}
+
 function isUniqueViolation(err: unknown, field: "email" | "username"): boolean {
-  const message = err instanceof Error ? err.message : String(err);
-  if (!/duplicate|unique/i.test(message)) return false;
-  if (field === "email" && /email/i.test(message)) return true;
-  if (field === "username" && /username/i.test(message)) return true;
-  if (typeof err === "object" && err !== null && "code" in err) {
-    const code = String((err as { code: unknown }).code);
-    if (code !== "23505") return false;
+  for (const item of errorChain(err)) {
+    const message = item instanceof Error ? item.message : String(item);
+    const code =
+      typeof item === "object" && item !== null && "code" in item
+        ? String((item as { code: unknown }).code)
+        : "";
     const detail =
-      "detail" in err && typeof (err as { detail?: unknown }).detail === "string"
-        ? (err as { detail: string }).detail
-        : message;
-    if (field === "email" && /email/i.test(detail)) return true;
-    if (field === "username" && /username/i.test(detail)) return true;
+      typeof item === "object" && item !== null && "detail" in item
+        ? String((item as { detail: unknown }).detail ?? "")
+        : "";
+    const constraint =
+      typeof item === "object" && item !== null && "constraint" in item
+        ? String((item as { constraint: unknown }).constraint ?? "")
+        : "";
+    const blob = `${message} ${detail} ${constraint}`;
+    const isUnique = code === "23505" || /duplicate|unique/i.test(blob);
+    if (!isUnique) continue;
+    if (field === "email" && /email/i.test(blob)) return true;
+    if (field === "username" && /username/i.test(blob)) return true;
   }
   return false;
 }
@@ -100,13 +118,16 @@ export class AuthService {
   }): Promise<PublicUser> {
     const email = input.email.trim().toLowerCase();
     const username = input.username.trim();
-    const [existing] = await this.db
+    const passwordHash = await argon2.hash(input.password, ARGON2_OPTS);
+
+    const [byEmail] = await this.db.select().from(users).where(eq(users.email, email)).limit(1);
+    const [byUsername] = await this.db
       .select()
       .from(users)
-      .where(or(eq(users.username, username), eq(users.email, email)))
+      .where(eq(users.username, username))
       .limit(1);
 
-    const passwordHash = await argon2.hash(input.password, ARGON2_OPTS);
+    const existing = byEmail ?? byUsername;
     if (!existing) {
       const [user] = await this.db
         .insert(users)
@@ -138,6 +159,18 @@ export class AuthService {
       existing.deletedAt == null;
     if (alreadyGood) return toPublic(existing);
 
+    // Prefer repairing the email row; free the desired username if another row holds it.
+    const targetId = byEmail?.id ?? existing.id;
+    if (byUsername && byUsername.id !== targetId) {
+      await this.db
+        .update(users)
+        .set({
+          username: `${username}_was_${byUsername.id.replace(/-/g, "").slice(0, 8)}`,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, byUsername.id));
+    }
+
     const [user] = await this.db
       .update(users)
       .set({
@@ -149,7 +182,7 @@ export class AuthService {
         deletedAt: null,
         updatedAt: new Date(),
       })
-      .where(eq(users.id, existing.id))
+      .where(eq(users.id, targetId))
       .returning();
     if (!user) throw new Error("failed to repair tester");
     return toPublic(user);
@@ -168,8 +201,57 @@ export class AuthService {
     const email = input.email.trim().toLowerCase();
     const username = input.username.trim();
     const passwordHash = await argon2.hash(input.password, ARGON2_OPTS);
-
     const now = new Date();
+
+    const [existingByEmail] = await this.db
+      .select()
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
+
+    if (existingByEmail) {
+      // Verified emails stay locked; unverified (or soft-deleted) accounts can be
+      // reclaimed by registering again — password reset email is not wired in prod yet.
+      if (existingByEmail.emailVerifiedAt && existingByEmail.deletedAt == null) {
+        throw new Error("email_taken");
+      }
+      await this.freeUsernameIfNeeded(username, existingByEmail.id);
+      const [user] = await this.db
+        .update(users)
+        .set({
+          username,
+          passwordHash,
+          birthYear: input.birthYear,
+          ageVerifiedAt: now,
+          privacyPolicyAcceptedAt: now,
+          deletedAt: null,
+          updatedAt: now,
+        })
+        .where(eq(users.id, existingByEmail.id))
+        .returning();
+      if (!user) throw new Error("failed to create user");
+      const sessionToken = await this.createSession(user.id);
+      return { user: toPublic(user), sessionToken };
+    }
+
+    const [existingByUsername] = await this.db
+      .select()
+      .from(users)
+      .where(eq(users.username, username))
+      .limit(1);
+    if (existingByUsername && existingByUsername.deletedAt == null) {
+      throw new Error("username_taken");
+    }
+    if (existingByUsername?.deletedAt) {
+      await this.db
+        .update(users)
+        .set({
+          username: `${username}_deleted_${existingByUsername.id.replace(/-/g, "").slice(0, 8)}`,
+          updatedAt: now,
+        })
+        .where(eq(users.id, existingByUsername.id));
+    }
+
     try {
       const [user] = await this.db
         .insert(users)
@@ -193,6 +275,26 @@ export class AuthService {
       if (isUniqueViolation(err, "username")) throw new Error("username_taken");
       throw err;
     }
+  }
+
+  /** Rename another account holding `username` so this user can take it. */
+  private async freeUsernameIfNeeded(username: string, keepUserId: string) {
+    const [holder] = await this.db
+      .select()
+      .from(users)
+      .where(eq(users.username, username))
+      .limit(1);
+    if (!holder || holder.id === keepUserId) return;
+    if (holder.emailVerifiedAt && holder.deletedAt == null) {
+      throw new Error("username_taken");
+    }
+    await this.db
+      .update(users)
+      .set({
+        username: `${username}_was_${holder.id.replace(/-/g, "").slice(0, 8)}`,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, holder.id));
   }
 
   async login(input: {

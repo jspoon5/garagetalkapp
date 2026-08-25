@@ -92,6 +92,11 @@ function SignedOutGarage({
         return t("auth.usernameTaken");
       case "underage":
         return t("auth.underage");
+      case "could_not_register": {
+        const message =
+          err.details && typeof err.details.message === "string" ? err.details.message : null;
+        return message ?? t("auth.registerFailed");
+      }
       default:
         return t("auth.registerFailed");
     }
