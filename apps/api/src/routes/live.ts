@@ -106,6 +106,12 @@ export const liveRoutes: FastifyPluginAsync<{ live: LiveService; gifts?: GiftSer
       }
       return reply.code(403).send({ error: result.error });
     }
+    if (!result.livekitUrl && process.env.NODE_ENV === "production") {
+      return reply.code(503).send({
+        error: "livekit_not_configured",
+        message: "LIVEKIT_URL is not set on the API.",
+      });
+    }
     return result;
   });
 
@@ -114,11 +120,47 @@ export const liveRoutes: FastifyPluginAsync<{ live: LiveService; gifts?: GiftSer
     config: { rateLimit: { max: 60, timeWindow: "1 minute" } },
     handler: async (req, reply) => {
       const { id } = idParamSchema.parse(req.params);
-      const body = z.object({ clientId: z.string().min(8).max(64) }).parse(req.body ?? {});
-      const result = await live.issueAnonymousViewerToken(id, body.clientId);
-      if (!result) return reply.code(404).send({ error: "not_found" });
-      if ("error" in result) return reply.code(400).send({ error: result.error });
-      return result;
+      const parsed = z
+        .object({
+          clientId: z.string().min(8).max(64).optional(),
+        })
+        .safeParse(req.body ?? {});
+      if (!parsed.success) {
+        return reply.code(400).send({
+          error: "validation_error",
+          message: "clientId must be a string between 8 and 64 characters when provided.",
+          details: parsed.error.flatten(),
+        });
+      }
+      const clientId =
+        parsed.data.clientId?.trim() ||
+        `anon_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+      if (clientId.length < 8) {
+        return reply.code(400).send({
+          error: "invalid_client",
+          message: "clientId must be at least 8 characters.",
+        });
+      }
+      try {
+        const result = await live.issueAnonymousViewerToken(id, clientId);
+        if (!result) return reply.code(404).send({ error: "not_found" });
+        if ("error" in result) {
+          return reply.code(400).send({ error: result.error });
+        }
+        if (!result.livekitUrl && process.env.NODE_ENV === "production") {
+          return reply.code(503).send({
+            error: "livekit_not_configured",
+            message: "LIVEKIT_URL is not set on the API.",
+          });
+        }
+        return result;
+      } catch (err) {
+        req.log.error({ err }, "viewer-token failed");
+        return reply.code(500).send({
+          error: "viewer_token_failed",
+          message: err instanceof Error ? err.message : "viewer_token_failed",
+        });
+      }
     },
   });
 

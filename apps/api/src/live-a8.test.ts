@@ -136,6 +136,32 @@ describe("A8 live sessions", () => {
     expect(guestWatch.json().role).toBe("viewer");
     expect(verifyMockLiveKitToken(guestWatch.json().token as string)).toBe(true);
 
+    const guestMissing = await app.inject({
+      method: "POST",
+      url: `/live/sessions/${sessionId}/viewer-token`,
+      payload: {},
+    });
+    // Missing clientId is minted server-side (never 500).
+    expect(guestMissing.statusCode).toBe(200);
+    expect(guestMissing.json().role).toBe("viewer");
+    expect(String(guestMissing.json().identity)).toMatch(/^guest_/);
+
+    const guestBadType = await app.inject({
+      method: "POST",
+      url: `/live/sessions/${sessionId}/viewer-token`,
+      payload: { clientId: 12 },
+    });
+    expect(guestBadType.statusCode).toBe(400);
+    expect(guestBadType.json().error).toBe("validation_error");
+
+    const guestShort = await app.inject({
+      method: "POST",
+      url: `/live/sessions/${sessionId}/viewer-token`,
+      payload: { clientId: "short" },
+    });
+    expect(guestShort.statusCode).toBe(400);
+    expect(guestShort.json().error).toBe("validation_error");
+
     const assigned = await app.inject({
       method: "POST",
       url: `/live/sessions/${sessionId}/roles`,

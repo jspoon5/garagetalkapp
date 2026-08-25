@@ -30,7 +30,6 @@ export function LiveSessionScreen({
   onLeaveLive: () => void;
 }) {
   const [session, setSession] = useState<LiveSession | null>(null);
-  const [livekitUrl, setLivekitUrl] = useState<string | null>(null);
   const [rtmp, setRtmp] = useState<{ url: string | null; key: string | null } | null>(null);
   const [gifts, setGifts] = useState<GiftCatalogItem[]>([]);
   const [walletCoins, setWalletCoins] = useState<number | null>(null);
@@ -47,7 +46,6 @@ export function LiveSessionScreen({
       `/live/sessions/${sessionId}`,
     );
     setSession(data.session);
-    setLivekitUrl(data.livekitUrl ?? null);
     if (user && user.id === data.session.hostId) {
       const ingest = await apiGet<{ rtmp: { url: string | null; key: string | null } }>(
         `/live/sessions/${sessionId}/rtmp`,
@@ -203,11 +201,7 @@ export function LiveSessionScreen({
           onLeave={onLeaveLive}
         />
       ) : (
-        <p className="empty-state">
-          {livekitUrl
-            ? "Waiting for the host to go live."
-            : "Mock LiveKit mode — set LIVEKIT_URL for real WebRTC. RTMP ingest still works for OBS."}
-        </p>
+        <p className="empty-state">Waiting for the host to go live.</p>
       )}
 
       {error ? <p className="auth-error">{error}</p> : null}
