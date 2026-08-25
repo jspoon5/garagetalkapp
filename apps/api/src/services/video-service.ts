@@ -151,12 +151,27 @@ export class VideoService extends VideoCatalog {
     const isStreamAsset = Boolean(streamUid && !streamUid.startsWith("r2_"));
 
     if (isStreamAsset && stream && streamUid) {
-      const details = await getStreamVideo({
-        accountId: stream.accountId,
-        token: stream.token,
-        uid: streamUid,
-        customerSubdomain: stream.customerSubdomain,
-      });
+      let details;
+      try {
+        details = await getStreamVideo({
+          accountId: stream.accountId,
+          token: stream.token,
+          uid: streamUid,
+          customerSubdomain: stream.customerSubdomain,
+        });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "stream_check_failed";
+        if (message.startsWith("stream_http_404")) {
+          throw new Error("stream_upload_missing");
+        }
+        if (message.startsWith("stream_http_")) {
+          throw new Error("stream_still_processing");
+        }
+        throw err;
+      }
+      if (details.statusState === "error") {
+        throw new Error("stream_encoding_failed");
+      }
       if (!details.readyToStream || !details.hlsUrl) {
         throw new Error("stream_still_processing");
       }

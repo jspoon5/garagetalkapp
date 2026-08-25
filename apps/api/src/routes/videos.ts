@@ -78,6 +78,25 @@ export const videoRoutes: FastifyPluginAsync<{ video: VideoService }> = async (a
             video: pending,
           });
         }
+        if (message === "stream_upload_missing") {
+          return reply.code(409).send({
+            error: "stream_upload_missing",
+            message: "No video file was received for this upload. Try uploading again.",
+          });
+        }
+        if (message === "stream_encoding_failed") {
+          return reply.code(409).send({
+            error: "stream_encoding_failed",
+            message: "Stream could not encode this video. Try a different file.",
+          });
+        }
+        if (message.startsWith("stream_http_")) {
+          const pending = await video.getOwned(req.user.id, id);
+          return reply.code(202).send({
+            error: "stream_still_processing",
+            video: pending,
+          });
+        }
         if (message === "playback_url_missing") {
           return reply.code(400).send({ error: "playback_url_missing" });
         }

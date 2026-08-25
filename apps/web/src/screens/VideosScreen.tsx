@@ -1,23 +1,30 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { apiGet, apiSend, ApiError, type VideoItem } from "../api";
 
 async function wait(ms: number) {
   await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+async function tryCompleteVideo(videoId: string): Promise<VideoItem | null> {
+  const res = await fetch(`/videos/${videoId}/complete`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({}),
+  });
+  const data = (await res.json()) as { video?: VideoItem | null; error?: string };
+  if (data.video?.status === "ready" && data.video.hlsUrl) return data.video;
+  if (data.error === "stream_still_processing") return null;
+  if (data.error && !res.ok) throw new ApiError(res.status, data.error);
+  return null;
+}
+
 async function finalizeStreamUpload(videoId: string): Promise<VideoItem | null> {
-  // Stream may still be encoding; poll complete a few times.
-  for (let attempt = 0; attempt < 8; attempt += 1) {
-    const data = await apiSend<{ video: VideoItem | null; error?: string }>(
-      `/videos/${videoId}/complete`,
-      "POST",
-      {},
-    );
-    if (data.video?.status === "ready" && data.video.hlsUrl) return data.video;
-    if (data.error && data.error !== "stream_still_processing") {
-      throw new ApiError(400, data.error);
-    }
-    await wait(1500);
+  // Stream encoding can take a few minutes for longer clips.
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    const ready = await tryCompleteVideo(videoId);
+    if (ready) return ready;
+    await wait(3000);
   }
   return null;
 }
@@ -38,14 +45,45 @@ export function VideosScreen({
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function refreshVideos() {
+  const refreshVideos = useCallback(async () => {
     const data = await apiGet<{ videos: VideoItem[] }>("/videos");
     setVideos(data.videos);
-  }
+    return data.videos;
+  }, []);
 
   useEffect(() => {
     void refreshVideos().catch(() => setError("Could not load videos."));
-  }, []);
+  }, [refreshVideos]);
+
+  useEffect(() => {
+    if (!signedIn) return;
+    let cancelled = false;
+
+    const tick = async () => {
+      const current = await refreshVideos().catch(() => [] as VideoItem[]);
+      const processing = current.filter((video) => video.status === "processing");
+      if (processing.length === 0) return;
+
+      for (const video of processing) {
+        if (cancelled) return;
+        try {
+          const ready = await tryCompleteVideo(video.id);
+          if (ready) {
+            setVideos((prev) => prev.map((row) => (row.id === ready.id ? ready : row)));
+          }
+        } catch {
+          // Keep polling other uploads; a single failure shouldn't stop the list.
+        }
+      }
+    };
+
+    void tick();
+    const interval = window.setInterval(() => void tick(), 10000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [refreshVideos, signedIn]);
 
   async function upload() {
     if (!signedIn) {
@@ -100,7 +138,7 @@ export function VideosScreen({
         setNotice(
           ready
             ? "Upload complete — your clip is ready to watch."
-            : "Upload received. Encoding is still running — refresh in a minute.",
+            : "Upload received. Encoding is still running — we'll keep checking in the background.",
         );
       } else if (session.upload.uploadUrl.includes("stub-r2.local")) {
         await apiSend(`/videos/${session.video.id}/complete`, "POST", {

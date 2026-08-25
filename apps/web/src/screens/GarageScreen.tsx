@@ -5,7 +5,7 @@ import { LanguageSwitcher } from "../components/LanguageSwitcher";
 import { PlatformInstallGuidance } from "../components/PwaInstallPrompt";
 import { Carousel } from "../components/Carousel";
 import { apiGet, apiSend, ApiError, type User, type Vehicle } from "../api";
-import { maxBirthYearForMinAge } from "@garagetalk/shared";
+import { maxBirthYearForMinAge, isValidUsername, suggestUsernameFromEmail } from "@garagetalk/shared";
 import { roomImage } from "../bays";
 import { images, SectionHeading, VehicleTile } from "./shared";
 
@@ -69,6 +69,34 @@ function SignedOutGarage({
     }
   }, []);
 
+  useEffect(() => {
+    if (mode !== "register") return;
+    const suggested = suggestUsernameFromEmail(email);
+    setUsername((current) => {
+      if (!current || current.includes("@") || current.trim() === email.trim()) {
+        return suggested;
+      }
+      return current;
+    });
+  }, [email, mode]);
+
+  function registerErrorMessage(err: unknown): string {
+    if (!(err instanceof ApiError)) return t("auth.registerFailed");
+    switch (err.code) {
+      case "invalid_username":
+      case "validation_error":
+        return t("auth.invalidUsername");
+      case "email_taken":
+        return t("auth.emailTaken");
+      case "username_taken":
+        return t("auth.usernameTaken");
+      case "underage":
+        return t("auth.underage");
+      default:
+        return t("auth.registerFailed");
+    }
+  }
+
   async function register() {
     setError(null);
     if (!ageConfirmed) {
@@ -78,6 +106,10 @@ function SignedOutGarage({
     const parsedBirthYear = Number(birthYear);
     if (!Number.isInteger(parsedBirthYear)) {
       setError(t("auth.birthYearInvalid"));
+      return;
+    }
+    if (!isValidUsername(username)) {
+      setError(t("auth.invalidUsername"));
       return;
     }
     try {
@@ -90,11 +122,7 @@ function SignedOutGarage({
       });
       setUser(data.user);
     } catch (err) {
-      if (err instanceof ApiError && err.code === "underage") {
-        setError(t("auth.underage"));
-        return;
-      }
-      setError(t("auth.registerFailed"));
+      setError(registerErrorMessage(err));
     }
   }
 
@@ -183,14 +211,17 @@ function SignedOutGarage({
         {mode === "login" || mode === "register" ? (
           <>
             <label>
-              {t("auth.username")}
+              {mode === "login" ? t("auth.loginHint") : t("auth.username")}
               <input
                 data-testid="auth-username"
                 autoComplete="username"
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}
                 required
-                minLength={3}
+                minLength={mode === "register" ? 3 : 1}
+                maxLength={mode === "register" ? 32 : 128}
+                pattern={mode === "register" ? "[A-Za-z0-9_]+" : undefined}
+                title={mode === "register" ? t("auth.invalidUsername") : undefined}
               />
             </label>
             <label>

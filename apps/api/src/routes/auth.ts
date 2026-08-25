@@ -1,15 +1,17 @@
 import { z } from "zod";
 import type { FastifyPluginAsync } from "fastify";
-import { maxBirthYearForMinAge, meetsMinimumAge } from "@garagetalk/shared";
+import {
+  maxBirthYearForMinAge,
+  meetsMinimumAge,
+  isValidUsername,
+} from "@garagetalk/shared";
 import { AuthService } from "../services/auth-service.js";
 
 const registerSchema = z.object({
   email: z.string().email(),
-  username: z
-    .string()
-    .min(3)
-    .max(32)
-    .regex(/^[a-zA-Z0-9_]+$/),
+  username: z.string().refine(isValidUsername, {
+    message: "invalid_username",
+  }),
   password: z.string().min(10).max(128),
   birthYear: z.number().int().min(1900).max(new Date().getUTCFullYear()),
   ageConfirmed: z.literal(true),
@@ -27,9 +29,9 @@ const profileSchema = z.object({
   avatarValue: z.string().max(500).optional(),
   username: z
     .string()
-    .min(3)
-    .max(32)
-    .regex(/^[a-zA-Z0-9_]+$/)
+    .refine((value) => value === undefined || isValidUsername(value), {
+      message: "invalid_username",
+    })
     .optional(),
 });
 
@@ -41,7 +43,22 @@ export const authRoutes: FastifyPluginAsync<{ auth: AuthService }> = async (app,
   app.post("/auth/register", {
     config: { rateLimit: { max: 10, timeWindow: "1 minute" } },
     handler: async (req, reply) => {
-      const body = registerSchema.parse(req.body);
+      const parsed = registerSchema.safeParse(req.body);
+      if (!parsed.success) {
+        const usernameIssue = parsed.error.issues.find((issue) => issue.path[0] === "username");
+        if (usernameIssue) {
+          return reply.code(400).send({
+            error: "invalid_username",
+            message:
+              "Username must be 3–32 characters and use only letters, numbers, and underscores (no @ or spaces).",
+          });
+        }
+        return reply.code(400).send({
+          error: "validation_error",
+          details: parsed.error.flatten(),
+        });
+      }
+      const body = parsed.data;
       if (!meetsMinimumAge(body.birthYear)) {
         return reply.code(400).send({
           error: "underage",
@@ -65,11 +82,25 @@ export const authRoutes: FastifyPluginAsync<{ auth: AuthService }> = async (app,
         });
         return { user: result.user };
       } catch (err) {
-        if (err instanceof Error && err.message === "underage") {
-          return reply.code(400).send({
-            error: "underage",
-            message: "Garage Talk is for users 13 and older.",
-          });
+        if (err instanceof Error) {
+          if (err.message === "underage") {
+            return reply.code(400).send({
+              error: "underage",
+              message: "Garage Talk is for users 13 and older.",
+            });
+          }
+          if (err.message === "email_taken") {
+            return reply.code(409).send({
+              error: "email_taken",
+              message: "That email is already registered. Sign in or use a different email.",
+            });
+          }
+          if (err.message === "username_taken") {
+            return reply.code(409).send({
+              error: "username_taken",
+              message: "That username is taken. Pick another one.",
+            });
+          }
         }
         req.log.warn({ err: String(err) }, "register failed");
         return reply.code(409).send({ error: "could_not_register" });

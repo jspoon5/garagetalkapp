@@ -54,6 +54,24 @@ function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
 
+function isUniqueViolation(err: unknown, field: "email" | "username"): boolean {
+  const message = err instanceof Error ? err.message : String(err);
+  if (!/duplicate|unique/i.test(message)) return false;
+  if (field === "email" && /email/i.test(message)) return true;
+  if (field === "username" && /username/i.test(message)) return true;
+  if (typeof err === "object" && err !== null && "code" in err) {
+    const code = String((err as { code: unknown }).code);
+    if (code !== "23505") return false;
+    const detail =
+      "detail" in err && typeof (err as { detail?: unknown }).detail === "string"
+        ? (err as { detail: string }).detail
+        : message;
+    if (field === "email" && /email/i.test(detail)) return true;
+    if (field === "username" && /username/i.test(detail)) return true;
+  }
+  return false;
+}
+
 export type AuthServiceOptions = {
   emailClient?: EmailClient;
   appBaseUrl?: string;
@@ -152,23 +170,29 @@ export class AuthService {
     const passwordHash = await argon2.hash(input.password, ARGON2_OPTS);
 
     const now = new Date();
-    const [user] = await this.db
-      .insert(users)
-      .values({
-        id: uuidv7(),
-        email,
-        username,
-        passwordHash,
-        roles: ["user"],
-        birthYear: input.birthYear,
-        ageVerifiedAt: now,
-        privacyPolicyAcceptedAt: now,
-      })
-      .returning();
+    try {
+      const [user] = await this.db
+        .insert(users)
+        .values({
+          id: uuidv7(),
+          email,
+          username,
+          passwordHash,
+          roles: ["user"],
+          birthYear: input.birthYear,
+          ageVerifiedAt: now,
+          privacyPolicyAcceptedAt: now,
+        })
+        .returning();
 
-    if (!user) throw new Error("failed to create user");
-    const sessionToken = await this.createSession(user.id);
-    return { user: toPublic(user), sessionToken };
+      if (!user) throw new Error("failed to create user");
+      const sessionToken = await this.createSession(user.id);
+      return { user: toPublic(user), sessionToken };
+    } catch (err) {
+      if (isUniqueViolation(err, "email")) throw new Error("email_taken");
+      if (isUniqueViolation(err, "username")) throw new Error("username_taken");
+      throw err;
+    }
   }
 
   async login(input: {
