@@ -28,7 +28,7 @@ export const presignInputSchema = z.object({
     z.enum(ALLOWED_VIDEO_MIMES),
     z.enum(ALLOWED_AUDIO_MIMES),
   ]),
-  sizeBytes: z.number().int().min(1).max(512 * 1024 * 1024),
+  sizeBytes: z.number().int().min(1).max(2 * 1024 * 1024 * 1024),
 }).superRefine((value, ctx) => {
   const image = (ALLOWED_IMAGE_MIMES as readonly string[]).includes(value.mimeType);
   const video = (ALLOWED_VIDEO_MIMES as readonly string[]).includes(value.mimeType);
@@ -151,7 +151,8 @@ export class MediaUploadService {
     const parsed = presignInputSchema.parse(input);
     const assetId = uuidv7();
     const storageKey = `uploads/${ownerId}/${parsed.kind}/${assetId}`;
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+    const expiresInSeconds = parsed.kind === "video" ? 60 * 60 : 15 * 60;
+    const expiresAt = new Date(Date.now() + expiresInSeconds * 1000);
     const r2 = readR2Config();
     const allowStub = opts.allowStub ?? process.env.NODE_ENV !== "production";
 
@@ -177,7 +178,7 @@ export class MediaUploadService {
         Key: storageKey,
         ContentType: parsed.mimeType,
       });
-      const uploadUrl = await getSignedUrl(client, command, { expiresIn: 15 * 60 });
+      const uploadUrl = await getSignedUrl(client, command, { expiresIn: expiresInSeconds });
       return {
         assetId,
         uploadUrl,
