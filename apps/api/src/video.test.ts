@@ -186,6 +186,7 @@ describe("video platform A3", () => {
     const listed = await app.inject({
       method: "GET",
       url: `/videos/${video.id}/comments`,
+      headers: { cookie },
     });
     expect(listed.statusCode).toBe(200);
     const comments = listed.json().comments as Array<{ parentId: string | null; body: string }>;
@@ -225,6 +226,58 @@ describe("video platform A3", () => {
       url: `/videos/${video.id}`,
     });
     expect(gone.statusCode).toBe(404);
+  });
+
+  it("defaults uploads to draft and filters public feed", async () => {
+    const draftSession = await app.inject({
+      method: "POST",
+      url: "/videos/upload-session",
+      headers: { cookie },
+      payload: { title: "Draft clip", category: "diy", mimeType: "video/mp4", sizeBytes: 1024 },
+    });
+    const draftBody = draftSession.json() as {
+      video: { id: string; visibility: string };
+      upload: { assetId: string | null };
+    };
+    expect(draftBody.video.visibility).toBe("draft");
+    await app.inject({
+      method: "POST",
+      url: `/videos/${draftBody.video.id}/complete`,
+      headers: { cookie },
+      payload: { assetId: draftBody.upload.assetId },
+    });
+
+    const publicSession = await app.inject({
+      method: "POST",
+      url: "/videos/upload-session",
+      headers: { cookie },
+      payload: {
+        title: "Public clip",
+        category: "diy",
+        visibility: "public",
+        mimeType: "video/mp4",
+        sizeBytes: 1024,
+      },
+    });
+    const publicBody = publicSession.json() as { video: { id: string }; upload: { assetId: string | null } };
+    await app.inject({
+      method: "POST",
+      url: `/videos/${publicBody.video.id}/complete`,
+      headers: { cookie },
+      payload: { assetId: publicBody.upload.assetId },
+    });
+
+    const guestList = await app.inject({ method: "GET", url: "/videos" });
+    const guestVideos = guestList.json().videos as Array<{ title: string }>;
+    expect(guestVideos.some((video) => video.title === "Draft clip")).toBe(false);
+    expect(guestVideos.some((video) => video.title === "Public clip")).toBe(true);
+
+    const mineDrafts = await app.inject({
+      method: "GET",
+      url: "/videos/mine?visibility=draft",
+      headers: { cookie },
+    });
+    expect(mineDrafts.json().videos.some((video: { title: string }) => video.title === "Draft clip")).toBe(true);
   });
 
   it("purges abandoned processing uploads after the grace window", async () => {

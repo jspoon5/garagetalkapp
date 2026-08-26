@@ -189,6 +189,7 @@ export async function createTestDb(): Promise<{ client: PGlite; db: Database }> 
       tags text[] NOT NULL DEFAULT '{}',
       stream_asset_id text,
       status text NOT NULL DEFAULT 'processing',
+      visibility text NOT NULL DEFAULT 'draft',
       duration_seconds integer,
       thumb_url text,
       custom_thumb text,

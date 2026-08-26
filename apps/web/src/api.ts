@@ -104,14 +104,18 @@ export type LiveSession = {
 
 export type VideoItem = {
   id: string;
+  ownerId?: string;
   title: string;
   description: string | null;
   category: string;
   status: string;
+  visibility?: "draft" | "public" | "private";
   hlsUrl: string | null;
   thumbUrl: string | null;
   likeCount: number;
 };
+
+export type VideoVisibility = "draft" | "public" | "private";
 
 export type PodcastEpisode = {
   id: string;

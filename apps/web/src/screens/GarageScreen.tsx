@@ -4,7 +4,7 @@ import { DotsHorizontalIcon, PersonIcon, VideoIcon } from "../icons";
 import { LanguageSwitcher } from "../components/LanguageSwitcher";
 import { PlatformInstallGuidance } from "../components/PwaInstallPrompt";
 import { Carousel } from "../components/Carousel";
-import { apiGet, apiSend, ApiError, type User, type Vehicle } from "../api";
+import { apiGet, apiSend, ApiError, type User, type Vehicle, type VideoItem, type VideoVisibility } from "../api";
 import { maxBirthYearForMinAge, isValidUsername, suggestUsernameFromEmail } from "@garagetalk/shared";
 import { roomImage } from "../bays";
 import { images, SectionHeading, VehicleTile } from "./shared";
@@ -389,15 +389,28 @@ function SignedInGarage({
   const [fuelType, setFuelType] = useState("gas");
   const [nickname, setNickname] = useState("");
   const [vehicleError, setVehicleError] = useState<string | null>(null);
+  const [videoFilter, setVideoFilter] = useState<"all" | VideoVisibility>("all");
+  const [myVideos, setMyVideos] = useState<VideoItem[]>([]);
 
   async function loadVehicles() {
     const data = await apiGet<{ vehicles: Vehicle[] }>("/garage/vehicles");
     setVehicles(data.vehicles);
   }
 
+  async function loadVideos(filter: "all" | VideoVisibility) {
+    const query = filter === "all" ? "" : `?visibility=${filter}`;
+    const data = await apiGet<{ videos: VideoItem[] }>(`/videos/mine${query}`);
+    setMyVideos(data.videos);
+  }
+
   useEffect(() => {
     void loadVehicles().catch(() => undefined);
+    void loadVideos("all").catch(() => undefined);
   }, []);
+
+  useEffect(() => {
+    void loadVideos(videoFilter).catch(() => undefined);
+  }, [videoFilter]);
 
   async function saveProfile() {
     try {
@@ -518,6 +531,36 @@ function SignedInGarage({
           Subscribe
         </button>
       </div>
+      <div className="screen-intro">
+        <span>MY VIDEOS</span>
+        <h1>Draft, public, and private.</h1>
+      </div>
+      <div className="profile-actions">
+        {(["all", "draft", "public", "private"] as const).map((filter) => (
+          <button
+            key={filter}
+            type="button"
+            className={videoFilter === filter ? "sell-button" : undefined}
+            onClick={() => setVideoFilter(filter)}
+          >
+            {filter === "all" ? "All" : filter.charAt(0).toUpperCase() + filter.slice(1)}
+          </button>
+        ))}
+      </div>
+      {myVideos.map((video) => (
+        <article className="feed-card" key={video.id}>
+          <strong>{video.title}</strong>
+          <p>
+            {video.category} · {video.status}
+            {video.visibility ? ` · ${video.visibility}` : ""}
+          </p>
+        </article>
+      ))}
+      {myVideos.length === 0 ? (
+        <p className="empty-state">
+          No {videoFilter === "all" ? "" : `${videoFilter} `}videos yet. Upload from the Video bay — new clips start as drafts.
+        </p>
+      ) : null}
       <SectionHeading eyebrow="My machines" title="Vehicles & projects" action="Add" onAction={() => document.getElementById("add-vehicle")?.scrollIntoView()} />
       <Carousel ariaLabel="Vehicles and projects" className="garage-carousel" contentClassName="garage-carousel-track">
         {vehicles.map((vehicle) => (

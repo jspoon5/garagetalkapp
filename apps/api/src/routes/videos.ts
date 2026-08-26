@@ -1,10 +1,12 @@
 import type { FastifyPluginAsync } from "fastify";
+import { z } from "zod";
 import {
   commentInputSchema,
   completeVideoUploadSchema,
   heartbeatInputSchema,
   updateVideoSchema,
   uploadSessionSchema,
+  videoVisibilityFilterSchema,
   VideoService,
 } from "../services/video-service.js";
 
@@ -23,9 +25,15 @@ export const videoRoutes: FastifyPluginAsync<{ video: VideoService }> = async (a
     videos: await video.listForViewer(req.user?.id ?? null),
   }));
 
+  app.get("/videos/mine", async (req, reply) => {
+    if (!req.user) return reply.code(401).send({ error: "unauthorized" });
+    const query = z.object({ visibility: videoVisibilityFilterSchema.default("all") }).parse(req.query);
+    return { videos: await video.listMine(req.user.id, query.visibility) };
+  });
+
   app.get("/videos/:id", async (req, reply) => {
     const { id } = req.params as { id: string };
-    const row = await video.getPublic(id);
+    const row = await video.getForViewer(id, req.user?.id ?? null);
     if (!row) return reply.code(404).send({ error: "not_found" });
     return { video: row };
   });
@@ -152,7 +160,7 @@ export const videoRoutes: FastifyPluginAsync<{ video: VideoService }> = async (a
 
   app.get("/videos/:id/comments", async (req, reply) => {
     const { id } = req.params as { id: string };
-    const v = await video.getPublic(id);
+    const v = await video.getForViewer(id, req.user?.id ?? null);
     if (!v) return reply.code(404).send({ error: "not_found" });
     const comments = await video.listComments(id);
     return { comments };

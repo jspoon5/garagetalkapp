@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { and, desc, eq, isNull, lt, or } from "drizzle-orm";
+import { and, desc, eq, isNull, lt } from "drizzle-orm";
 import type { Database } from "@garagetalk/db";
 import { videos, webhookEvents } from "@garagetalk/db";
 import { uuidv7 } from "uuidv7";
@@ -16,12 +16,14 @@ import { MediaUploadService } from "./media-upload-service.js";
 import { VideoCatalog } from "./video-catalog.js";
 export {
   VIDEO_CATEGORIES,
+  VIDEO_VISIBILITY,
   uploadSessionSchema,
   completeVideoUploadSchema,
   updateVideoSchema,
   commentInputSchema,
   heartbeatInputSchema,
   streamWebhookSchema,
+  videoVisibilityFilterSchema,
   type UploadSessionInput,
   type StreamWebhookPayload,
 } from "./video-schemas.js";
@@ -90,6 +92,7 @@ export class VideoService extends VideoCatalog {
             tags: parsed.tags ?? [],
             streamAssetId: direct.uid,
             status: "processing",
+            visibility: parsed.visibility,
           })
           .returning();
         return {
@@ -135,6 +138,7 @@ export class VideoService extends VideoCatalog {
         tags: parsed.tags ?? [],
         streamAssetId: `r2_${presigned.assetId.replace(/-/g, "").slice(0, 16)}`,
         status: "processing",
+        visibility: parsed.visibility,
       })
       .returning();
 
@@ -227,21 +231,6 @@ export class VideoService extends VideoCatalog {
       .where(eq(videos.id, videoId))
       .returning();
     return updated ?? null;
-  }
-
-  listForViewer(viewerId: string | null, limit = 50) {
-    if (!viewerId) return this.listPublic(limit);
-    return this.db
-      .select()
-      .from(videos)
-      .where(
-        and(
-          isNull(videos.deletedAt),
-          or(eq(videos.status, "ready"), eq(videos.ownerId, viewerId)),
-        ),
-      )
-      .orderBy(desc(videos.createdAt))
-      .limit(limit);
   }
 
   async handleStreamWebhook(eventId: string, payload: StreamWebhookPayload) {

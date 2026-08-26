@@ -9,11 +9,14 @@ export const VIDEO_CATEGORIES = [
   "other",
 ] as const;
 
+export const VIDEO_VISIBILITY = ["draft", "public", "private"] as const;
+
 export const uploadSessionSchema = z.object({
   title: z.string().min(1).max(200),
   description: z.string().max(5000).nullable().optional(),
   category: z.enum(VIDEO_CATEGORIES),
   tags: z.array(z.string().min(1).max(48)).max(20).optional(),
+  visibility: z.enum(VIDEO_VISIBILITY).default("draft"),
   mimeType: z.enum(["video/mp4", "video/webm", "video/quicktime"]).default("video/mp4"),
   sizeBytes: z.number().int().min(1).max(2 * 1024 * 1024 * 1024).optional(),
 });
@@ -27,8 +30,11 @@ export const updateVideoSchema = z.object({
   description: z.string().max(5000).nullable().optional(),
   category: z.enum(VIDEO_CATEGORIES).optional(),
   tags: z.array(z.string().min(1).max(48)).max(20).optional(),
+  visibility: z.enum(VIDEO_VISIBILITY).optional(),
   customThumb: z.string().url().nullable().optional(),
 });
+
+export const videoVisibilityFilterSchema = z.enum(["all", ...VIDEO_VISIBILITY]);
 
 export const commentInputSchema = z.object({
   body: z.string().min(1).max(4000),

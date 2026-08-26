@@ -606,7 +606,7 @@ export function App() {
               }}
             />
           ) : overlay?.kind === "videos" ? (
-            <VideosScreen signedIn={Boolean(user)} onNeedAccount={() => goSignIn()} />
+            <VideosScreen user={user} onNeedAccount={() => goSignIn()} />
           ) : overlay?.kind === "podcasts" ? (
             <PodcastsScreen />
           ) : overlay?.kind === "shops" ? (

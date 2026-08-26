@@ -28,6 +28,7 @@ export const videos = pgTable(
     tags: text("tags").array().notNull().default([]),
     streamAssetId: text("stream_asset_id"),
     status: text("status").notNull().default("processing"),
+    visibility: text("visibility").notNull().default("draft"),
     durationSeconds: integer("duration_seconds"),
     thumbUrl: text("thumb_url"),
     customThumb: text("custom_thumb"),
@@ -37,7 +38,11 @@ export const videos = pgTable(
     ...timestamps,
     ...softDelete,
   },
-  (t) => [index("videos_owner_idx").on(t.ownerId), index("videos_category_idx").on(t.category)],
+  (t) => [
+    index("videos_owner_idx").on(t.ownerId),
+    index("videos_category_idx").on(t.category),
+    index("videos_visibility_idx").on(t.visibility),
+  ],
 );
 
 export const videoLikes = pgTable(

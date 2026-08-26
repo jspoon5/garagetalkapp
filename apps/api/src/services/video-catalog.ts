@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, or, sql } from "drizzle-orm";
 import type { Database } from "@garagetalk/db";
 import {
   recentlyWatched,
@@ -21,11 +21,45 @@ function todayUtc(): string {
 
 export class VideoCatalog {
   constructor(protected readonly db: Database) {}
+
   listPublic(limit = 50) {
     return this.db
       .select()
       .from(videos)
-      .where(and(eq(videos.status, "ready"), isNull(videos.deletedAt)))
+      .where(
+        and(eq(videos.status, "ready"), eq(videos.visibility, "public"), isNull(videos.deletedAt)),
+      )
+      .orderBy(desc(videos.createdAt))
+      .limit(limit);
+  }
+
+  listForViewer(viewerId: string | null, limit = 50) {
+    if (!viewerId) return this.listPublic(limit);
+    return this.db
+      .select()
+      .from(videos)
+      .where(
+        and(
+          isNull(videos.deletedAt),
+          or(
+            eq(videos.ownerId, viewerId),
+            and(eq(videos.status, "ready"), eq(videos.visibility, "public")),
+          ),
+        ),
+      )
+      .orderBy(desc(videos.createdAt))
+      .limit(limit);
+  }
+
+  listMine(ownerId: string, visibility: "all" | "draft" | "public" | "private" = "all", limit = 50) {
+    const filters = [eq(videos.ownerId, ownerId), isNull(videos.deletedAt)];
+    if (visibility !== "all") {
+      filters.push(eq(videos.visibility, visibility));
+    }
+    return this.db
+      .select()
+      .from(videos)
+      .where(and(...filters))
       .orderBy(desc(videos.createdAt))
       .limit(limit);
   }
@@ -35,10 +69,30 @@ export class VideoCatalog {
       .select()
       .from(videos)
       .where(
-        and(eq(videos.id, videoId), eq(videos.status, "ready"), isNull(videos.deletedAt)),
+        and(
+          eq(videos.id, videoId),
+          eq(videos.status, "ready"),
+          eq(videos.visibility, "public"),
+          isNull(videos.deletedAt),
+        ),
       )
       .limit(1)
       .then((rows) => rows[0] ?? null);
+  }
+
+  getForViewer(videoId: string, viewerId: string | null) {
+    return this.db
+      .select()
+      .from(videos)
+      .where(and(eq(videos.id, videoId), isNull(videos.deletedAt)))
+      .limit(1)
+      .then((rows) => {
+        const row = rows[0];
+        if (!row) return null;
+        if (viewerId && row.ownerId === viewerId) return row;
+        if (row.status === "ready" && row.visibility === "public") return row;
+        return null;
+      });
   }
 
   getOwned(ownerId: string, videoId: string) {
@@ -76,8 +130,8 @@ export class VideoCatalog {
   }
 
   async like(userId: string, videoId: string) {
-    const video = await this.getPublic(videoId);
-    if (!video) return null;
+    const video = await this.getForViewer(videoId, userId);
+    if (!video || video.status !== "ready") return null;
 
     const likeId = uuidv7();
     await this.db
@@ -123,8 +177,8 @@ export class VideoCatalog {
 
   async addComment(userId: string, videoId: string, input: z.infer<typeof commentInputSchema>) {
     const parsed = commentInputSchema.parse(input);
-    const video = await this.getPublic(videoId);
-    if (!video) return null;
+    const video = await this.getForViewer(videoId, userId);
+    if (!video || video.status !== "ready") return null;
 
     if (parsed.parentId) {
       const [parent] = await this.db
@@ -155,8 +209,8 @@ export class VideoCatalog {
   }
 
   async recordRecentlyWatched(userId: string, videoId: string, positionSeconds: number) {
-    const video = await this.getPublic(videoId);
-    if (!video) return null;
+    const video = await this.getForViewer(videoId, userId);
+    if (!video || video.status !== "ready") return null;
 
     const [row] = await this.db
       .insert(recentlyWatched)
@@ -196,8 +250,8 @@ export class VideoCatalog {
 
   async recordHeartbeat(userId: string, videoId: string, input: z.infer<typeof heartbeatInputSchema>) {
     const parsed = heartbeatInputSchema.parse(input);
-    const video = await this.getPublic(videoId);
-    if (!video) return null;
+    const video = await this.getForViewer(videoId, userId);
+    if (!video || video.status !== "ready") return null;
 
     const viewDate = todayUtc();
     const existing = await this.db
