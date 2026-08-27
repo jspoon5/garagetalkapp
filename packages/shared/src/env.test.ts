@@ -12,6 +12,17 @@ describe("loadEnv", () => {
     expect(env.STREAM_PROVIDER).toBe("cloudflare");
   });
 
+  it("accepts r2 stream provider", () => {
+    const env = loadEnv({
+      NODE_ENV: "development",
+      DATABASE_URL: "postgresql://garagetalk:garagetalk@127.0.0.1:5433/garagetalk_test",
+      SESSION_SECRET: "x".repeat(64),
+      APP_BASE_URL: "http://localhost:5173",
+      STREAM_PROVIDER: "r2",
+    });
+    expect(env.STREAM_PROVIDER).toBe("r2");
+  });
+
   it("rejects placeholder secrets in production", () => {
     expect(() =>
       loadEnv(
