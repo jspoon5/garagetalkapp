@@ -71,6 +71,13 @@
       "when": 1786544982270,
       "tag": "0009_age_gate",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1786544982271,
+      "tag": "0010_video_visibility",
+      "breakpoints": true
     }
   ]
 }
