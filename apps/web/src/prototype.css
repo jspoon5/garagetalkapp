@@ -1754,10 +1754,25 @@ textarea {
 
 .livekit-shell {
   margin: 1rem 0;
-  min-height: 240px;
+  min-height: 280px;
   border-radius: 12px;
-  overflow: hidden;
+  overflow: visible;
   border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.livekit-shell .lk-video-conference {
+  min-height: 240px;
+}
+
+.livekit-shell .lk-control-bar {
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px;
+}
+
+.livekit-shell .lk-button {
+  min-height: 44px;
+  min-width: 44px;
 }
 
 .livekit-backstage,
@@ -1769,6 +1784,11 @@ textarea {
   padding: 14px 16px;
   background: rgba(16, 29, 45, 0.95);
   border-bottom: 1px solid var(--gt-line);
+}
+
+.livekit-onair-controls button {
+  min-height: 44px;
+  padding: 0.55rem 0.9rem;
 }
 
 .livekit-backstage p {

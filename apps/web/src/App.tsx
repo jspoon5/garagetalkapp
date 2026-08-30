@@ -253,7 +253,6 @@ export function App() {
       .catch(() => undefined);
     void refresh().catch(() => undefined);
     const params = new URLSearchParams(window.location.search);
-    const params = new URLSearchParams(window.location.search);
     if (params.get("billing") === "success" || params.get("tip") === "success" || params.get("market") === "success" || params.get("coins") === "success") {
       if (params.get("coins") === "success") {
         setLiveNote("Coin purchase received — open Garage to see your coin balance (Stripe may take a few seconds).");

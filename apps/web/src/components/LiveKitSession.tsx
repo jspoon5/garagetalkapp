@@ -5,7 +5,7 @@ import {
   useRoomContext,
 } from "@livekit/components-react";
 import "@livekit/components-styles";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { apiSend, ApiError } from "../api";
 
 const CLIENT_ID_KEY = "gt_livekit_client_id";
@@ -199,6 +199,8 @@ function PublishControls({
   const [cameraId, setCameraId] = useState("");
   const [micId, setMicId] = useState("");
   const [preferRear, setPreferRear] = useState(false);
+  const [micMuted, setMicMuted] = useState(false);
+  const [camMuted, setCamMuted] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -229,6 +231,8 @@ function PublishControls({
       const { videoOpts, audioOpts } = await applyDevices();
       await room.localParticipant.setMicrophoneEnabled(true, audioOpts);
       await room.localParticipant.setCameraEnabled(true, videoOpts);
+      setMicMuted(false);
+      setCamMuted(false);
       setOnAir(true);
     } catch {
       setError("Could not start camera/mic. Pick a device, allow permissions, and try again.");
@@ -244,7 +248,43 @@ function PublishControls({
     try {
       await room.localParticipant.setCameraEnabled(false);
       await room.localParticipant.setMicrophoneEnabled(false);
+      setMicMuted(false);
+      setCamMuted(false);
       setOnAir(false);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function toggleMicMute() {
+    if (!onAir) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const next = !micMuted;
+      // Mute keeps the track published (guests stay in the room); Stop camera unpublishes.
+      await room.localParticipant.setMicrophoneEnabled(!next, micId ? { deviceId: micId } : undefined);
+      setMicMuted(next);
+    } catch {
+      setError("Could not mute/unmute microphone. Check browser permissions.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function toggleCamMute() {
+    if (!onAir) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const next = !camMuted;
+      const videoOpts: { deviceId?: string; facingMode?: "user" | "environment" } = {};
+      if (cameraId) videoOpts.deviceId = cameraId;
+      else videoOpts.facingMode = preferRear ? "environment" : "user";
+      await room.localParticipant.setCameraEnabled(!next, videoOpts);
+      setCamMuted(next);
+    } catch {
+      setError("Could not mute/unmute camera. Check browser permissions.");
     } finally {
       setBusy(false);
     }
@@ -339,10 +379,16 @@ function PublishControls({
       />
       {error ? <p className="auth-error">{error}</p> : null}
       {onAir ? (
-        <div className="livekit-controls" style={{ padding: 0, border: "none", background: "transparent" }}>
+        <div className="livekit-controls livekit-onair-controls" data-testid="live-av-toggles">
           <span className="live-pill on-air">
             <i /> ON AIR
           </span>
+          <button type="button" disabled={busy} onClick={() => void toggleMicMute()}>
+            {micMuted ? "Unmute mic" : "Mute mic"}
+          </button>
+          <button type="button" disabled={busy} onClick={() => void toggleCamMute()}>
+            {camMuted ? "Unmute camera" : "Mute camera"}
+          </button>
           <button type="button" disabled={busy} onClick={() => void endBroadcast()}>
             Stop camera
           </button>
@@ -381,9 +427,13 @@ function LeaveLiveControl({ onLeave }: { onLeave?: () => void }) {
   );
 }
 
-/** Viewer stage: real conference when someone is publishing; otherwise waiting copy. */
+/** Viewer stage: keep the conference mounted once we've seen a publisher (avoids mobile blanking). */
 function ViewerStage() {
   const remotes = useRemoteParticipants();
+  const [seenPublisher, setSeenPublisher] = useState(false);
+  const [speakerMuted, setSpeakerMuted] = useState(false);
+  const blankGraceRef = useRef<number | null>(null);
+
   const publishing = remotes.some(
     (participant) =>
       participant.isCameraEnabled ||
@@ -392,17 +442,70 @@ function ViewerStage() {
       [...participant.trackPublications.values()].some((pub) => pub.track && !pub.isMuted),
   );
 
-  if (!publishing) {
-    return (
-      <p className="empty-state" data-testid="live-waiting-for-host">
-        Connected — waiting for the host to start broadcasting.
-      </p>
-    );
-  }
+  useEffect(() => {
+    if (publishing) {
+      setSeenPublisher(true);
+      if (blankGraceRef.current != null) {
+        window.clearTimeout(blankGraceRef.current);
+        blankGraceRef.current = null;
+      }
+      return;
+    }
+    // Brief gaps are common on mobile (ICE renegotiation). Don't tear down the stage instantly.
+    if (!seenPublisher) return;
+    blankGraceRef.current = window.setTimeout(() => {
+      setSeenPublisher(false);
+      blankGraceRef.current = null;
+    }, 12_000);
+    return () => {
+      if (blankGraceRef.current != null) {
+        window.clearTimeout(blankGraceRef.current);
+        blankGraceRef.current = null;
+      }
+    };
+  }, [publishing, seenPublisher]);
 
-  // VideoConference already renders remote audio; do not also mount RoomAudioRenderer
-  // or multi-guest sessions double-play tracks (classic echo).
-  return <VideoConference />;
+  useEffect(() => {
+    const volume = speakerMuted ? 0 : 1;
+    for (const participant of remotes) {
+      for (const pub of participant.audioTrackPublications.values()) {
+        const track = pub.track;
+        if (track && "setVolume" in track && typeof track.setVolume === "function") {
+          track.setVolume(volume);
+        }
+      }
+    }
+  }, [speakerMuted, remotes]);
+
+  const showStage = publishing || seenPublisher;
+
+  return (
+    <>
+      <div className="livekit-controls" data-testid="live-viewer-audio">
+        <button
+          type="button"
+          onClick={() => setSpeakerMuted((value) => !value)}
+          aria-pressed={speakerMuted}
+        >
+          {speakerMuted ? "Unmute speakers" : "Mute speakers"}
+        </button>
+        <span className="empty-state" style={{ margin: 0 }}>
+          {showStage
+            ? publishing
+              ? "Receiving live video"
+              : "Reconnecting video…"
+            : "Waiting for host"}
+        </span>
+      </div>
+      {showStage ? (
+        <VideoConference />
+      ) : (
+        <p className="empty-state" data-testid="live-waiting-for-host">
+          Connected — waiting for the host to start broadcasting.
+        </p>
+      )}
+    </>
+  );
 }
 
 export function LiveKitSession({
@@ -498,6 +601,8 @@ export function LiveKitSession({
         connect
         audio={false}
         video={false}
+        // adaptiveStream can pause/blank remote video on mobile when layout/visibility flickers.
+        options={{ adaptiveStream: false, dynacast: true }}
         onDisconnected={() => setOnAir(false)}
         onError={(err) => {
           console.error("[live] LiveKitRoom error", err);
@@ -525,7 +630,9 @@ export function LiveKitSession({
           <p className="empty-state">Watching as viewer. Request a guest spot to use your camera/mic.</p>
         ) : null}
         <LeaveLiveControl onLeave={onLeave} />
-        {mayPublish && !onAir ? null : mayPublish ? (
+        {mayPublish && !onAir ? (
+          <p className="empty-state">Camera is off — pick a device above, then go live.</p>
+        ) : mayPublish ? (
           <VideoConference />
         ) : (
           <ViewerStage />
