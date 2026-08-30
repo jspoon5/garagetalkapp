@@ -107,7 +107,7 @@ export function App() {
   const [liveNote, setLiveNote] = useState<string | null>(null);
   const [entitlement, setEntitlement] = useState<UserEntitlement | null>(null);
   const [draft, setDraft] = useState("");
-  const [tipAmount, setTipAmount] = useState("500");
+  const [tipAmount, setTipAmount] = useState("5");
   const skippingUrlSync = useRef(false);
 
   const activeRoom = rooms.find((room) => room.id === roomId) ?? null;
@@ -253,8 +253,17 @@ export function App() {
       .catch(() => undefined);
     void refresh().catch(() => undefined);
     const params = new URLSearchParams(window.location.search);
-    if (params.get("billing") === "success" || params.get("tip") === "success" || params.get("market") === "success") {
-      setLiveNote("Payment completed — Stripe will reconcile the webhook shortly.");
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("billing") === "success" || params.get("tip") === "success" || params.get("market") === "success" || params.get("coins") === "success") {
+      if (params.get("coins") === "success") {
+        setLiveNote("Coin purchase received — open Garage to see your coin balance (Stripe may take a few seconds).");
+        setScreen("profile");
+      } else if (params.get("tip") === "success") {
+        setLiveNote("Tip payment received — check Tips earned in Garage after Stripe confirms.");
+        setScreen("profile");
+      } else {
+        setLiveNote("Payment completed — Stripe will reconcile the webhook shortly.");
+      }
     }
 
     const refreshIfVisible = () => {
@@ -461,18 +470,26 @@ export function App() {
       goSignIn();
       return;
     }
-    const cents = Number(tipAmount);
-    if (!Number.isFinite(cents) || cents < 100) return;
+    const dollars = Number(tipAmount);
+    if (!Number.isFinite(dollars) || dollars < 1) {
+      setLiveNote("Enter a tip of at least $1.");
+      return;
+    }
+    const cents = Math.round(dollars * 100);
     const data = await apiSend<{ checkout?: { url?: string | null; mode?: string } | null }>("/billing/tips", "POST", {
       toUserId,
-      amountCents: Math.round(cents),
+      amountCents: cents,
     });
     const url = checkoutUrl(data);
     if (data.checkout?.mode === "stripe" && url) {
       window.location.assign(url);
       return;
     }
-    setLiveNote("Tip sent.");
+    if (data.checkout?.mode === "stripe" && !url) {
+      setLiveNote("Tip checkout could not start. Try again in a moment.");
+      return;
+    }
+    setLiveNote("Tip sent — the host can see it under Tips earned in Garage.");
     setOverlay(null);
   }
 
@@ -740,9 +757,9 @@ export function App() {
         <ComposeSheet
           eyebrow="TIP"
           title="Send a tip"
-          label="Amount (cents)"
-          placeholder="500"
-          submitLabel="Tip"
+          label="Amount (USD)"
+          placeholder="5"
+          submitLabel="Tip with card"
           value={tipAmount}
           onChange={setTipAmount}
           onClose={() => setOverlay(null)}

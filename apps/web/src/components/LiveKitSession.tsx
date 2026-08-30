@@ -1,6 +1,5 @@
 import {
   LiveKitRoom,
-  RoomAudioRenderer,
   VideoConference,
   useRemoteParticipants,
   useRoomContext,
@@ -168,12 +167,9 @@ function ViewerStage() {
     );
   }
 
-  return (
-    <>
-      <VideoConference />
-      <RoomAudioRenderer />
-    </>
-  );
+  // VideoConference already renders remote audio; do not also mount RoomAudioRenderer
+  // or multi-guest sessions double-play tracks (classic echo).
+  return <VideoConference />;
 }
 
 export function LiveKitSession({
@@ -262,10 +258,7 @@ export function LiveKitSession({
         ) : null}
         <LeaveLiveControl onLeave={onLeave} />
         {isHost && !onAir ? null : isHost ? (
-          <>
-            <VideoConference />
-            <RoomAudioRenderer />
-          </>
+          <VideoConference />
         ) : (
           <ViewerStage />
         )}

@@ -70,6 +70,24 @@ export function LiveSessionScreen({
     void apiGet<{ balanceCoins: number }>("/wallet")
       .then((data) => setWalletCoins(data.balanceCoins))
       .catch(() => undefined);
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("coins") === "success") {
+      setNotice("Coin purchase received — refreshing your balance…");
+      setShowCoins(true);
+      const timers = [1500, 4000, 8000].map((ms) =>
+        window.setTimeout(() => {
+          void apiGet<{ balanceCoins: number }>("/wallet")
+            .then((data) => {
+              setWalletCoins(data.balanceCoins);
+              setNotice(`Balance updated: ${data.balanceCoins} coins.`);
+            })
+            .catch(() => undefined);
+        }, ms),
+      );
+      return () => timers.forEach((id) => window.clearTimeout(id));
+    }
+    return undefined;
   }, [user?.id, showCoins]);
 
   useEffect(() => {
@@ -176,8 +194,10 @@ export function LiveSessionScreen({
             <strong>{session.title ?? session.roomName}</strong>
             <span>
               {session.kind} · {session.likeCount ?? 0} hearts
-              {walletCoins !== null ? ` · ${walletCoins} coins` : ""}
             </span>
+            {walletCoins !== null ? (
+              <strong data-testid="live-coin-balance">Your coins: {walletCoins}</strong>
+            ) : null}
           </div>
           <button type="button" className="heart-button" onClick={() => void like()} aria-label="Like live session">
             {session.likedByMe ? <HeartFilledIcon /> : <HeartIcon />}

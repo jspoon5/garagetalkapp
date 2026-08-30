@@ -4,7 +4,7 @@ import { DotsHorizontalIcon, PersonIcon, VideoIcon } from "../icons";
 import { LanguageSwitcher } from "../components/LanguageSwitcher";
 import { PlatformInstallGuidance } from "../components/PwaInstallPrompt";
 import { Carousel } from "../components/Carousel";
-import { apiGet, apiSend, ApiError, type User, type Vehicle, type VideoItem, type VideoVisibility } from "../api";
+import { apiGet, apiSend, ApiError, checkoutUrl, formatUsd, type User, type Vehicle, type VideoItem, type VideoVisibility } from "../api";
 import { maxBirthYearForMinAge, isValidUsername, suggestUsernameFromEmail } from "@garagetalk/shared";
 import { roomImage } from "../bays";
 import { images, SectionHeading, VehicleTile } from "./shared";
@@ -362,6 +362,104 @@ function SignedOutGarage({
   );
 }
 
+function WalletAndEarnings() {
+  const [balanceCoins, setBalanceCoins] = useState<number | null>(null);
+  const [tipEarningsCents, setTipEarningsCents] = useState<number | null>(null);
+  const [giftEarningsCents, setGiftEarningsCents] = useState<number | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function refreshBalances() {
+    const [wallet, tips, gifts] = await Promise.all([
+      apiGet<{ balanceCoins: number }>("/wallet").catch(() => null),
+      apiGet<{ dashboard: { netCents: number } }>("/creator/earnings").catch(() => null),
+      apiGet<{ balanceCents: number }>("/creators/earnings").catch(() => null),
+    ]);
+    if (wallet) setBalanceCoins(wallet.balanceCoins);
+    if (tips) setTipEarningsCents(tips.dashboard.netCents);
+    if (gifts) setGiftEarningsCents(gifts.balanceCents);
+  }
+
+  useEffect(() => {
+    void refreshBalances().catch(() => undefined);
+    const params = new URLSearchParams(window.location.search);
+    const paid =
+      params.get("coins") === "success" ||
+      params.get("tip") === "success" ||
+      params.get("billing") === "success";
+    if (paid) {
+      setNotice(
+        params.get("coins") === "success"
+          ? "Coin purchase received — balance updates when Stripe confirms (usually a few seconds)."
+          : params.get("tip") === "success"
+            ? "Tip payment received — the creator balance updates when Stripe confirms."
+            : "Payment received — balances refresh shortly.",
+      );
+      // Webhooks can lag behind the redirect; poll a few times.
+      const timers = [1500, 4000, 8000].map((ms) =>
+        window.setTimeout(() => {
+          void refreshBalances().catch(() => undefined);
+        }, ms),
+      );
+      return () => timers.forEach((id) => window.clearTimeout(id));
+    }
+    return undefined;
+  }, []);
+
+  async function buyCoins(packId: "pack_100" | "pack_500" | "pack_1200") {
+    setBusy(true);
+    setNotice(null);
+    try {
+      const result = await apiSend<{ checkout: { url?: string | null } }>("/coins/checkout", "POST", { packId });
+      const url = checkoutUrl(result);
+      if (url) {
+        window.location.href = url;
+        return;
+      }
+      setNotice("Could not start coin checkout.");
+    } catch {
+      setNotice("Could not start coin checkout.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="auth-card" data-testid="wallet-earnings">
+      <span>WALLET & EARNINGS</span>
+      <div className="profile-stats">
+        <div>
+          <strong>{balanceCoins === null ? "—" : balanceCoins}</strong>
+          <span>Your coins</span>
+        </div>
+        <div>
+          <strong>{tipEarningsCents === null ? "—" : formatUsd(tipEarningsCents)}</strong>
+          <span>Tips earned</span>
+        </div>
+        <div>
+          <strong>{giftEarningsCents === null ? "—" : formatUsd(giftEarningsCents)}</strong>
+          <span>Gifts earned</span>
+        </div>
+      </div>
+      <p className="empty-state">
+        Coins are for sending live gifts. Tips and gifts earned show here for hosts after Stripe confirms.
+      </p>
+      <div className="profile-actions">
+        <button type="button" disabled={busy} onClick={() => void buyCoins("pack_100")}>
+          Buy 100 coins · {formatUsd(499)}
+        </button>
+        <button type="button" disabled={busy} onClick={() => void buyCoins("pack_500")}>
+          Buy 500 coins · {formatUsd(1999)}
+        </button>
+        <button type="button" disabled={busy} onClick={() => void refreshBalances()}>
+          Refresh balances
+        </button>
+      </div>
+      {notice ? <p className="empty-state">{notice}</p> : null}
+    </div>
+  );
+}
+
 function SignedInGarage({
   user,
   setUser,
@@ -531,6 +629,7 @@ function SignedInGarage({
           Subscribe
         </button>
       </div>
+      <WalletAndEarnings />
       <div className="screen-intro">
         <span>MY VIDEOS</span>
         <h1>Draft, public, and private.</h1>
