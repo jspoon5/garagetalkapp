@@ -555,12 +555,16 @@ function SignedInGarage({
       const data = await apiSend<{ video: VideoItem }>(`/videos/${video.id}`, "PATCH", {
         visibility: next,
       });
-      setMyVideos((prev) =>
-        prev.map((row) => (row.id === data.video.id ? { ...row, ...data.video } : row)),
-      );
+      setMyVideos((prev) => {
+        const next = prev.map((row) => (row.id === data.video.id ? { ...row, ...data.video } : row));
+        if (videoFilter !== "all" && data.video.visibility !== videoFilter) {
+          return next.filter((row) => row.id !== data.video.id);
+        }
+        return next;
+      });
       setVideoNotice(`Visibility set to ${VIDEO_VISIBILITY_LABELS[next]}.`);
       if (videoFilter !== "all" && data.video.visibility !== videoFilter) {
-        await loadVideos(videoFilter);
+        await loadVideos(videoFilter).catch(() => undefined);
       }
     } catch (err) {
       setVideoError(
