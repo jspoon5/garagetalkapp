@@ -40,6 +40,8 @@ export function LiveSessionScreen({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [showCoins, setShowCoins] = useState(false);
+  const [tokenNonce, setTokenNonce] = useState(0);
+  const [liveRole, setLiveRole] = useState<string | null>(null);
 
   async function load() {
     const data = await apiGet<{ session: LiveSession; livekitUrl?: string | null }>(
@@ -95,13 +97,27 @@ export function LiveSessionScreen({
     const socket = new WebSocket(liveSessionSocketUrl(sessionId));
     socket.onmessage = (event) => {
       try {
-        const payload = JSON.parse(String(event.data)) as { type: string; gift?: GiftEvent["gift"]; sender?: GiftEvent["sender"] };
+        const payload = JSON.parse(String(event.data)) as {
+          type: string;
+          gift?: GiftEvent["gift"];
+          sender?: GiftEvent["sender"];
+          userId?: string;
+          approve?: boolean;
+        };
         if (payload.type === "live_gift" && payload.gift && payload.sender) {
           setGiftFlash({ type: "live_gift", gift: payload.gift, sender: payload.sender });
           window.setTimeout(() => setGiftFlash(null), 4000);
         }
         if (payload.type === "guest_request" && user.id === session?.hostId) {
           void load().catch(() => undefined);
+        }
+        if (payload.type === "guest_decision" && payload.userId === user.id) {
+          if (payload.approve) {
+            setNotice("Host approved your guest spot — pick a camera/mic and go live.");
+            setTokenNonce((n) => n + 1);
+          } else {
+            setNotice("Guest request declined.");
+          }
         }
       } catch {
         // ignore malformed frames
@@ -217,8 +233,10 @@ export function LiveSessionScreen({
           userId={user?.id ?? null}
           isHost={isHost}
           canHostLive={canHostLive}
+          tokenNonce={tokenNonce}
           onUpgradeRequired={onUpgradeRequired}
           onLeave={onLeaveLive}
+          onRole={setLiveRole}
         />
       ) : (
         <p className="empty-state">Waiting for the host to go live.</p>
@@ -284,9 +302,13 @@ export function LiveSessionScreen({
       ) : null}
 
       {user && !isHost && live ? (
-        <button type="button" onClick={() => void requestGuestSpot()}>
-          Request guest spot
-        </button>
+        liveRole === "guest" || liveRole === "mod" ? (
+          <p className="empty-state">Guest spot active — use the camera/mic pickers above to go on air.</p>
+        ) : (
+          <button type="button" onClick={() => void requestGuestSpot()}>
+            Request guest spot
+          </button>
+        )
       ) : null}
 
       {isHost && rtmp?.url && rtmp.key ? (
