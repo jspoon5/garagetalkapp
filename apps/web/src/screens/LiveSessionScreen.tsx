@@ -42,6 +42,7 @@ export function LiveSessionScreen({
   const [showCoins, setShowCoins] = useState(false);
   const [tokenNonce, setTokenNonce] = useState(0);
   const [liveRole, setLiveRole] = useState<string | null>(null);
+  const [guestPollUntil, setGuestPollUntil] = useState<number | null>(null);
 
   async function load() {
     const data = await apiGet<{ session: LiveSession; livekitUrl?: string | null }>(
@@ -66,6 +67,35 @@ export function LiveSessionScreen({
       .then((data) => setGifts(data.gifts))
       .catch(() => undefined);
   }, [sessionId, user?.id]);
+
+  // Host: keep guest request list fresh even if a WS frame is missed.
+  useEffect(() => {
+    if (!user || !session || user.id !== session.hostId) return;
+    const timer = window.setInterval(() => {
+      void apiGet<{ requests: typeof guestRequests }>(`/live/sessions/${sessionId}/guest-requests`)
+        .then((pending) => setGuestRequests(pending.requests))
+        .catch(() => undefined);
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [sessionId, user?.id, session?.hostId]);
+
+  // Guest: after requesting a spot, re-fetch LiveKit token until role upgrades or timeout.
+  useEffect(() => {
+    if (!guestPollUntil || !user) return;
+    if (liveRole === "guest" || liveRole === "mod") {
+      setGuestPollUntil(null);
+      return;
+    }
+    if (Date.now() > guestPollUntil) {
+      setGuestPollUntil(null);
+      setNotice("Still waiting on host approval — tap Refresh live access after they approve.");
+      return;
+    }
+    const timer = window.setInterval(() => {
+      setTokenNonce((n) => n + 1);
+    }, 4000);
+    return () => window.clearInterval(timer);
+  }, [guestPollUntil, liveRole, user?.id]);
 
   useEffect(() => {
     if (!user) return;
@@ -114,8 +144,10 @@ export function LiveSessionScreen({
         if (payload.type === "guest_decision" && payload.userId === user.id) {
           if (payload.approve) {
             setNotice("Host approved your guest spot — pick a camera/mic and go live.");
+            setGuestPollUntil(null);
             setTokenNonce((n) => n + 1);
           } else {
+            setGuestPollUntil(null);
             setNotice("Guest request declined.");
           }
         }
@@ -172,7 +204,14 @@ export function LiveSessionScreen({
       return;
     }
     await apiSend(`/live/sessions/${sessionId}/guest-requests`, "POST", { message: "Ready to join on cam" });
-    setNotice("Guest request sent to the host.");
+    setNotice("Guest request sent — waiting for host approval…");
+    setGuestPollUntil(Date.now() + 90_000);
+    setTokenNonce((n) => n + 1);
+  }
+
+  function refreshLiveAccess() {
+    setNotice("Refreshing live access…");
+    setTokenNonce((n) => n + 1);
   }
 
   async function goLive() {
@@ -305,9 +344,14 @@ export function LiveSessionScreen({
         liveRole === "guest" || liveRole === "mod" ? (
           <p className="empty-state">Guest spot active — use the camera/mic pickers above to go on air.</p>
         ) : (
-          <button type="button" onClick={() => void requestGuestSpot()}>
-            Request guest spot
-          </button>
+          <div className="profile-actions">
+            <button type="button" onClick={() => void requestGuestSpot()}>
+              Request guest spot
+            </button>
+            <button type="button" onClick={() => refreshLiveAccess()}>
+              Refresh live access
+            </button>
+          </div>
         )
       ) : null}
 

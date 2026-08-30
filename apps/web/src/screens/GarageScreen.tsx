@@ -8,6 +8,13 @@ import { apiGet, apiSend, ApiError, checkoutUrl, formatUsd, type User, type Vehi
 import { maxBirthYearForMinAge, isValidUsername, suggestUsernameFromEmail } from "@garagetalk/shared";
 import { roomImage } from "../bays";
 import { images, SectionHeading, VehicleTile } from "./shared";
+import { VideoPlayerSheet } from "./VideosScreen";
+
+const VIDEO_VISIBILITY_LABELS: Record<VideoVisibility, string> = {
+  draft: "Draft",
+  public: "Public",
+  private: "Private",
+};
 
 export type { User };
 
@@ -367,21 +374,36 @@ function WalletAndEarnings() {
   const [tipEarningsCents, setTipEarningsCents] = useState<number | null>(null);
   const [giftEarningsCents, setGiftEarningsCents] = useState<number | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   async function refreshBalances() {
-    const [wallet, tips, gifts] = await Promise.all([
-      apiGet<{ balanceCoins: number }>("/wallet").catch(() => null),
+    setLoadError(null);
+    try {
+      const wallet = await apiGet<{ balanceCoins: number }>("/wallet");
+      setBalanceCoins(wallet.balanceCoins);
+    } catch (err) {
+      setBalanceCoins(null);
+      setLoadError(
+        err instanceof ApiError
+          ? `Wallet unavailable (${err.code}). Try refreshing, or sign out and back in.`
+          : "Wallet unavailable. Try refreshing, or sign out and back in.",
+      );
+    }
+    const [tips, gifts] = await Promise.all([
       apiGet<{ dashboard: { netCents: number } }>("/creator/earnings").catch(() => null),
       apiGet<{ balanceCents: number }>("/creators/earnings").catch(() => null),
     ]);
-    if (wallet) setBalanceCoins(wallet.balanceCoins);
     if (tips) setTipEarningsCents(tips.dashboard.netCents);
+    else setTipEarningsCents((prev) => prev ?? 0);
     if (gifts) setGiftEarningsCents(gifts.balanceCents);
+    else setGiftEarningsCents((prev) => prev ?? 0);
+    setLoading(false);
   }
 
   useEffect(() => {
-    void refreshBalances().catch(() => undefined);
+    void refreshBalances();
     const params = new URLSearchParams(window.location.search);
     const paid =
       params.get("coins") === "success" ||
@@ -398,7 +420,7 @@ function WalletAndEarnings() {
       // Webhooks can lag behind the redirect; poll a few times.
       const timers = [1500, 4000, 8000].map((ms) =>
         window.setTimeout(() => {
-          void refreshBalances().catch(() => undefined);
+          void refreshBalances();
         }, ms),
       );
       return () => timers.forEach((id) => window.clearTimeout(id));
@@ -409,6 +431,7 @@ function WalletAndEarnings() {
   async function buyCoins(packId: "pack_100" | "pack_500" | "pack_1200") {
     setBusy(true);
     setNotice(null);
+    setLoadError(null);
     try {
       const result = await apiSend<{ checkout: { url?: string | null } }>("/coins/checkout", "POST", { packId });
       const url = checkoutUrl(result);
@@ -416,9 +439,13 @@ function WalletAndEarnings() {
         window.location.href = url;
         return;
       }
-      setNotice("Could not start coin checkout.");
-    } catch {
-      setNotice("Could not start coin checkout.");
+      setLoadError("Could not start coin checkout — payment may not be configured yet.");
+    } catch (err) {
+      setLoadError(
+        err instanceof ApiError
+          ? `Could not start coin checkout (${err.code}).`
+          : "Could not start coin checkout.",
+      );
     } finally {
       setBusy(false);
     }
@@ -429,20 +456,22 @@ function WalletAndEarnings() {
       <span>WALLET & EARNINGS</span>
       <div className="profile-stats">
         <div>
-          <strong>{balanceCoins === null ? "—" : balanceCoins}</strong>
+          <strong data-testid="wallet-coin-balance">
+            {loading && balanceCoins === null ? "…" : balanceCoins === null ? "—" : balanceCoins}
+          </strong>
           <span>Your coins</span>
         </div>
         <div>
-          <strong>{tipEarningsCents === null ? "—" : formatUsd(tipEarningsCents)}</strong>
+          <strong>{tipEarningsCents === null ? (loading ? "…" : "—") : formatUsd(tipEarningsCents)}</strong>
           <span>Tips earned</span>
         </div>
         <div>
-          <strong>{giftEarningsCents === null ? "—" : formatUsd(giftEarningsCents)}</strong>
+          <strong>{giftEarningsCents === null ? (loading ? "…" : "—") : formatUsd(giftEarningsCents)}</strong>
           <span>Gifts earned</span>
         </div>
       </div>
       <p className="empty-state">
-        Coins are for sending live gifts. Tips and gifts earned show here for hosts after Stripe confirms.
+        Coins are for sending live gifts. Buy a pack below — tips and gifts earned show here for hosts after Stripe confirms.
       </p>
       <div className="profile-actions">
         <button type="button" disabled={busy} onClick={() => void buyCoins("pack_100")}>
@@ -451,10 +480,14 @@ function WalletAndEarnings() {
         <button type="button" disabled={busy} onClick={() => void buyCoins("pack_500")}>
           Buy 500 coins · {formatUsd(1999)}
         </button>
+        <button type="button" disabled={busy} onClick={() => void buyCoins("pack_1200")}>
+          Buy 1,200 coins · {formatUsd(3999)}
+        </button>
         <button type="button" disabled={busy} onClick={() => void refreshBalances()}>
           Refresh balances
         </button>
       </div>
+      {loadError ? <p className="auth-error">{loadError}</p> : null}
       {notice ? <p className="empty-state">{notice}</p> : null}
     </div>
   );
@@ -489,6 +522,10 @@ function SignedInGarage({
   const [vehicleError, setVehicleError] = useState<string | null>(null);
   const [videoFilter, setVideoFilter] = useState<"all" | VideoVisibility>("all");
   const [myVideos, setMyVideos] = useState<VideoItem[]>([]);
+  const [openVideo, setOpenVideo] = useState<VideoItem | null>(null);
+  const [videoBusy, setVideoBusy] = useState(false);
+  const [videoNotice, setVideoNotice] = useState<string | null>(null);
+  const [videoError, setVideoError] = useState<string | null>(null);
 
   async function loadVehicles() {
     const data = await apiGet<{ vehicles: Vehicle[] }>("/garage/vehicles");
@@ -509,6 +546,32 @@ function SignedInGarage({
   useEffect(() => {
     void loadVideos(videoFilter).catch(() => undefined);
   }, [videoFilter]);
+
+  async function setVideoVisibility(video: VideoItem, next: VideoVisibility) {
+    setVideoBusy(true);
+    setVideoError(null);
+    setVideoNotice(null);
+    try {
+      const data = await apiSend<{ video: VideoItem }>(`/videos/${video.id}`, "PATCH", {
+        visibility: next,
+      });
+      setMyVideos((prev) =>
+        prev.map((row) => (row.id === data.video.id ? { ...row, ...data.video } : row)),
+      );
+      setVideoNotice(`Visibility set to ${VIDEO_VISIBILITY_LABELS[next]}.`);
+      if (videoFilter !== "all" && data.video.visibility !== videoFilter) {
+        await loadVideos(videoFilter);
+      }
+    } catch (err) {
+      setVideoError(
+        err instanceof ApiError
+          ? `Could not update visibility (${err.code}).`
+          : "Could not update visibility.",
+      );
+    } finally {
+      setVideoBusy(false);
+    }
+  }
 
   async function saveProfile() {
     try {
@@ -633,6 +696,7 @@ function SignedInGarage({
       <div className="screen-intro">
         <span>MY VIDEOS</span>
         <h1>Draft, public, and private.</h1>
+        <p>Watch your own uploads here, and switch visibility anytime.</p>
       </div>
       <div className="profile-actions">
         {(["all", "draft", "public", "private"] as const).map((filter) => (
@@ -642,24 +706,51 @@ function SignedInGarage({
             className={videoFilter === filter ? "sell-button" : undefined}
             onClick={() => setVideoFilter(filter)}
           >
-            {filter === "all" ? "All" : filter.charAt(0).toUpperCase() + filter.slice(1)}
+            {filter === "all" ? "All" : VIDEO_VISIBILITY_LABELS[filter]}
           </button>
         ))}
       </div>
-      {myVideos.map((video) => (
-        <article className="feed-card" key={video.id}>
-          <strong>{video.title}</strong>
-          <p>
-            {video.category} · {video.status}
-            {video.visibility ? ` · ${video.visibility}` : ""}
-          </p>
-        </article>
-      ))}
+      {videoError ? <p className="auth-error">{videoError}</p> : null}
+      {videoNotice ? <p className="empty-state">{videoNotice}</p> : null}
+      {myVideos.map((video) => {
+        const watchable = video.status === "ready" && Boolean(video.hlsUrl);
+        return (
+          <article className="feed-card" key={video.id}>
+            <strong>{video.title}</strong>
+            <p>
+              {video.category} · {video.status}
+              {video.visibility ? ` · ${VIDEO_VISIBILITY_LABELS[video.visibility]}` : ""}
+            </p>
+            <div className="profile-actions">
+              <button
+                type="button"
+                onClick={() => setOpenVideo(video)}
+                disabled={!watchable && video.status !== "ready"}
+              >
+                {watchable ? "Watch" : video.status === "ready" ? "Open" : "Processing"}
+              </button>
+              <select
+                value={video.visibility ?? "draft"}
+                disabled={videoBusy}
+                onChange={(event) =>
+                  void setVideoVisibility(video, event.target.value as VideoVisibility)
+                }
+                aria-label={`Visibility for ${video.title}`}
+              >
+                <option value="draft">Draft</option>
+                <option value="public">Public</option>
+                <option value="private">Private</option>
+              </select>
+            </div>
+          </article>
+        );
+      })}
       {myVideos.length === 0 ? (
         <p className="empty-state">
           No {videoFilter === "all" ? "" : `${videoFilter} `}videos yet. Upload from the Video bay — new clips start as drafts.
         </p>
       ) : null}
+      {openVideo ? <VideoPlayerSheet video={openVideo} onClose={() => setOpenVideo(null)} /> : null}
       <SectionHeading eyebrow="My machines" title="Vehicles & projects" action="Add" onAction={() => document.getElementById("add-vehicle")?.scrollIntoView()} />
       <Carousel ariaLabel="Vehicles and projects" className="garage-carousel" contentClassName="garage-carousel-track">
         {vehicles.map((vehicle) => (

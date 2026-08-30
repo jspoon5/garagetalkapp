@@ -5,10 +5,14 @@ import {
   useRoomContext,
 } from "@livekit/components-react";
 import "@livekit/components-styles";
+import { VideoPresets } from "livekit-client";
 import { useEffect, useRef, useState } from "react";
 import { apiSend, ApiError } from "../api";
 
 const CLIENT_ID_KEY = "gt_livekit_client_id";
+
+/** Prefer 720p capture so going live isn’t stuck in soft/low definition. */
+const CAPTURE_RESOLUTION = VideoPresets.h720.resolution;
 
 type PublishRole = "host" | "guest" | "mod" | "viewer";
 
@@ -216,7 +220,11 @@ function PublishControls({
     if (nextCameraId) {
       await room.switchActiveDevice("videoinput", nextCameraId).catch(() => undefined);
     }
-    const videoOpts: { deviceId?: string; facingMode?: "user" | "environment" } = {};
+    const videoOpts: {
+      deviceId?: string;
+      facingMode?: "user" | "environment";
+      resolution?: typeof CAPTURE_RESOLUTION;
+    } = { resolution: CAPTURE_RESOLUTION };
     if (nextCameraId) videoOpts.deviceId = nextCameraId;
     else if (rear) videoOpts.facingMode = "environment";
     else videoOpts.facingMode = "user";
@@ -278,7 +286,11 @@ function PublishControls({
     setError(null);
     try {
       const next = !camMuted;
-      const videoOpts: { deviceId?: string; facingMode?: "user" | "environment" } = {};
+      const videoOpts: {
+        deviceId?: string;
+        facingMode?: "user" | "environment";
+        resolution?: typeof CAPTURE_RESOLUTION;
+      } = { resolution: CAPTURE_RESOLUTION };
       if (cameraId) videoOpts.deviceId = cameraId;
       else videoOpts.facingMode = preferRear ? "environment" : "user";
       await room.localParticipant.setCameraEnabled(!next, videoOpts);
@@ -296,7 +308,10 @@ function PublishControls({
     setBusy(true);
     try {
       if (deviceId) await room.switchActiveDevice("videoinput", deviceId);
-      await room.localParticipant.setCameraEnabled(true, deviceId ? { deviceId } : undefined);
+      await room.localParticipant.setCameraEnabled(true, {
+        ...(deviceId ? { deviceId } : {}),
+        resolution: CAPTURE_RESOLUTION,
+      });
     } catch {
       setError("Could not switch camera.");
     } finally {
@@ -349,6 +364,7 @@ function PublishControls({
         if (onAir) {
           await room.localParticipant.setCameraEnabled(true, {
             facingMode: nextRear ? "environment" : "user",
+            resolution: CAPTURE_RESOLUTION,
           });
         }
         return;
@@ -357,7 +373,10 @@ function PublishControls({
       setPreferRear(nextRear);
       if (onAir) {
         await room.switchActiveDevice("videoinput", next);
-        await room.localParticipant.setCameraEnabled(true, { deviceId: next });
+        await room.localParticipant.setCameraEnabled(true, {
+          deviceId: next,
+          resolution: CAPTURE_RESOLUTION,
+        });
       }
     } catch {
       setError("Could not flip camera. Try picking rear from the camera list.");
@@ -601,8 +620,16 @@ export function LiveKitSession({
         connect
         audio={false}
         video={false}
-        // adaptiveStream can pause/blank remote video on mobile when layout/visibility flickers.
-        options={{ adaptiveStream: false, dynacast: true }}
+        options={{
+          adaptiveStream: false,
+          dynacast: true,
+          videoCaptureDefaults: {
+            resolution: CAPTURE_RESOLUTION,
+          },
+          publishDefaults: {
+            videoSimulcastLayers: [VideoPresets.h180, VideoPresets.h360, VideoPresets.h720],
+          },
+        }}
         onDisconnected={() => setOnAir(false)}
         onError={(err) => {
           console.error("[live] LiveKitRoom error", err);

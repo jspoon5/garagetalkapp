@@ -36,6 +36,60 @@ const VISIBILITY_LABELS: Record<VideoVisibility, string> = {
 
 type LibraryFilter = "all" | VideoVisibility;
 
+export function VideoPlayerSheet({
+  video,
+  onClose,
+}: {
+  video: VideoItem;
+  onClose: () => void;
+}) {
+  const [playbackError, setPlaybackError] = useState<string | null>(null);
+  const canWatch = video.status === "ready" && Boolean(video.hlsUrl);
+
+  return (
+    <div className="sheet-scrim" role="presentation" onClick={onClose}>
+      <div className="sheet" role="dialog" onClick={(event) => event.stopPropagation()}>
+        <h2>{video.title}</h2>
+        <p>
+          {video.category}
+          {video.visibility ? ` · ${VISIBILITY_LABELS[video.visibility]}` : ""}
+          {video.status !== "ready" ? ` · ${video.status}` : ""}
+        </p>
+        {canWatch ? (
+          <video
+            key={video.hlsUrl ?? video.id}
+            controls
+            playsInline
+            preload="metadata"
+            crossOrigin="anonymous"
+            src={video.hlsUrl ?? undefined}
+            poster={video.thumbUrl ?? undefined}
+            style={{ width: "100%", maxHeight: "70vh", background: "#000" }}
+            onError={() =>
+              setPlaybackError("Could not play this file in-app. Use Open file below.")
+            }
+          />
+        ) : (
+          <p className="empty-state">
+            {video.status === "processing"
+              ? "Still processing — try again in a moment."
+              : "Playback URL isn’t ready yet."}
+          </p>
+        )}
+        {playbackError ? <p className="auth-error">{playbackError}</p> : null}
+        {video.hlsUrl ? (
+          <a className="sell-button" href={video.hlsUrl} target="_blank" rel="noreferrer">
+            Open file
+          </a>
+        ) : null}
+        <button type="button" className="sheet-close" onClick={onClose}>
+          Close
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function VideosScreen({
   user,
   onNeedAccount,
@@ -44,7 +98,8 @@ export function VideosScreen({
   onNeedAccount: () => void;
 }) {
   const signedIn = Boolean(user);
-  const [videos, setVideos] = useState<VideoItem[]>([]);
+  const [publicVideos, setPublicVideos] = useState<VideoItem[]>([]);
+  const [mineVideos, setMineVideos] = useState<VideoItem[]>([]);
   const [open, setOpen] = useState<VideoItem | null>(null);
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("repair");
@@ -55,25 +110,37 @@ export function VideosScreen({
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const refreshVideos = useCallback(async () => {
+  const refreshPublic = useCallback(async () => {
     const data = await apiGet<{ videos: VideoItem[] }>("/videos");
-    setVideos(data.videos);
+    setPublicVideos(data.videos.filter((video) => video.visibility === "public" && video.status === "ready"));
     return data.videos;
   }, []);
 
+  const refreshMine = useCallback(async () => {
+    if (!user) {
+      setMineVideos([]);
+      return [] as VideoItem[];
+    }
+    const data = await apiGet<{ videos: VideoItem[] }>("/videos/mine");
+    setMineVideos(data.videos);
+    return data.videos;
+  }, [user]);
+
+  const refreshAll = useCallback(async () => {
+    await Promise.all([refreshPublic(), refreshMine()]);
+  }, [refreshPublic, refreshMine]);
+
   useEffect(() => {
-    void refreshVideos().catch(() => setError("Could not load videos."));
-  }, [refreshVideos]);
+    void refreshAll().catch(() => setError("Could not load videos."));
+  }, [refreshAll]);
 
   useEffect(() => {
     if (!signedIn) return;
     let cancelled = false;
 
     const tick = async () => {
-      const current = await refreshVideos().catch(() => [] as VideoItem[]);
-      const processing = current.filter(
-        (video) => video.ownerId === user?.id && video.status === "processing",
-      );
+      const current = await refreshMine().catch(() => [] as VideoItem[]);
+      const processing = current.filter((video) => video.status === "processing");
       if (processing.length === 0) return;
 
       for (const video of processing) {
@@ -81,7 +148,7 @@ export function VideosScreen({
         try {
           const ready = await tryCompleteVideo(video.id);
           if (ready) {
-            setVideos((prev) => prev.map((row) => (row.id === ready.id ? ready : row)));
+            setMineVideos((prev) => prev.map((row) => (row.id === ready.id ? { ...row, ...ready } : row)));
           }
         } catch {
           // Keep polling other uploads; a single failure shouldn't stop the list.
@@ -95,27 +162,16 @@ export function VideosScreen({
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [refreshVideos, signedIn, user?.id]);
-
-  const myVideos = useMemo(
-    () => (user ? videos.filter((video) => video.ownerId === user.id) : []),
-    [videos, user],
-  );
+  }, [refreshMine, signedIn]);
 
   const filteredMine = useMemo(() => {
-    if (libraryFilter === "all") return myVideos;
-    return myVideos.filter((video) => video.visibility === libraryFilter);
-  }, [libraryFilter, myVideos]);
+    if (libraryFilter === "all") return mineVideos;
+    return mineVideos.filter((video) => video.visibility === libraryFilter);
+  }, [libraryFilter, mineVideos]);
 
   const publicFeed = useMemo(
-    () =>
-      videos.filter(
-        (video) =>
-          video.visibility === "public" &&
-          video.status === "ready" &&
-          video.ownerId !== user?.id,
-      ),
-    [videos, user?.id],
+    () => publicVideos.filter((video) => video.ownerId !== user?.id),
+    [publicVideos, user?.id],
   );
 
   async function upload() {
@@ -194,7 +250,7 @@ export function VideosScreen({
 
       setTitle("");
       setFile(null);
-      await refreshVideos();
+      await refreshAll();
     } catch (err) {
       if (
         err instanceof ApiError &&
@@ -210,23 +266,36 @@ export function VideosScreen({
   }
 
   async function setVideoVisibility(video: VideoItem, next: VideoVisibility) {
-    if (!user || video.ownerId !== user.id) return;
+    if (!user) {
+      onNeedAccount();
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
       const data = await apiSend<{ video: VideoItem }>(`/videos/${video.id}`, "PATCH", {
         visibility: next,
       });
-      setVideos((prev) => prev.map((row) => (row.id === data.video.id ? data.video : row)));
+      setMineVideos((prev) =>
+        prev.map((row) => (row.id === data.video.id ? { ...row, ...data.video } : row)),
+      );
       setNotice(`Visibility set to ${VISIBILITY_LABELS[next]}.`);
-    } catch {
-      setError("Could not update visibility.");
+      if (next === "public" || video.visibility === "public") {
+        await refreshPublic().catch(() => undefined);
+      }
+    } catch (err) {
+      setError(
+        err instanceof ApiError
+          ? `Could not update visibility (${err.code}).`
+          : "Could not update visibility.",
+      );
     } finally {
       setBusy(false);
     }
   }
 
-  function renderVideoCard(video: VideoItem, owned: boolean) {
+  function renderOwnedCard(video: VideoItem) {
+    const watchable = video.status === "ready" && Boolean(video.hlsUrl);
     return (
       <article className="feed-card" key={video.id}>
         <strong>{video.title}</strong>
@@ -236,21 +305,19 @@ export function VideosScreen({
           {video.likeCount ? ` · ${video.likeCount} likes` : ""}
         </p>
         <div className="profile-actions">
-          <button type="button" onClick={() => setOpen(video)} disabled={video.status !== "ready"}>
-            {video.status === "ready" ? (video.hlsUrl ? "Watch" : "Open") : "Processing"}
+          <button type="button" onClick={() => setOpen(video)} disabled={!watchable && video.status !== "ready"}>
+            {watchable ? "Watch" : video.status === "ready" ? "Open" : "Processing"}
           </button>
-          {owned ? (
-            <select
-              value={video.visibility ?? "draft"}
-              disabled={busy}
-              onChange={(event) => void setVideoVisibility(video, event.target.value as VideoVisibility)}
-              aria-label={`Visibility for ${video.title}`}
-            >
-              <option value="draft">Draft</option>
-              <option value="public">Public</option>
-              <option value="private">Private</option>
-            </select>
-          ) : null}
+          <select
+            value={video.visibility ?? "draft"}
+            disabled={busy}
+            onChange={(event) => void setVideoVisibility(video, event.target.value as VideoVisibility)}
+            aria-label={`Visibility for ${video.title}`}
+          >
+            <option value="draft">Draft</option>
+            <option value="public">Public</option>
+            <option value="private">Private</option>
+          </select>
         </div>
       </article>
     );
@@ -261,7 +328,7 @@ export function VideosScreen({
       <div className="screen-intro">
         <span>VIDEO BAY</span>
         <h1>Watch and upload.</h1>
-        <p>New uploads start as drafts. Only public videos appear in the shared feed.</p>
+        <p>New uploads start as drafts. Switch each clip to public or private — owners can always watch their own.</p>
       </div>
       {error ? <p className="auth-error">{error}</p> : null}
       {notice ? <p className="empty-state">{notice}</p> : null}
@@ -281,7 +348,7 @@ export function VideosScreen({
               </button>
             ))}
           </div>
-          {filteredMine.map((video) => renderVideoCard(video, true))}
+          {filteredMine.map((video) => renderOwnedCard(video))}
           {filteredMine.length === 0 ? (
             <p className="empty-state">
               {libraryFilter === "all"
@@ -293,7 +360,22 @@ export function VideosScreen({
       ) : null}
 
       <span>PUBLIC FEED</span>
-      {publicFeed.map((video) => renderVideoCard(video, false))}
+      {publicFeed.map((video) => (
+        <article className="feed-card" key={video.id}>
+          <strong>{video.title}</strong>
+          <p>
+            {video.category} · public
+            {video.likeCount ? ` · ${video.likeCount} likes` : ""}
+          </p>
+          <button
+            type="button"
+            onClick={() => setOpen(video)}
+            disabled={video.status !== "ready" || !video.hlsUrl}
+          >
+            Watch
+          </button>
+        </article>
+      ))}
       {publicFeed.length === 0 ? (
         <p className="empty-state">No public videos yet. Creators publish from their library.</p>
       ) : null}
@@ -360,22 +442,7 @@ export function VideosScreen({
           {signedIn ? (busy ? "Uploading…" : "Upload video") : "Sign in to upload"}
         </button>
       </form>
-      {open ? (
-        <div className="sheet-scrim" role="presentation" onClick={() => setOpen(null)}>
-          <div className="sheet" role="dialog" onClick={(event) => event.stopPropagation()}>
-            <h2>{open.title}</h2>
-            <p>{open.description ?? "No description yet."}</p>
-            {open.hlsUrl ? (
-              <video controls playsInline src={open.hlsUrl} poster={open.thumbUrl ?? undefined} />
-            ) : (
-              <p className="empty-state">Playback URL isn’t ready yet.</p>
-            )}
-            <button type="button" className="sheet-close" onClick={() => setOpen(null)}>
-              Close
-            </button>
-          </div>
-        </div>
-      ) : null}
+      {open ? <VideoPlayerSheet video={open} onClose={() => setOpen(null)} /> : null}
     </>
   );
 }
