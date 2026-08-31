@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, isNull, lte, or, sql } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import type { Database } from "@garagetalk/db";
 import {
   coinLedger,
@@ -7,35 +7,13 @@ import {
   giftCatalog,
   liveGifts,
   liveSessions,
-  revenueShareRules,
   users,
 } from "@garagetalk/db";
-import {
-  COIN_PACKS,
-  EARNINGS_HOLD_DAYS,
-  REVENUE_SHARE_BPS,
-  TIP_SIDE_FEE_BPS,
-  resolveCoinPack,
-  type CoinPackId,
-  type SubscriptionTier,
-} from "@garagetalk/shared";
+import { COIN_PACKS, GIFT_PLATFORM_FEE_BPS, type CoinPackId } from "@garagetalk/shared";
 import Stripe from "stripe";
 import { uuidv7 } from "uuidv7";
 import { z } from "zod";
 import { stripeFromEnv } from "./billing-service.js";
-
-const COIN_PACK_IDS = [
-  "pack_99",
-  "pack_499",
-  "pack_999",
-  "pack_1999",
-  "pack_4999",
-  "pack_9999",
-  "pack_100",
-  "pack_500",
-  "pack_1200",
-  "pack_3000",
-] as const;
 
 export const sendGiftInputSchema = z.object({
   giftSlug: z.string().min(1).max(80),
@@ -43,7 +21,7 @@ export const sendGiftInputSchema = z.object({
 });
 
 export const coinCheckoutSchema = z.object({
-  packId: z.enum(COIN_PACK_IDS),
+  packId: z.enum(["pack_100", "pack_500", "pack_1200", "pack_3000"]),
 });
 
 export type LiveGiftEvent = {
@@ -53,31 +31,6 @@ export type LiveGiftEvent = {
   sender: { id: string; username: string };
   liveGiftId: string;
 };
-
-/**
- * SCT gift share math (integer cents + basis points).
- * 1 coin = $0.01 face value → grossCents = coinCost.
- * Tip-side fee is taken first; creator share applies to the remainder.
- */
-export function computeGiftShare(input: {
-  coinCost: number;
-  tipSideFeeBps?: number;
-  shareBps: number;
-}): {
-  grossCents: number;
-  tipSideFeeCents: number;
-  eligibleCents: number;
-  creatorShareCents: number;
-  platformFeeCents: number;
-} {
-  const tipSideFeeBps = input.tipSideFeeBps ?? TIP_SIDE_FEE_BPS;
-  const grossCents = input.coinCost;
-  const tipSideFeeCents = Math.floor((grossCents * tipSideFeeBps) / 10_000);
-  const eligibleCents = grossCents - tipSideFeeCents;
-  const creatorShareCents = Math.floor((eligibleCents * input.shareBps) / 10_000);
-  const platformFeeCents = eligibleCents - creatorShareCents + tipSideFeeCents;
-  return { grossCents, tipSideFeeCents, eligibleCents, creatorShareCents, platformFeeCents };
-}
 
 export class GiftService {
   constructor(private readonly db: Database) {}
@@ -102,8 +55,8 @@ export class GiftService {
     return { balanceCoins: wallet.balanceCoins, packs: COIN_PACKS };
   }
 
-  async createCoinCheckout(userId: string, packId: CoinPackId | string, successUrl: string, cancelUrl: string) {
-    const pack = resolveCoinPack(packId);
+  async createCoinCheckout(userId: string, packId: CoinPackId, successUrl: string, cancelUrl: string) {
+    const pack = COIN_PACKS.find((p) => p.id === packId);
     if (!pack) return null;
 
     const [user] = await this.db.select().from(users).where(eq(users.id, userId)).limit(1);
@@ -112,7 +65,7 @@ export class GiftService {
     const stripe = stripeFromEnv();
     if (!stripe) {
       return {
-        url: `${cancelUrl.replace(/\/$/, "")}/billing/coins/stub?pack=${pack.id}&user=${userId}`,
+        url: `${cancelUrl.replace(/\/$/, "")}/billing/coins/stub?pack=${packId}&user=${userId}`,
         sessionId: `cs_coin_stub_${userId.slice(0, 8)}`,
         mode: "stub" as const,
         coins: pack.coins,
@@ -142,7 +95,7 @@ export class GiftService {
       metadata: {
         type: "coin_pack",
         userId,
-        packId: pack.id,
+        packId,
         coins: String(pack.coins),
       },
     } as Stripe.Checkout.SessionCreateParams);
@@ -157,6 +110,91 @@ export class GiftService {
     if (!userId || !Number.isFinite(coins) || coins <= 0) return false;
     const idempotencyKey = paymentIntent ?? `coin_pack_${packId}_${userId}_${coins}`;
     return this.creditCoins(userId, coins, "coin_purchase", idempotencyKey, paymentIntent ?? null);
+  }
+
+  /**
+   * Backfill coin packs when Stripe Checkout succeeds but the webhook lagged or failed signature verification.
+   * Idempotent via creditCoinsFromCheckout / coin ledger keys.
+   */
+  async reconcileOpenCheckouts(userId: string): Promise<{ creditedCoins: number; sessionsChecked: number }> {
+    const stripe = stripeFromEnv();
+    if (!stripe) return { creditedCoins: 0, sessionsChecked: 0 };
+
+    const [user] = await this.db.select().from(users).where(eq(users.id, userId)).limit(1);
+    if (!user) return { creditedCoins: 0, sessionsChecked: 0 };
+
+    const sessions = await this.listRecentCheckoutSessions(stripe, user);
+    let creditedCoins = 0;
+    let sessionsChecked = 0;
+
+    for (const session of sessions) {
+      if (session.payment_status !== "paid" && session.status !== "complete") continue;
+      const metadata = (session.metadata ?? {}) as Record<string, string>;
+      if (metadata.type !== "coin_pack") continue;
+      if (metadata.userId && metadata.userId !== userId) continue;
+      if (!metadata.userId && session.client_reference_id && session.client_reference_id !== userId) {
+        continue;
+      }
+
+      sessionsChecked += 1;
+      const coins = Number(metadata.coins);
+      const paymentIntent =
+        typeof session.payment_intent === "string"
+          ? session.payment_intent
+          : session.payment_intent && typeof session.payment_intent === "object" && "id" in session.payment_intent
+            ? String(session.payment_intent.id)
+            : session.id;
+
+      const before = await this.getWallet(userId);
+      const credited = await this.creditCoinsFromCheckout(
+        {
+          ...metadata,
+          userId,
+          coins: metadata.coins ?? String(coins || 0),
+          packId: metadata.packId ?? "",
+        },
+        paymentIntent,
+      );
+      if (!credited) continue;
+      const after = await this.getWallet(userId);
+      const delta = after.balanceCoins - before.balanceCoins;
+      if (delta > 0) creditedCoins += delta;
+    }
+
+    return { creditedCoins, sessionsChecked };
+  }
+
+  private async listRecentCheckoutSessions(
+    stripe: Stripe,
+    user: typeof users.$inferSelect,
+  ): Promise<Stripe.Checkout.Session[]> {
+    const byId = new Map<string, Stripe.Checkout.Session>();
+
+    if (user.stripeCustomerId) {
+      try {
+        const listed = await stripe.checkout.sessions.list({
+          customer: user.stripeCustomerId,
+          limit: 25,
+        });
+        for (const session of listed.data) byId.set(session.id, session);
+      } catch {
+        // Customer may be missing in this Stripe environment.
+      }
+    }
+
+    for (const query of [
+      `metadata["userId"]:"${user.id}"`,
+      `client_reference_id:"${user.id}"`,
+    ]) {
+      try {
+        const searched = await stripe.checkout.sessions.search({ query, limit: 25 });
+        for (const session of searched.data) byId.set(session.id, session);
+      } catch {
+        // Search may be unavailable on some Stripe accounts/modes.
+      }
+    }
+
+    return [...byId.values()];
   }
 
   async sendGift(
@@ -197,18 +235,9 @@ export class GiftService {
     const wallet = await this.ensureWallet(senderId);
     if (wallet.balanceCoins < gift.coinCost) return { error: "insufficient_coins" };
 
-    const [creator] = await this.db.select().from(users).where(eq(users.id, session.hostId)).limit(1);
-    const creatorTier = (creator?.tier ?? "amateur") as SubscriptionTier;
-    const shareBps = await this.resolveShareBps(creatorTier);
-    const share = computeGiftShare({
-      coinCost: gift.coinCost,
-      tipSideFeeBps: TIP_SIDE_FEE_BPS,
-      shareBps,
-    });
-
+    const creatorShareCents = Math.floor((gift.coinCost * (100 - GIFT_PLATFORM_FEE_BPS / 100)) / 10);
     const liveGiftId = uuidv7();
     const now = new Date();
-    const availableAt = new Date(now.getTime() + EARNINGS_HOLD_DAYS * 24 * 60 * 60 * 1000);
 
     await this.db.transaction(async (tx) => {
       const newBalance = wallet.balanceCoins - gift.coinCost;
@@ -233,7 +262,7 @@ export class GiftService {
         creatorId: session.hostId,
         giftId: gift.id,
         coinCost: gift.coinCost,
-        creatorShareCents: share.creatorShareCents,
+        creatorShareCents,
         idempotencyKey: parsed.idempotencyKey,
       });
 
@@ -243,21 +272,16 @@ export class GiftService {
         .where(eq(creatorEarnings.userId, session.hostId))
         .orderBy(desc(creatorEarnings.createdAt))
         .limit(1);
-      const balanceAfterCents = (lastEarning?.balanceAfterCents ?? 0) + share.creatorShareCents;
+      const balanceAfterCents = (lastEarning?.balanceAfterCents ?? 0) + creatorShareCents;
       await tx.insert(creatorEarnings).values({
         id: uuidv7(),
         userId: session.hostId,
         sourceType: "live_gift",
         sourceId: liveGiftId,
-        grossCents: share.grossCents,
-        platformFeeCents: share.platformFeeCents,
-        netCents: share.creatorShareCents,
+        grossCents: gift.coinCost,
+        platformFeeCents: gift.coinCost - creatorShareCents,
+        netCents: creatorShareCents,
         balanceAfterCents,
-        status: "PENDING",
-        creatorTierAtTx: creatorTier,
-        shareBps,
-        availableAt,
-        tipSideFeeCents: share.tipSideFeeCents,
       });
     });
 
@@ -274,64 +298,28 @@ export class GiftService {
   }
 
   async getCreatorEarnings(userId: string) {
+    const [last] = await this.db
+      .select()
+      .from(creatorEarnings)
+      .where(eq(creatorEarnings.userId, userId))
+      .orderBy(desc(creatorEarnings.createdAt))
+      .limit(1);
     const recent = await this.db
       .select()
       .from(creatorEarnings)
       .where(eq(creatorEarnings.userId, userId))
       .orderBy(desc(creatorEarnings.createdAt))
       .limit(20);
-
-    const totals = await this.db
-      .select({
-        status: creatorEarnings.status,
-        total: sql<number>`coalesce(sum(${creatorEarnings.netCents}), 0)`.mapWith(Number),
-      })
-      .from(creatorEarnings)
-      .where(eq(creatorEarnings.userId, userId))
-      .groupBy(creatorEarnings.status);
-
-    const byStatus = Object.fromEntries(totals.map((row) => [row.status, row.total])) as Record<
-      string,
-      number
-    >;
-
     return {
-      balanceCents: byStatus.AVAILABLE ?? 0,
-      pendingCents: byStatus.PENDING ?? 0,
-      paidCents: byStatus.PAID ?? 0,
+      balanceCents: last?.balanceAfterCents ?? 0,
       entries: recent.map((row) => ({
         id: row.id,
         sourceType: row.sourceType,
         grossCents: row.grossCents,
         netCents: row.netCents,
-        tipSideFeeCents: row.tipSideFeeCents,
-        status: row.status,
-        creatorTierAtTx: row.creatorTierAtTx,
-        shareBps: row.shareBps,
-        availableAt: row.availableAt?.toISOString() ?? null,
         createdAt: row.createdAt.toISOString(),
       })),
     };
-  }
-
-  private async resolveShareBps(tier: SubscriptionTier): Promise<number> {
-    const now = new Date();
-    const [rule] = await this.db
-      .select()
-      .from(revenueShareRules)
-      .where(
-        and(
-          eq(revenueShareRules.tier, tier),
-          eq(revenueShareRules.revenueType, "live_gift"),
-          lte(revenueShareRules.effectiveFrom, now),
-          or(isNull(revenueShareRules.effectiveUntil), sql`${revenueShareRules.effectiveUntil} > ${now}`),
-        ),
-      )
-      .orderBy(desc(revenueShareRules.effectiveFrom))
-      .limit(1);
-
-    if (rule) return rule.shareBps;
-    return REVENUE_SHARE_BPS[tier] ?? REVENUE_SHARE_BPS.amateur;
   }
 
   private async ensureWallet(userId: string) {
@@ -377,6 +365,3 @@ export class GiftService {
     return true;
   }
 }
-
-// Re-export for settle helpers that iterate earnings by available_at
-export { asc };
