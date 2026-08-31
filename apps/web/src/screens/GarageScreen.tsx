@@ -428,7 +428,7 @@ function WalletAndEarnings() {
     return undefined;
   }, []);
 
-  async function buyCoins(packId: "pack_100" | "pack_500" | "pack_1200") {
+  async function buyCoins(packId: "pack_99" | "pack_499" | "pack_999" | "pack_1999") {
     setBusy(true);
     setNotice(null);
     setLoadError(null);
@@ -474,14 +474,17 @@ function WalletAndEarnings() {
         Coins are for sending live gifts. Buy a pack below — tips and gifts earned show here for hosts after Stripe confirms.
       </p>
       <div className="profile-actions">
-        <button type="button" disabled={busy} onClick={() => void buyCoins("pack_100")}>
-          Buy 100 coins · {formatUsd(499)}
+        <button type="button" disabled={busy} onClick={() => void buyCoins("pack_99")}>
+          Buy 100 coins · {formatUsd(99)}
         </button>
-        <button type="button" disabled={busy} onClick={() => void buyCoins("pack_500")}>
-          Buy 500 coins · {formatUsd(1999)}
+        <button type="button" disabled={busy} onClick={() => void buyCoins("pack_499")}>
+          Buy 500 coins · {formatUsd(499)}
         </button>
-        <button type="button" disabled={busy} onClick={() => void buyCoins("pack_1200")}>
-          Buy 1,200 coins · {formatUsd(3999)}
+        <button type="button" disabled={busy} onClick={() => void buyCoins("pack_999")}>
+          Buy 1,100 coins · {formatUsd(999)}
+        </button>
+        <button type="button" disabled={busy} onClick={() => void buyCoins("pack_1999")}>
+          Buy 2,400 coins · {formatUsd(1999)}
         </button>
         <button type="button" disabled={busy} onClick={() => void refreshBalances()}>
           Refresh balances

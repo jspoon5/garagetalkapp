@@ -2,8 +2,10 @@ import type { FastifyPluginAsync } from "fastify";
 import { z } from "zod";
 import {
   checkoutTierSchema,
+  settleEarningsSchema,
   stripeEventSchema,
   tipInputSchema,
+  withdrawEarningsSchema,
   type BillingService,
 } from "../services/billing-service.js";
 
@@ -65,6 +67,33 @@ export const billingRoutes: FastifyPluginAsync<{
     );
     if (!onboarding) return reply.code(404).send({ error: "not_found" });
     return { onboarding };
+  });
+
+
+  /** Cron/admin-ish: PENDING → AVAILABLE when hold expires. Authenticated. */
+  app.post("/creators/earnings/settle", async (req, reply) => {
+    if (!req.user) return reply.code(401).send({ error: "unauthorized" });
+    const body = settleEarningsSchema.parse(req.body ?? {});
+    if (body.all) {
+      return await billing.settlePendingEarnings();
+    }
+    const targetUserId = body.userId ?? req.user.id;
+    if (body.userId && body.userId !== req.user.id) {
+      return reply.code(403).send({ error: "forbidden" });
+    }
+    return await billing.settlePendingEarnings(targetUserId);
+  });
+
+  /** Withdraw AVAILABLE balance via Stripe Connect transfer. */
+  app.post("/creators/payouts/withdraw", async (req, reply) => {
+    if (!req.user) return reply.code(401).send({ error: "unauthorized" });
+    const { amountCents } = withdrawEarningsSchema.parse(req.body);
+    const result = await billing.withdrawAvailableEarnings(req.user.id, amountCents);
+    if ("error" in result) {
+      const status = result.error === "insufficient_available" ? 402 : 400;
+      return reply.code(status).send(result);
+    }
+    return reply.code(201).send(result);
   });
 
   app.post("/billing/tips", async (req, reply) => {

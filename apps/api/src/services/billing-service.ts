@@ -1,9 +1,11 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { and, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, lte } from "drizzle-orm";
 import type { Database } from "@garagetalk/db";
 import {
+  creatorEarnings,
   creatorLedgers,
   creatorPayoutAccounts,
+  creatorPayouts,
   orders,
   subscriptions,
   tips,
@@ -16,6 +18,16 @@ import { uuidv7 } from "uuidv7";
 import { z } from "zod";
 import { EntitlementService } from "./entitlement-service.js";
 import type { GiftService } from "./gift-service.js";
+
+
+export const withdrawEarningsSchema = z.object({
+  amountCents: z.number().int().positive().max(10_000_000),
+});
+
+export const settleEarningsSchema = z.object({
+  userId: z.string().uuid().optional(),
+  all: z.boolean().optional(),
+});
 
 export const tipInputSchema = z.object({
   toUserId: z.string().uuid(),
@@ -228,6 +240,138 @@ export class BillingService {
       payload: event as Record<string, unknown>,
     });
     return { ok: true as const, duplicate: false, reconciled };
+  }
+
+
+  /**
+   * Move PENDING earnings to AVAILABLE once available_at has passed.
+   * Internal ledger is source of truth; Connect transfer happens only from AVAILABLE.
+   */
+  async settlePendingEarnings(userId?: string) {
+    const now = new Date();
+    const conditions = [
+      eq(creatorEarnings.status, "PENDING"),
+      lte(creatorEarnings.availableAt, now),
+    ];
+    if (userId) conditions.push(eq(creatorEarnings.userId, userId));
+
+    const updated = await this.db
+      .update(creatorEarnings)
+      .set({ status: "AVAILABLE", updatedAt: now })
+      .where(and(...conditions))
+      .returning({ id: creatorEarnings.id, userId: creatorEarnings.userId, netCents: creatorEarnings.netCents });
+
+    return { settledCount: updated.length, settledCents: updated.reduce((sum, row) => sum + row.netCents, 0) };
+  }
+
+  /**
+   * Withdraw AVAILABLE earnings via Stripe Connect transfer (SCT).
+   * Marks consumed earnings PAID and writes creator_payouts.
+   */
+  async withdrawAvailableEarnings(userId: string, amountCents: number) {
+    if (!Number.isInteger(amountCents) || amountCents <= 0) {
+      return { error: "invalid_amount" as const };
+    }
+
+    const [account] = await this.db
+      .select()
+      .from(creatorPayoutAccounts)
+      .where(eq(creatorPayoutAccounts.userId, userId))
+      .limit(1);
+    if (!account?.stripeConnectAccountId) {
+      return { error: "connect_account_required" as const };
+    }
+
+    const availableRows = await this.db
+      .select()
+      .from(creatorEarnings)
+      .where(and(eq(creatorEarnings.userId, userId), eq(creatorEarnings.status, "AVAILABLE")))
+      .orderBy(asc(creatorEarnings.availableAt), asc(creatorEarnings.createdAt));
+
+    const availableCents = availableRows.reduce((sum, row) => sum + row.netCents, 0);
+    if (amountCents > availableCents) {
+      return { error: "insufficient_available" as const, availableCents };
+    }
+
+    const stripe = stripeFromEnv();
+    let transferId: string;
+    if (stripe) {
+      const transfer = await stripe.transfers.create({
+        amount: amountCents,
+        currency: "usd",
+        destination: account.stripeConnectAccountId,
+        metadata: { userId, type: "creator_earnings_withdraw" },
+      });
+      transferId = transfer.id;
+    } else {
+      transferId = `tr_stub_${uuidv7().replace(/-/g, "").slice(0, 20)}`;
+    }
+
+    const now = new Date();
+    const payoutId = uuidv7();
+    let remaining = amountCents;
+    const consumedIds: string[] = [];
+    let split: { row: (typeof availableRows)[number]; paidCents: number; leftoverCents: number } | null =
+      null;
+
+    for (const row of availableRows) {
+      if (remaining <= 0) break;
+      if (row.netCents <= remaining) {
+        consumedIds.push(row.id);
+        remaining -= row.netCents;
+      } else {
+        split = { row, paidCents: remaining, leftoverCents: row.netCents - remaining };
+        remaining = 0;
+        break;
+      }
+    }
+
+    await this.db.transaction(async (tx) => {
+      for (const id of consumedIds) {
+        await tx
+          .update(creatorEarnings)
+          .set({ status: "PAID", stripeTransferId: transferId, updatedAt: now })
+          .where(eq(creatorEarnings.id, id));
+      }
+
+      if (split) {
+        await tx
+          .update(creatorEarnings)
+          .set({ netCents: split.leftoverCents, updatedAt: now })
+          .where(eq(creatorEarnings.id, split.row.id));
+        await tx.insert(creatorEarnings).values({
+          id: uuidv7(),
+          userId,
+          sourceType: split.row.sourceType,
+          sourceId: split.row.sourceId,
+          grossCents: split.paidCents,
+          platformFeeCents: 0,
+          netCents: split.paidCents,
+          balanceAfterCents: split.row.balanceAfterCents,
+          status: "PAID",
+          creatorTierAtTx: split.row.creatorTierAtTx,
+          shareBps: split.row.shareBps,
+          availableAt: split.row.availableAt,
+          stripeTransferId: transferId,
+          tipSideFeeCents: 0,
+        });
+      }
+
+      await tx.insert(creatorPayouts).values({
+        id: payoutId,
+        userId,
+        amountCents,
+        stripeTransferId: transferId,
+        status: "paid",
+      });
+    });
+
+    return {
+      payoutId,
+      amountCents,
+      stripeTransferId: transferId,
+      mode: stripe ? ("stripe" as const) : ("stub" as const),
+    };
   }
 
   async createConnectOnboardingLink(userId: string, returnUrl: string) {

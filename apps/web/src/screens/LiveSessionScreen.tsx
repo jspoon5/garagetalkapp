@@ -186,7 +186,7 @@ export function LiveSessionScreen({
     }
   }
 
-  async function buyCoins(packId: "pack_100" | "pack_500") {
+  async function buyCoins(packId: "pack_99" | "pack_499") {
     const result = await apiSend<{ checkout: { url?: string | null } }>("/coins/checkout", "POST", { packId });
     const url = checkoutUrl(result);
     if (url) window.location.href = url;
@@ -309,11 +309,11 @@ export function LiveSessionScreen({
           </button>
           {showCoins ? (
             <div className="profile-actions">
-              <button type="button" onClick={() => void buyCoins("pack_100")}>
-                100 coins · {formatUsd(499)}
+              <button type="button" onClick={() => void buyCoins("pack_99")}>
+                100 coins · {formatUsd(99)}
               </button>
-              <button type="button" onClick={() => void buyCoins("pack_500")}>
-                500 coins · {formatUsd(1999)}
+              <button type="button" onClick={() => void buyCoins("pack_499")}>
+                500 coins · {formatUsd(499)}
               </button>
             </div>
           ) : null}
