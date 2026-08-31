@@ -233,7 +233,7 @@ export class BillingService {
         event = stripeEventSchema.parse({
           id: constructed.id,
           type: constructed.type,
-          data: { object: constructed.data.object as Record<string, unknown> },
+          data: { object: constructed.data.object as unknown as Record<string, unknown> },
         });
       } catch {
         return { ok: false as const, error: "invalid_signature" as const };

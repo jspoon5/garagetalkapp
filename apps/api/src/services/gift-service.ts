@@ -229,15 +229,24 @@ export class GiftService {
       }
     }
 
-    for (const query of [
-      `metadata["userId"]:"${user.id}"`,
-      `client_reference_id:"${user.id}"`,
-    ]) {
-      try {
-        const searched = await stripe.checkout.sessions.search({ query, limit: 25 });
-        for (const session of searched.data) byId.set(session.id, session);
-      } catch {
-        // Search may be unavailable on some Stripe accounts/modes.
+    // Stripe Checkout Session search exists in the API; some SDK type packages omit it.
+    const sessionsApi = stripe.checkout.sessions as typeof stripe.checkout.sessions & {
+      search?: (params: {
+        query: string;
+        limit?: number;
+      }) => Promise<{ data: Stripe.Checkout.Session[] }>;
+    };
+    if (typeof sessionsApi.search === "function") {
+      for (const query of [
+        `metadata["userId"]:"${user.id}"`,
+        `client_reference_id:"${user.id}"`,
+      ]) {
+        try {
+          const searched = await sessionsApi.search({ query, limit: 25 });
+          for (const session of searched.data) byId.set(session.id, session);
+        } catch {
+          // Search may be unavailable on some Stripe accounts/modes.
+        }
       }
     }
 

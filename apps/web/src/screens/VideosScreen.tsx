@@ -68,7 +68,7 @@ export function VideoPlayerSheet({
       const hls = new Hls({ enableWorker: true });
       hls.loadSource(src);
       hls.attachMedia(el);
-      hls.on(Hls.Events.ERROR, (_event, data) => {
+      hls.on(Hls.Events.ERROR, (_event: string, data: { fatal: boolean }) => {
         if (data.fatal) {
           setPlaybackError("Could not play this HLS stream in-app. Use Open file below.");
         }
