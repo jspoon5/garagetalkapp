@@ -1853,6 +1853,252 @@ textarea {
   }
 }
 
+/* Full-screen gift overlay (CSS placeholders for Joe gift ladder) */
+.gift-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 40%, rgba(255, 140, 0, 0.18), transparent 55%);
+  animation: gift-overlay-fade 0.35s ease-out;
+}
+
+.gift-overlay-stage {
+  position: relative;
+  width: min(72vw, 280px);
+  height: min(72vw, 280px);
+  display: grid;
+  place-items: center;
+}
+
+.gift-overlay-glyph {
+  font-family: "Barlow Condensed", Impact, sans-serif;
+  font-size: clamp(2.4rem, 12vw, 4.2rem);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  color: #ffc857;
+  text-transform: uppercase;
+  animation: gift-glyph-pop 0.55s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.45));
+}
+
+.gift-overlay-burst,
+.gift-overlay-ring,
+.gift-overlay-trail {
+  position: absolute;
+  inset: 12%;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 200, 80, 0.55);
+  animation: gift-ring-expand 1.2s ease-out infinite;
+}
+
+.gift-overlay-trail {
+  inset: 22%;
+  border-color: rgba(69, 165, 255, 0.45);
+  animation-delay: 0.25s;
+}
+
+.gift-overlay-burst {
+  inset: 0;
+  border: none;
+  background: radial-gradient(circle, rgba(255, 180, 40, 0.35), transparent 70%);
+  animation: gift-burst 0.9s ease-out both;
+}
+
+.gift-overlay-caption {
+  position: absolute;
+  bottom: max(4.5rem, 12vh);
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 0.65rem 1.1rem;
+  max-width: min(92vw, 420px);
+  text-align: center;
+  border-radius: 999px;
+  background: rgba(8, 17, 29, 0.82);
+  color: #f7fbff;
+  font-size: 0.95rem;
+  animation: gift-pop 0.4s ease-out;
+}
+
+.gift-overlay-caption em {
+  font-style: normal;
+  color: #ffc857;
+}
+
+.gift-overlay--burnout .gift-overlay-burst,
+.gift-overlay--rev_it .gift-overlay-burst,
+.gift-overlay--hot_lap .gift-overlay-burst {
+  background: radial-gradient(circle, rgba(255, 80, 40, 0.45), transparent 70%);
+}
+
+.gift-overlay--green_light .gift-overlay-ring {
+  border-color: rgba(80, 220, 120, 0.65);
+}
+
+.gift-overlay--podium .gift-overlay-glyph,
+.gift-overlay--garage_legend .gift-overlay-glyph,
+.gift-overlay--king_of_the_garage .gift-overlay-glyph {
+  animation: gift-glyph-spin 1.2s ease-out both;
+}
+
+.gift-overlay--supercar .gift-overlay-stage,
+.gift-overlay--track_day .gift-overlay-stage {
+  animation: gift-slide 1.1s ease-out both;
+}
+
+.gift-overlay--checkered_flag .gift-overlay-burst {
+  background: repeating-linear-gradient(
+      45deg,
+      rgba(255, 255, 255, 0.2) 0 8px,
+      rgba(0, 0, 0, 0.15) 8px 16px
+    ),
+    radial-gradient(circle, rgba(255, 255, 255, 0.2), transparent 70%);
+}
+
+@keyframes gift-overlay-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes gift-glyph-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.4) translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes gift-glyph-spin {
+  from {
+    opacity: 0;
+    transform: scale(0.5) rotate(-20deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes gift-ring-expand {
+  from {
+    opacity: 0.8;
+    transform: scale(0.7);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.35);
+  }
+}
+
+@keyframes gift-burst {
+  from {
+    opacity: 0.9;
+    transform: scale(0.3);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.4);
+  }
+}
+
+@keyframes gift-slide {
+  from {
+    opacity: 0;
+    transform: translateX(-40%) scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+.share-sheet .share-url {
+  display: block;
+  margin: 0.5rem 0 1rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 0.78rem;
+  word-break: break-all;
+}
+
+.share-friends {
+  margin: 0.75rem 0 1rem;
+}
+
+.share-friends ul {
+  list-style: none;
+  margin: 0.5rem 0;
+  padding: 0;
+  max-height: 160px;
+  overflow: auto;
+}
+
+.share-friends li {
+  padding: 0.35rem 0;
+}
+
+.share-friends label {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.admin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+.admin-stat {
+  padding: 0.85rem 0.9rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.admin-stat strong {
+  display: block;
+  font-size: 1.25rem;
+}
+
+.admin-stat span {
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 0.78rem;
+}
+
+.admin-health {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 0.75rem 0 1.25rem;
+}
+
+.admin-health-flag {
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  background: rgba(80, 180, 100, 0.18);
+  color: #9dffb4;
+}
+
+.admin-health-flag.off {
+  background: rgba(255, 80, 80, 0.15);
+  color: #ff9f9f;
+}
+
 .site-legal-footer {
   margin: 1.5rem 0 0.5rem;
   padding: 1rem 0 0.25rem;

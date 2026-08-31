@@ -30,6 +30,7 @@ export type PublicUser = {
   avatarValue: string;
   tier: "amateur" | "gearhead" | "racing_pro" | "pro";
   emailVerifiedAt: Date | null;
+  roles: string[];
 };
 
 function toPublic(u: typeof users.$inferSelect): PublicUser {
@@ -43,6 +44,7 @@ function toPublic(u: typeof users.$inferSelect): PublicUser {
     avatarValue: u.avatarValue,
     tier: u.tier,
     emailVerifiedAt: u.emailVerifiedAt,
+    roles: u.roles ?? [],
   };
 }
 

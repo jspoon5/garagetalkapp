@@ -1,4 +1,5 @@
 import type { FastifyPluginAsync } from "fastify";
+import { z } from "zod";
 import {
   AiConcurrentRequestError,
   gearHeadInputSchema,
@@ -6,6 +7,8 @@ import {
   PhotosNotAllowedError,
   QuotaExceededError,
 } from "../services/gearhead-service.js";
+
+const threadIdParam = z.object({ id: z.string().uuid() });
 
 export const gearHeadRoutes: FastifyPluginAsync<{ gearhead: GearHeadService }> = async (app, opts) => {
   const gearhead = opts.gearhead;
@@ -46,5 +49,18 @@ export const gearHeadRoutes: FastifyPluginAsync<{ gearhead: GearHeadService }> =
         throw err;
       }
     },
+  });
+
+  app.get("/ai/gearhead/threads", async (req, reply) => {
+    if (!req.user) return reply.code(401).send({ error: "unauthorized" });
+    return { threads: await gearhead.listThreads(req.user.id) };
+  });
+
+  app.get("/ai/gearhead/threads/:id", async (req, reply) => {
+    if (!req.user) return reply.code(401).send({ error: "unauthorized" });
+    const { id } = threadIdParam.parse(req.params);
+    const result = await gearhead.getThread(req.user.id, id);
+    if (!result) return reply.code(404).send({ error: "not_found" });
+    return result;
   });
 };

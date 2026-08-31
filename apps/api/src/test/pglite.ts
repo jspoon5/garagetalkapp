@@ -7,6 +7,7 @@ import { C1_C6_TEST_SQL } from "./pglite-c1-c6.js";
 import { D1_D11_TEST_SQL } from "./pglite-d1-d11.js";
 import { MEDIA_QUALIFIED_TEST_SQL } from "./pglite-media-qualified.js";
 import { PGlite_0008_SQL } from "./pglite-0008.js";
+import { PGlite_0011_SQL } from "./pglite-0011.js";
 
 export async function createTestDb(): Promise<{ client: PGlite; db: Database }> {
   const client = new PGlite();
@@ -488,5 +489,6 @@ export async function createTestDb(): Promise<{ client: PGlite; db: Database }> 
   await client.exec(D1_D11_TEST_SQL);
   await client.exec(C1_C6_TEST_SQL);
   await client.exec(PGlite_0008_SQL);
+  await client.exec(PGlite_0011_SQL);
   return { client, db };
 }

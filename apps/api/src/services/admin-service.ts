@@ -1,12 +1,16 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import type { Database } from "@garagetalk/db";
 import {
   auditLogs,
+  coinLedger,
+  creatorEarnings,
   entitlements,
   featureFlags,
+  liveGifts,
   liveSessions,
   moderationActions,
   reports,
+  shares,
   subscriptions,
   users,
 } from "@garagetalk/db";
@@ -86,11 +90,92 @@ export class AdminService {
       this.db.select().from(subscriptions),
       this.db.select().from(liveSessions),
     ]);
+
+    let giftCount = 0;
+    let giftVolumeCoins = 0;
+    let coinPurchases = 0;
+    let coinsSold = 0;
+    let creatorPendingCents = 0;
+    let creatorAvailableCents = 0;
+    let creatorPaidCents = 0;
+    let shareCount = 0;
+
+    try {
+      const [giftAgg] = await this.db
+        .select({
+          giftCount: sql<number>`count(*)`.mapWith(Number),
+          giftCoins: sql<number>`coalesce(sum(${liveGifts.coinCost}), 0)`.mapWith(Number),
+        })
+        .from(liveGifts);
+      giftCount = giftAgg?.giftCount ?? 0;
+      giftVolumeCoins = giftAgg?.giftCoins ?? 0;
+    } catch {
+      // table may be absent in older test DBs
+    }
+
+    try {
+      const [coinAgg] = await this.db
+        .select({
+          purchaseCount: sql<number>`count(*)`.mapWith(Number),
+          coinsSold: sql<number>`coalesce(sum(${coinLedger.deltaCoins}), 0)`.mapWith(Number),
+        })
+        .from(coinLedger)
+        .where(eq(coinLedger.entryType, "coin_purchase"));
+      coinPurchases = coinAgg?.purchaseCount ?? 0;
+      coinsSold = coinAgg?.coinsSold ?? 0;
+    } catch {
+      // ignore
+    }
+
+    try {
+      const earnings = await this.db
+        .select({
+          status: creatorEarnings.status,
+          total: sql<number>`coalesce(sum(${creatorEarnings.netCents}), 0)`.mapWith(Number),
+        })
+        .from(creatorEarnings)
+        .groupBy(creatorEarnings.status);
+      for (const row of earnings) {
+        if (row.status === "PENDING") creatorPendingCents = row.total;
+        if (row.status === "AVAILABLE") creatorAvailableCents = row.total;
+        if (row.status === "PAID") creatorPaidCents = row.total;
+      }
+    } catch {
+      // ignore
+    }
+
+    try {
+      const [shareAgg] = await this.db
+        .select({ shareCount: sql<number>`count(*)`.mapWith(Number) })
+        .from(shares);
+      shareCount = shareAgg?.shareCount ?? 0;
+    } catch {
+      // ignore
+    }
+
+    const envHealth = {
+      database: true,
+      stripe: Boolean(process.env.STRIPE_SECRET_KEY?.trim()),
+      livekit: Boolean(process.env.LIVEKIT_API_KEY?.trim() && process.env.LIVEKIT_API_SECRET?.trim()),
+      stream: Boolean(process.env.CF_STREAM_TOKEN?.trim() || process.env.CLOUDFLARE_STREAM_TOKEN?.trim()),
+      ai: Boolean(process.env.AI_API_KEY?.trim()),
+      redis: Boolean(process.env.REDIS_URL?.trim()),
+    };
+
     return {
       users: userRows.length,
       openReports: reportRows.filter((report) => report.status === "open").length,
       activeSubscriptions: subscriptionRows.filter((sub) => sub.status === "active").length,
       liveSessions: liveRows.length,
+      giftCount,
+      giftVolumeCoins,
+      coinPurchases,
+      coinsSold,
+      creatorPendingCents,
+      creatorAvailableCents,
+      creatorPaidCents,
+      shareCount,
+      envHealth,
     };
   }
 

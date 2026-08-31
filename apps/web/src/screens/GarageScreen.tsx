@@ -804,7 +804,9 @@ function SignedInGarage({
           No {videoFilter === "all" ? "" : `${videoFilter} `}videos yet. Upload from the Video bay — new clips start as drafts.
         </p>
       ) : null}
-      {openVideo ? <VideoPlayerSheet video={openVideo} onClose={() => setOpenVideo(null)} /> : null}
+      {openVideo ? (
+        <VideoPlayerSheet video={openVideo} signedIn={Boolean(user)} onClose={() => setOpenVideo(null)} />
+      ) : null}
       <SectionHeading eyebrow="My machines" title="Vehicles & projects" action="Add" onAction={() => document.getElementById("add-vehicle")?.scrollIntoView()} />
       <Carousel ariaLabel="Vehicles and projects" className="garage-carousel" contentClassName="garage-carousel-track">
         {vehicles.map((vehicle) => (

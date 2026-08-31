@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Hls from "hls.js";
 import { apiGet, apiSend, ApiError, type User, type VideoItem, type VideoVisibility } from "../api";
+import { ShareSheet } from "../components/ShareSheet";
 
 async function wait(ms: number) {
   await new Promise((resolve) => setTimeout(resolve, ms));
@@ -36,15 +38,54 @@ const VISIBILITY_LABELS: Record<VideoVisibility, string> = {
 
 type LibraryFilter = "all" | VideoVisibility;
 
+function looksLikeHls(url: string | null | undefined): boolean {
+  if (!url) return false;
+  const lower = url.toLowerCase();
+  return lower.includes(".m3u8") || lower.includes("playlist") || lower.includes("/manifest/");
+}
+
 export function VideoPlayerSheet({
   video,
   onClose,
+  signedIn = false,
 }: {
   video: VideoItem;
   onClose: () => void;
+  signedIn?: boolean;
 }) {
   const [playbackError, setPlaybackError] = useState<string | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const canWatch = video.status === "ready" && Boolean(video.hlsUrl);
+  const src = video.hlsUrl ?? undefined;
+  const useHls = looksLikeHls(src);
+
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el || !src || !canWatch) return;
+
+    if (useHls && Hls.isSupported()) {
+      const hls = new Hls({ enableWorker: true });
+      hls.loadSource(src);
+      hls.attachMedia(el);
+      hls.on(Hls.Events.ERROR, (_event, data) => {
+        if (data.fatal) {
+          setPlaybackError("Could not play this HLS stream in-app. Use Open file below.");
+        }
+      });
+      return () => {
+        hls.destroy();
+      };
+    }
+
+    if (useHls && el.canPlayType("application/vnd.apple.mpegurl")) {
+      el.src = src;
+      return;
+    }
+
+    el.src = src;
+    return undefined;
+  }, [src, canWatch, useHls, video.id]);
 
   return (
     <div className="sheet-scrim" role="presentation" onClick={onClose}>
@@ -57,12 +98,12 @@ export function VideoPlayerSheet({
         </p>
         {canWatch ? (
           <video
+            ref={videoRef}
             key={video.hlsUrl ?? video.id}
             controls
             playsInline
             preload="metadata"
             crossOrigin="anonymous"
-            src={video.hlsUrl ?? undefined}
             poster={video.thumbUrl ?? undefined}
             style={{ width: "100%", maxHeight: "70vh", background: "#000" }}
             onError={() =>
@@ -77,15 +118,29 @@ export function VideoPlayerSheet({
           </p>
         )}
         {playbackError ? <p className="auth-error">{playbackError}</p> : null}
-        {video.hlsUrl ? (
-          <a className="sell-button" href={video.hlsUrl} target="_blank" rel="noreferrer">
-            Open file
-          </a>
-        ) : null}
+        <div className="profile-actions">
+          {video.hlsUrl ? (
+            <a className="sell-button" href={video.hlsUrl} target="_blank" rel="noreferrer">
+              Open file
+            </a>
+          ) : null}
+          <button type="button" onClick={() => setShareOpen(true)}>
+            Share
+          </button>
+        </div>
         <button type="button" className="sheet-close" onClick={onClose}>
           Close
         </button>
       </div>
+      {shareOpen ? (
+        <ShareSheet
+          objectType="video"
+          objectId={video.id}
+          title={video.title}
+          signedIn={signedIn}
+          onClose={() => setShareOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }
@@ -442,7 +497,7 @@ export function VideosScreen({
           {signedIn ? (busy ? "Uploading…" : "Upload video") : "Sign in to upload"}
         </button>
       </form>
-      {open ? <VideoPlayerSheet video={open} onClose={() => setOpen(null)} /> : null}
+      {open ? <VideoPlayerSheet video={open} signedIn={signedIn} onClose={() => setOpen(null)} /> : null}
     </>
   );
 }

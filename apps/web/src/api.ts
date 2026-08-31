@@ -5,6 +5,16 @@ export type User = {
   bio: string | null;
   cityText: string | null;
   tier?: "amateur" | "gearhead" | "racing_pro" | "pro";
+  roles?: string[];
+};
+
+export type GearHeadResult = {
+  diagnosis: string;
+  possible_causes: string[];
+  next_steps: string[];
+  parts: Array<{ name: string; retailer_links?: Record<string, string> }>;
+  ev_safety_notes?: string;
+  threadId?: string;
 };
 
 export type ChatRoom = {
@@ -154,14 +164,6 @@ export type ShopService = {
   durationMin: number;
   priceBandLowCents: number | null;
   priceBandHighCents: number | null;
-};
-
-export type GearHeadResult = {
-  diagnosis: string;
-  possible_causes: string[];
-  next_steps: string[];
-  parts: Array<{ name: string; retailer_links?: Record<string, string> }>;
-  ev_safety_notes?: string;
 };
 
 export type GiftCatalogItem = {

@@ -174,10 +174,15 @@ function DevicePickers({
         <button type="button" disabled={disabled} onClick={() => void refreshDevices()}>
           Refresh devices
         </button>
-        {onFlipCamera && (hasRearAndFront || cameras.length > 1) ? (
+        {onFlipCamera ? (
           <button type="button" disabled={disabled} onClick={onFlipCamera}>
             Flip / rear camera
           </button>
+        ) : null}
+        {!hasRearAndFront && cameras.length <= 1 ? (
+          <p className="empty-state">
+            Flip uses your phone’s rear camera when the browser exposes it (facingMode).
+          </p>
         ) : null}
       </div>
       {permError ? <p className="auth-error">{permError}</p> : null}
@@ -213,13 +218,16 @@ function PublishControls({
     };
   }, [room]);
 
-  async function applyDevices(nextCameraId = cameraId, nextMicId = micId, rear = preferRear) {
-    if (nextMicId) {
-      await room.switchActiveDevice("audioinput", nextMicId).catch(() => undefined);
-    }
-    if (nextCameraId) {
-      await room.switchActiveDevice("videoinput", nextCameraId).catch(() => undefined);
-    }
+  function buildAudioOpts(nextMicId = micId) {
+    return {
+      ...(nextMicId ? { deviceId: nextMicId } : {}),
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true,
+    };
+  }
+
+  function buildVideoOpts(nextCameraId = cameraId, rear = preferRear) {
     const videoOpts: {
       deviceId?: string;
       facingMode?: "user" | "environment";
@@ -228,8 +236,30 @@ function PublishControls({
     if (nextCameraId) videoOpts.deviceId = nextCameraId;
     else if (rear) videoOpts.facingMode = "environment";
     else videoOpts.facingMode = "user";
-    const audioOpts = nextMicId ? { deviceId: nextMicId } : undefined;
-    return { videoOpts, audioOpts };
+    return videoOpts;
+  }
+
+  async function applyDevices(nextCameraId = cameraId, nextMicId = micId, rear = preferRear) {
+    if (nextMicId) {
+      await room.switchActiveDevice("audioinput", nextMicId).catch(() => undefined);
+    }
+    if (nextCameraId) {
+      await room.switchActiveDevice("videoinput", nextCameraId).catch(() => undefined);
+    }
+    return {
+      videoOpts: buildVideoOpts(nextCameraId, rear),
+      audioOpts: buildAudioOpts(nextMicId),
+    };
+  }
+
+  /** LiveKit ignores capture options if a track already exists — restart to apply facingMode/device. */
+  async function restartCamera(videoOpts: {
+    deviceId?: string;
+    facingMode?: "user" | "environment";
+    resolution?: typeof CAPTURE_RESOLUTION;
+  }) {
+    await room.localParticipant.setCameraEnabled(false).catch(() => undefined);
+    await room.localParticipant.setCameraEnabled(true, videoOpts);
   }
 
   async function goLive() {
@@ -237,12 +267,25 @@ function PublishControls({
     setError(null);
     try {
       const { videoOpts, audioOpts } = await applyDevices();
+      // Restart path so a leftover muted/unpublished track from a prior attempt cannot block publish.
+      await room.localParticipant.setMicrophoneEnabled(false).catch(() => undefined);
+      await room.localParticipant.setCameraEnabled(false).catch(() => undefined);
       await room.localParticipant.setMicrophoneEnabled(true, audioOpts);
       await room.localParticipant.setCameraEnabled(true, videoOpts);
       setMicMuted(false);
       setCamMuted(false);
       setOnAir(true);
-    } catch {
+      // Duck remote playback volume while publishing to cut speaker→mic echo on phones.
+      for (const participant of room.remoteParticipants.values()) {
+        for (const pub of participant.audioTrackPublications.values()) {
+          const track = pub.track;
+          if (track && "setVolume" in track && typeof track.setVolume === "function") {
+            track.setVolume(0.35);
+          }
+        }
+      }
+    } catch (err) {
+      console.error("[live] goLive failed", err);
       setError("Could not start camera/mic. Pick a device, allow permissions, and try again.");
       await room.localParticipant.setCameraEnabled(false).catch(() => undefined);
       await room.localParticipant.setMicrophoneEnabled(false).catch(() => undefined);
@@ -271,7 +314,7 @@ function PublishControls({
     try {
       const next = !micMuted;
       // Mute keeps the track published (guests stay in the room); Stop camera unpublishes.
-      await room.localParticipant.setMicrophoneEnabled(!next, micId ? { deviceId: micId } : undefined);
+      await room.localParticipant.setMicrophoneEnabled(!next, buildAudioOpts());
       setMicMuted(next);
     } catch {
       setError("Could not mute/unmute microphone. Check browser permissions.");
@@ -286,14 +329,11 @@ function PublishControls({
     setError(null);
     try {
       const next = !camMuted;
-      const videoOpts: {
-        deviceId?: string;
-        facingMode?: "user" | "environment";
-        resolution?: typeof CAPTURE_RESOLUTION;
-      } = { resolution: CAPTURE_RESOLUTION };
-      if (cameraId) videoOpts.deviceId = cameraId;
-      else videoOpts.facingMode = preferRear ? "environment" : "user";
-      await room.localParticipant.setCameraEnabled(!next, videoOpts);
+      if (next) {
+        await room.localParticipant.setCameraEnabled(false);
+      } else {
+        await restartCamera(buildVideoOpts());
+      }
       setCamMuted(next);
     } catch {
       setError("Could not mute/unmute camera. Check browser permissions.");
@@ -308,10 +348,7 @@ function PublishControls({
     setBusy(true);
     try {
       if (deviceId) await room.switchActiveDevice("videoinput", deviceId);
-      await room.localParticipant.setCameraEnabled(true, {
-        ...(deviceId ? { deviceId } : {}),
-        resolution: CAPTURE_RESOLUTION,
-      });
+      await restartCamera(buildVideoOpts(deviceId, preferRear));
     } catch {
       setError("Could not switch camera.");
     } finally {
@@ -325,7 +362,8 @@ function PublishControls({
     setBusy(true);
     try {
       if (deviceId) await room.switchActiveDevice("audioinput", deviceId);
-      await room.localParticipant.setMicrophoneEnabled(true, deviceId ? { deviceId } : undefined);
+      await room.localParticipant.setMicrophoneEnabled(false).catch(() => undefined);
+      await room.localParticipant.setMicrophoneEnabled(true, buildAudioOpts(deviceId));
     } catch {
       setError("Could not switch microphone.");
     } finally {
@@ -358,11 +396,12 @@ function PublishControls({
         next = cameras[(idx + 1) % cameras.length]!.deviceId;
         nextRear = looksLikeRearCamera(cameras.find((c) => c.deviceId === next)?.label ?? "");
       } else {
-        // Single camera / mobile facingMode flip
+        // Single camera / mobile facingMode flip — must restart the track.
         nextRear = !preferRear;
         setPreferRear(nextRear);
+        setCameraId("");
         if (onAir) {
-          await room.localParticipant.setCameraEnabled(true, {
+          await restartCamera({
             facingMode: nextRear ? "environment" : "user",
             resolution: CAPTURE_RESOLUTION,
           });
@@ -372,13 +411,14 @@ function PublishControls({
       setCameraId(next);
       setPreferRear(nextRear);
       if (onAir) {
-        await room.switchActiveDevice("videoinput", next);
-        await room.localParticipant.setCameraEnabled(true, {
+        await room.switchActiveDevice("videoinput", next).catch(() => undefined);
+        await restartCamera({
           deviceId: next,
           resolution: CAPTURE_RESOLUTION,
         });
       }
-    } catch {
+    } catch (err) {
+      console.error("[live] flipCamera failed", err);
       setError("Could not flip camera. Try picking rear from the camera list.");
     } finally {
       setBusy(false);
@@ -623,11 +663,20 @@ export function LiveKitSession({
         options={{
           adaptiveStream: false,
           dynacast: true,
+          audioCaptureDefaults: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          },
           videoCaptureDefaults: {
             resolution: CAPTURE_RESOLUTION,
+            facingMode: "user",
           },
           publishDefaults: {
-            videoSimulcastLayers: [VideoPresets.h180, VideoPresets.h360, VideoPresets.h720],
+            // Primary encode at 720p; simulcast layers are *additional* lower rungs.
+            videoEncoding: VideoPresets.h720.encoding,
+            videoSimulcastLayers: [VideoPresets.h180, VideoPresets.h360],
+            stopMicTrackOnMute: false,
           },
         }}
         onDisconnected={() => setOnAir(false)}
@@ -658,12 +707,12 @@ export function LiveKitSession({
         ) : null}
         <LeaveLiveControl onLeave={onLeave} />
         {mayPublish && !onAir ? (
-          <p className="empty-state">Camera is off — pick a device above, then go live.</p>
-        ) : mayPublish ? (
-          <VideoConference />
-        ) : (
-          <ViewerStage />
-        )}
+          <p className="empty-state">
+            Camera is off — pick a device above, then tap Go live so the host can see and hear you.
+          </p>
+        ) : null}
+        {/* Keep the conference mounted for publishers even before going live so they still see remotes. */}
+        {mayPublish ? <VideoConference /> : <ViewerStage />}
       </LiveKitRoom>
     </div>
   );

@@ -17,6 +17,7 @@ import { images } from "../images";
 type ChatTurn = { role: "ai" | "user"; text: string };
 
 const prompts = ["Cranks but won’t start", "Engine light is on", "Truck won’t tow smoothly"];
+const GREETING = "Hey — what vehicle are we looking at, and what symptoms are you seeing?";
 
 export function GearHeadScreen({
   signedIn,
@@ -30,11 +31,11 @@ export function GearHeadScreen({
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [entitlement, setEntitlement] = useState<UserEntitlement | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
-  const [turns, setTurns] = useState<ChatTurn[]>([
-    { role: "ai", text: "Hey — what vehicle are we looking at, and what symptoms are you seeing?" },
-  ]);
+  const [threadId, setThreadId] = useState<string | null>(null);
+  const [turns, setTurns] = useState<ChatTurn[]>([{ role: "ai", text: GREETING }]);
   const fileRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const loadedThreadForVehicle = useRef<string | null>(null);
 
   useEffect(() => {
     if (!signedIn) return;
@@ -49,6 +50,49 @@ export function GearHeadScreen({
       .then((data) => setEntitlement(data.entitlement))
       .catch(() => undefined);
   }, [signedIn]);
+
+  useEffect(() => {
+    if (!signedIn) return;
+    const key = vehicleId || "general";
+    if (loadedThreadForVehicle.current === key) return;
+    loadedThreadForVehicle.current = key;
+
+    void apiGet<{ threads: Array<{ id: string; vehicleId: string | null; title: string }> }>(
+      "/ai/gearhead/threads",
+    )
+      .then(async (data) => {
+        const match = vehicleId
+          ? data.threads.find((thread) => thread.vehicleId === vehicleId)
+          : data.threads.find((thread) => !thread.vehicleId) ?? data.threads[0];
+        if (!match) {
+          setThreadId(null);
+          setTurns([{ role: "ai", text: GREETING }]);
+          return;
+        }
+        const detail = await apiGet<{
+          thread: { id: string };
+          messages: Array<{ role: string; content: Record<string, unknown> }>;
+        }>(`/ai/gearhead/threads/${match.id}`);
+        setThreadId(detail.thread.id);
+        const history: ChatTurn[] = detail.messages.map((msg) => {
+          const text =
+            typeof msg.content.text === "string"
+              ? msg.content.text
+              : typeof msg.content.diagnosis === "string"
+                ? String(msg.content.diagnosis)
+                : JSON.stringify(msg.content);
+          return {
+            role: msg.role === "assistant" ? "ai" : "user",
+            text:
+              msg.role === "assistant" && msg.content.diagnosis
+                ? formatGearHead(msg.content as unknown as GearHeadResult)
+                : text,
+          };
+        });
+        setTurns(history.length > 0 ? history : [{ role: "ai", text: GREETING }]);
+      })
+      .catch(() => undefined);
+  }, [signedIn, vehicleId]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
@@ -67,9 +111,11 @@ export function GearHeadScreen({
       const result = await apiSend<GearHeadResult>("/ai/gearhead", "POST", {
         message: body,
         vehicleId: vehicleId || undefined,
+        threadId: threadId ?? undefined,
         photoUrl: photoUrl ?? undefined,
       });
       setPhotoUrl(null);
+      if (result.threadId) setThreadId(result.threadId);
       setTurns((current) => [...current, { role: "ai", text: formatGearHead(result) }]);
     } catch (error) {
       if (error instanceof ApiError && error.status === 402) {
@@ -127,6 +173,12 @@ export function GearHeadScreen({
     fileRef.current?.click();
   }
 
+  function onVehicleChange(next: string) {
+    loadedThreadForVehicle.current = null;
+    setVehicleId(next);
+    setThreadId(null);
+  }
+
   return (
     <>
       <section className="ai-hero">
@@ -158,7 +210,7 @@ export function GearHeadScreen({
       {vehicles.length > 0 ? (
         <label className="inline-field">
           Vehicle
-          <select value={vehicleId} onChange={(event) => setVehicleId(event.target.value)}>
+          <select value={vehicleId} onChange={(event) => onVehicleChange(event.target.value)}>
             <option value="">General / no vehicle</option>
             {vehicles.map((vehicle) => (
               <option key={vehicle.id} value={vehicle.id}>

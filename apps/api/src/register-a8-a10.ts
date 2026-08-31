@@ -5,11 +5,13 @@ import { adminRoutes } from "./routes/admin.js";
 import { billingRoutes } from "./routes/billing.js";
 import { giftRoutes } from "./routes/gifts.js";
 import { liveRoutes } from "./routes/live.js";
+import { shareRoutes } from "./routes/shares.js";
 import { AdminService } from "./services/admin-service.js";
 import { BillingService } from "./services/billing-service.js";
 import { EntitlementService } from "./services/entitlement-service.js";
 import { GiftService } from "./services/gift-service.js";
 import { LiveService } from "./services/live-service.js";
+import { ShareService } from "./services/share-service.js";
 
 export type RegisterA8A10Options = {
   db: Database;
@@ -23,9 +25,11 @@ export async function registerA8A10Routes(app: FastifyInstance, opts: RegisterA8
   const live = new LiveService(opts.db, { emailClient: opts.emailClient, entitlements });
   const billing = new BillingService(opts.db, gifts);
   const admin = new AdminService(opts.db);
+  const shares = new ShareService(opts.db);
 
   await app.register(liveRoutes, { live, gifts });
   await app.register(giftRoutes, { gifts, appBaseUrl: opts.appBaseUrl });
   await app.register(billingRoutes, { billing, appBaseUrl: opts.appBaseUrl });
+  await app.register(shareRoutes, { shares });
   await app.register(adminRoutes, { admin });
 }

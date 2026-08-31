@@ -1,14 +1,12 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { HeartFilledIcon, HeartIcon } from "../icons";
+import { GiftOverlay, type GiftOverlayEvent } from "../components/GiftOverlay";
+import { ShareSheet } from "../components/ShareSheet";
 import { LiveKitSession, liveSessionSocketUrl } from "../components/LiveKitSession";
 import { apiGet, apiSend, checkoutUrl, ApiError, formatUsd, type GiftCatalogItem, type LiveSession, type User } from "../api";
 import { images } from "./shared";
 
-type GiftEvent = {
-  type: "live_gift";
-  gift: { name: string; slug: string; animationKey: string; coinCost: number };
-  sender: { username: string };
-};
+type GiftEvent = GiftOverlayEvent & { type: "live_gift" };
 
 export function LiveSessionScreen({
   sessionId,
@@ -34,6 +32,7 @@ export function LiveSessionScreen({
   const [gifts, setGifts] = useState<GiftCatalogItem[]>([]);
   const [walletCoins, setWalletCoins] = useState<number | null>(null);
   const [giftFlash, setGiftFlash] = useState<GiftEvent | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
   const [guestRequests, setGuestRequests] = useState<
     Array<{ id: string; username: string; message: string | null }>
   >([]);
@@ -43,6 +42,7 @@ export function LiveSessionScreen({
   const [tokenNonce, setTokenNonce] = useState(0);
   const [liveRole, setLiveRole] = useState<string | null>(null);
   const [guestPollUntil, setGuestPollUntil] = useState<number | null>(null);
+  const clearGift = useCallback(() => setGiftFlash(null), []);
 
   async function load() {
     const data = await apiGet<{ session: LiveSession; livekitUrl?: string | null }>(
@@ -167,7 +167,6 @@ export function LiveSessionScreen({
         };
         if (payload.type === "live_gift" && payload.gift && payload.sender) {
           setGiftFlash({ type: "live_gift", gift: payload.gift, sender: payload.sender });
-          window.setTimeout(() => setGiftFlash(null), 4000);
         }
         if (payload.type === "guest_request" && user.id === session?.hostId) {
           void load().catch(() => undefined);
@@ -291,6 +290,7 @@ export function LiveSessionScreen({
         </div>
       </article>
 
+      <GiftOverlay event={giftFlash} onDone={clearGift} />
       {giftFlash ? (
         <div className="gift-flash" data-animation={giftFlash.gift.animationKey}>
           {giftFlash.sender.username} sent {giftFlash.gift.name} ({giftFlash.gift.coinCost} coins)
@@ -420,7 +420,20 @@ export function LiveSessionScreen({
         >
           Tip the host
         </button>
+        <button type="button" onClick={() => setShareOpen(true)}>
+          Share
+        </button>
       </div>
+
+      {shareOpen ? (
+        <ShareSheet
+          objectType="live"
+          objectId={sessionId}
+          title={session.title ?? session.roomName}
+          signedIn={Boolean(user)}
+          onClose={() => setShareOpen(false)}
+        />
+      ) : null}
     </>
   );
 }

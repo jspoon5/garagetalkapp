@@ -1,4 +1,4 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import {
   attachRetailerLinks,
   buildVehicleDiagnosticPrompt,
@@ -7,7 +7,7 @@ import {
 } from "@garagetalk/ai";
 import type { DiagnosticOutput } from "@garagetalk/ai";
 import type { Database } from "@garagetalk/db";
-import { users, vehicles } from "@garagetalk/db";
+import { gearheadMessages, gearheadThreads, users, vehicles } from "@garagetalk/db";
 import {
   estimateTokenUsage,
   nextUpgradeTier,
@@ -15,11 +15,13 @@ import {
   type AiPlanId,
   type AiMemoryLevel,
 } from "@garagetalk/shared";
+import { uuidv7 } from "uuidv7";
 import { z } from "zod";
 import { EntitlementService } from "./entitlement-service.js";
 
 export const gearHeadInputSchema = z.object({
   vehicleId: z.string().uuid().optional(),
+  threadId: z.string().uuid().optional(),
   message: z.string().min(1).max(4000),
   /** Client may request photo analysis; server rejects when plan disallows photos. */
   photoUrl: z.string().url().optional(),
@@ -28,6 +30,11 @@ export const gearHeadInputSchema = z.object({
 type Vehicle = typeof vehicles.$inferSelect;
 type ProviderPart = { name: string; retailer_links?: Record<string, string> };
 type ProviderOutput = Omit<DiagnosticOutput, "parts"> & { parts: ProviderPart[] };
+
+export type GearHeadHistoryMessage = {
+  role: "user" | "assistant" | "system";
+  content: string;
+};
 
 export type GearHeadProviderInput = {
   systemPrompt: string;
@@ -38,11 +45,14 @@ export type GearHeadProviderInput = {
   maxOutputTokens: number;
   memoryLevel: AiMemoryLevel;
   photoUrl?: string;
+  history?: GearHeadHistoryMessage[];
 };
 
 export type GearHeadProvider = {
   generate(input: GearHeadProviderInput): Promise<ProviderOutput>;
 };
+
+export type GearHeadAskResult = DiagnosticOutput & { threadId: string };
 
 export type QuotaExceededDetails = {
   quota: number;
@@ -76,6 +86,22 @@ const hazardousPattern =
   /\b(airbag|srs|high voltage|hv battery|disable brake|brake line|steering rack|fuel leak|gas tank|bypass|defeat|weld frame|structural|explosive)\b/i;
 
 const inFlight = new Set<string>();
+
+/** Joe memory windows: short=4, standard/medium=12, long≈24, extended=40. */
+function memoryWindow(level: AiMemoryLevel): number {
+  switch (level) {
+    case "short":
+      return 4;
+    case "medium":
+      return 12;
+    case "long":
+      return 24;
+    case "extended":
+      return 40;
+    default:
+      return 4;
+  }
+}
 
 function nextReset(now: Date): Date {
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1, 0, 0, 0));
@@ -151,13 +177,15 @@ function normalizeProviderJson(raw: unknown): unknown {
     undefined;
   const partsRaw = obj.parts ?? obj.recommended_parts ?? obj.recommendedParts;
   const parts = Array.isArray(partsRaw)
-    ? partsRaw.map((part) => {
-        if (typeof part === "string") return { name: part };
-        if (part && typeof part === "object" && "name" in part) {
-          return { name: String((part as { name: unknown }).name) };
-        }
-        return null;
-      }).filter((p): p is { name: string } => Boolean(p?.name))
+    ? partsRaw
+        .map((part) => {
+          if (typeof part === "string") return { name: part };
+          if (part && typeof part === "object" && "name" in part) {
+            return { name: String((part as { name: unknown }).name) };
+          }
+          return null;
+        })
+        .filter((p): p is { name: string } => Boolean(p?.name))
     : [];
   return {
     diagnosis,
@@ -193,6 +221,11 @@ export class OpenAiCompatibleGearHeadProvider implements GearHeadProvider {
         ]
       : input.prompt;
 
+    const history = (input.history ?? []).map((msg) => ({
+      role: msg.role,
+      content: msg.content,
+    }));
+
     const fetchImpl = this.opts.fetchImpl ?? fetch;
     const res = await fetchImpl(url, {
       method: "POST",
@@ -207,6 +240,7 @@ export class OpenAiCompatibleGearHeadProvider implements GearHeadProvider {
         response_format: { type: "json_object" },
         messages: [
           { role: "system", content: input.systemPrompt },
+          ...history,
           { role: "user", content: userContent },
         ],
       }),
@@ -261,7 +295,7 @@ export class GearHeadService {
     this.entitlements = entitlements ?? new EntitlementService(db);
   }
 
-  async ask(userId: string, input: z.infer<typeof gearHeadInputSchema>): Promise<DiagnosticOutput> {
+  async ask(userId: string, input: z.infer<typeof gearHeadInputSchema>): Promise<GearHeadAskResult> {
     if (inFlight.has(userId)) throw new AiConcurrentRequestError();
     inFlight.add(userId);
     try {
@@ -271,7 +305,53 @@ export class GearHeadService {
     }
   }
 
-  private async askInner(userId: string, input: z.infer<typeof gearHeadInputSchema>): Promise<DiagnosticOutput> {
+  async listThreads(userId: string) {
+    const rows = await this.db
+      .select()
+      .from(gearheadThreads)
+      .where(eq(gearheadThreads.userId, userId))
+      .orderBy(desc(gearheadThreads.updatedAt))
+      .limit(50);
+    return rows.map((row) => ({
+      id: row.id,
+      vehicleId: row.vehicleId,
+      title: row.title,
+      createdAt: row.createdAt.toISOString(),
+      updatedAt: row.updatedAt.toISOString(),
+    }));
+  }
+
+  async getThread(userId: string, threadId: string) {
+    const [thread] = await this.db
+      .select()
+      .from(gearheadThreads)
+      .where(and(eq(gearheadThreads.id, threadId), eq(gearheadThreads.userId, userId)))
+      .limit(1);
+    if (!thread) return null;
+    const messages = await this.db
+      .select()
+      .from(gearheadMessages)
+      .where(eq(gearheadMessages.threadId, threadId))
+      .orderBy(asc(gearheadMessages.createdAt))
+      .limit(200);
+    return {
+      thread: {
+        id: thread.id,
+        vehicleId: thread.vehicleId,
+        title: thread.title,
+        createdAt: thread.createdAt.toISOString(),
+        updatedAt: thread.updatedAt.toISOString(),
+      },
+      messages: messages.map((msg) => ({
+        id: msg.id,
+        role: msg.role,
+        content: msg.content,
+        createdAt: msg.createdAt.toISOString(),
+      })),
+    };
+  }
+
+  private async askInner(userId: string, input: z.infer<typeof gearHeadInputSchema>): Promise<GearHeadAskResult> {
     const parsed = gearHeadInputSchema.parse(input);
     const entitlement = await this.entitlements.resolveForUser(userId);
     if (!entitlement) throw new Error("user_not_found");
@@ -280,13 +360,18 @@ export class GearHeadService {
       throw new PhotosNotAllowedError(entitlement.effectiveTier);
     }
 
-    const user = await this.consumeQuota(entitlement);
+    await this.consumeQuota(entitlement);
     const vehicle = parsed.vehicleId ? await this.getVehicle(userId, parsed.vehicleId) : null;
     if (parsed.vehicleId && !vehicle) throw new Error("vehicle_not_found");
 
+    const thread = await this.resolveThread(userId, parsed.threadId, parsed.vehicleId, parsed.message);
+    const history = await this.loadHistory(thread.id, entitlement.plan.memoryLevel);
+
     const label = vehicleLabel(vehicle);
     if (hazardousPattern.test(parsed.message)) {
-      return this.hazardResponse(vehicle, parsed.message);
+      const hazard = this.hazardResponse(vehicle, parsed.message);
+      await this.persistTurn(thread.id, parsed.message, hazard);
+      return { ...hazard, threadId: thread.id };
     }
 
     const prompt = vehicle
@@ -315,12 +400,107 @@ ${JSON_OUTPUT_INSTRUCTIONS}`,
       maxOutputTokens: entitlement.plan.maxOutputTokens,
       memoryLevel: entitlement.plan.memoryLevel,
       photoUrl: parsed.photoUrl,
+      history,
     });
 
     const tokenEstimate = estimateTokenUsage(parsed.message) + estimateTokenUsage(output.diagnosis);
     void tokenEstimate;
 
-    return this.normalize(output, label, needsEvNotes(vehicle, parsed.message), entitlement.effectiveTier);
+    const normalized = this.normalize(output, label, needsEvNotes(vehicle, parsed.message), entitlement.effectiveTier);
+    await this.persistTurn(thread.id, parsed.message, normalized);
+    return { ...normalized, threadId: thread.id };
+  }
+
+  private async resolveThread(
+    userId: string,
+    threadId: string | undefined,
+    vehicleId: string | undefined,
+    message: string,
+  ) {
+    if (threadId) {
+      const [existing] = await this.db
+        .select()
+        .from(gearheadThreads)
+        .where(and(eq(gearheadThreads.id, threadId), eq(gearheadThreads.userId, userId)))
+        .limit(1);
+      if (existing) {
+        await this.db
+          .update(gearheadThreads)
+          .set({ updatedAt: new Date(), vehicleId: vehicleId ?? existing.vehicleId })
+          .where(eq(gearheadThreads.id, existing.id));
+        return existing;
+      }
+    }
+
+    if (vehicleId) {
+      const [forVehicle] = await this.db
+        .select()
+        .from(gearheadThreads)
+        .where(and(eq(gearheadThreads.userId, userId), eq(gearheadThreads.vehicleId, vehicleId)))
+        .orderBy(desc(gearheadThreads.updatedAt))
+        .limit(1);
+      if (forVehicle) {
+        await this.db
+          .update(gearheadThreads)
+          .set({ updatedAt: new Date() })
+          .where(eq(gearheadThreads.id, forVehicle.id));
+        return forVehicle;
+      }
+    }
+
+    const title = message.trim().slice(0, 80) || "GearHead chat";
+    const [created] = await this.db
+      .insert(gearheadThreads)
+      .values({
+        id: uuidv7(),
+        userId,
+        vehicleId: vehicleId ?? null,
+        title,
+      })
+      .returning();
+    return created!;
+  }
+
+  private async loadHistory(threadId: string, memoryLevel: AiMemoryLevel): Promise<GearHeadHistoryMessage[]> {
+    const limit = memoryWindow(memoryLevel);
+    const rows = await this.db
+      .select()
+      .from(gearheadMessages)
+      .where(eq(gearheadMessages.threadId, threadId))
+      .orderBy(desc(gearheadMessages.createdAt))
+      .limit(limit);
+    return rows.reverse().map((row) => {
+      const content = row.content as Record<string, unknown>;
+      const text =
+        typeof content.text === "string"
+          ? content.text
+          : typeof content.diagnosis === "string"
+            ? content.diagnosis
+            : JSON.stringify(content);
+      const role = row.role === "assistant" ? "assistant" : "user";
+      return { role, content: text } as GearHeadHistoryMessage;
+    });
+  }
+
+  private async persistTurn(threadId: string, userMessage: string, assistant: DiagnosticOutput) {
+    const now = new Date();
+    await this.db.insert(gearheadMessages).values([
+      {
+        id: uuidv7(),
+        threadId,
+        role: "user",
+        content: { text: userMessage },
+        createdAt: now,
+      },
+      {
+        id: uuidv7(),
+        threadId,
+        role: "assistant",
+        content: { ...assistant, text: assistant.diagnosis },
+        createdAt: new Date(now.getTime() + 1),
+      },
+    ]);
+    await this.db.update(gearheadThreads).set({ updatedAt: new Date() }).where(eq(gearheadThreads.id, threadId));
   }
 
   private async consumeQuota(entitlement: NonNullable<Awaited<ReturnType<EntitlementService["resolveForUser"]>>>) {

@@ -3,16 +3,35 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>GarageTalk</title>
+    <title>GarageTalk — Live garages, GearHead AI &amp; marketplace</title>
     <meta
       name="description"
-      content="GarageTalk — real garages, real builders, and GearHead AI. Cars, trucks, motorcycles, live rooms, and marketplace."
+      content="GarageTalk connects real garages and builders. Live rooms, GearHead AI diagnostics, videos, and a parts marketplace for cars, trucks, and motorcycles."
+    />
+    <link rel="canonical" href="https://garagetalk.app/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="GarageTalk" />
+    <meta property="og:title" content="GarageTalk — Fix it. Build it. Talk about it." />
+    <meta
+      property="og:description"
+      content="Real garages, real builders, and GearHead AI — live rooms, video, and marketplace for every gearhead."
+    />
+    <meta property="og:url" content="https://garagetalk.app/" />
+    <meta
+      property="og:image"
+      content="https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=1200&q=88"
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="GarageTalk — Fix it. Build it. Talk about it." />
+    <meta
+      name="twitter:description"
+      content="Real garages, real builders, and GearHead AI — live rooms, video, and marketplace for every gearhead."
     />
     <meta name="theme-color" content="#08111d" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="./styles.css" />
@@ -41,9 +60,21 @@
         <p class="lede">
           Real garages, real builders, and GearHead AI in your pocket — built for cars, trucks, and motorcycles.
         </p>
+        <form class="email-capture" action="https://app.garagetalk.app/signup" method="get">
+          <label class="sr-only" for="early-email">Email</label>
+          <input
+            id="early-email"
+            name="email"
+            type="email"
+            required
+            placeholder="you@garage.email"
+            autocomplete="email"
+          />
+          <button type="submit">Get early access</button>
+        </form>
         <div class="cta-row">
-          <a class="cta primary" href="https://app.garagetalk.app">Enter the garage</a>
-          <a class="cta ghost" href="https://app.garagetalk.app">Open app</a>
+          <a class="cta primary" href="https://app.garagetalk.app/signup">Create account</a>
+          <a class="cta ghost" href="https://app.garagetalk.app">Open the app</a>
         </div>
       </div>
     </section>

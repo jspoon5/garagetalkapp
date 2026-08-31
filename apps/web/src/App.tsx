@@ -31,6 +31,7 @@ import { ComposeSheet } from "./screens/shared";
 import { VehicleScreen } from "./screens/VehicleScreen";
 import { SiteFooter } from "./components/SiteFooter";
 import { LegalDocumentScreen } from "./screens/LegalDocumentScreen";
+import { AdminScreen } from "./screens/AdminScreen";
 import { privacyPolicySections, termsOfUseSections } from "./legal/documents";
 
 export type Screen = "home" | "rooms" | "gearhead" | "market" | "profile";
@@ -49,7 +50,8 @@ type Overlay =
   | { kind: "goLive" }
   | { kind: "tip"; toUserId: string }
   | { kind: "privacy" }
-  | { kind: "terms" };
+  | { kind: "terms" }
+  | { kind: "admin" };
 
 type ExtendedNavigator = Navigator & {
   connection?: { saveData?: boolean };
@@ -79,13 +81,19 @@ const overlayTitles: Record<Overlay["kind"], string> = {
   tip: "Tip",
   privacy: "Privacy Policy",
   terms: "Terms of Use",
+  admin: "Admin",
 };
 
 const LIVE_PATH_RE = /^\/live\/([0-9a-fA-F-]{36})\/?$/;
+const ADMIN_PATH_RE = /^\/admin\/?$/;
 
 function liveIdFromPath(pathname = window.location.pathname): string | null {
   const match = LIVE_PATH_RE.exec(pathname);
   return match?.[1] ?? null;
+}
+
+function adminFromPath(pathname = window.location.pathname): boolean {
+  return ADMIN_PATH_RE.test(pathname);
 }
 
 export function App() {
@@ -95,7 +103,9 @@ export function App() {
   const [roomId, setRoomId] = useState<string | null>(null);
   const [overlay, setOverlay] = useState<Overlay | null>(() => {
     const liveId = liveIdFromPath();
-    return liveId ? { kind: "live", id: liveId } : null;
+    if (liveId) return { kind: "live", id: liveId };
+    if (adminFromPath()) return { kind: "admin" };
+    return null;
   });
   const [pendingRoom, setPendingRoom] = useState<{ id: string; from: Screen } | null>(null);
   const [noticesOpen, setNoticesOpen] = useState(false);
@@ -149,7 +159,7 @@ export function App() {
   };
 
   const clearLivePath = () => {
-    if (LIVE_PATH_RE.test(window.location.pathname)) {
+    if (LIVE_PATH_RE.test(window.location.pathname) || ADMIN_PATH_RE.test(window.location.pathname)) {
       window.history.pushState({}, "", "/");
     }
   };
@@ -182,6 +192,11 @@ export function App() {
       window.history.back();
       return;
     }
+    if (overlay?.kind === "admin" && ADMIN_PATH_RE.test(window.location.pathname)) {
+      skippingUrlSync.current = true;
+      window.history.back();
+      return;
+    }
     if (overlay) {
       setOverlay(null);
       clearLivePath();
@@ -201,7 +216,14 @@ export function App() {
         setOverlay({ kind: "live", id: liveId });
         return;
       }
-      setOverlay((current) => (current?.kind === "live" ? null : current));
+      if (adminFromPath()) {
+        setRoomId(null);
+        setOverlay({ kind: "admin" });
+        return;
+      }
+      setOverlay((current) =>
+        current?.kind === "live" || current?.kind === "admin" ? null : current,
+      );
     };
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
@@ -215,7 +237,17 @@ export function App() {
       }
       return;
     }
-    if (!overlay && LIVE_PATH_RE.test(window.location.pathname) && !skippingUrlSync.current) {
+    if (overlay?.kind === "admin") {
+      if (window.location.pathname !== "/admin") {
+        window.history.replaceState({ overlay }, "", "/admin");
+      }
+      return;
+    }
+    if (
+      !overlay &&
+      (LIVE_PATH_RE.test(window.location.pathname) || ADMIN_PATH_RE.test(window.location.pathname)) &&
+      !skippingUrlSync.current
+    ) {
       window.history.replaceState({}, "", "/");
     }
   }, [overlay]);
@@ -640,6 +672,8 @@ export function App() {
             <LegalDocumentScreen title="Privacy Policy" sections={privacyPolicySections} onClose={() => setOverlay(null)} />
           ) : overlay?.kind === "terms" ? (
             <LegalDocumentScreen title="Terms of Use" sections={termsOfUseSections} onClose={() => setOverlay(null)} />
+          ) : overlay?.kind === "admin" ? (
+            <AdminScreen user={user} onNeedAccount={() => goSignIn()} />
           ) : overlay?.kind === "post" && activePost ? (
             <PostThreadScreen
               post={activePost}

@@ -35,6 +35,7 @@ const SESSION_PREFIXES = [
   "/coins/reconcile",
   "/creators",
   "/gifts",
+  "/shares",
   "/feed",
   "/marketplace",
   "/admin",
