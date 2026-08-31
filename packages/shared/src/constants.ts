@@ -42,14 +42,53 @@ export const TIER_PRICES = {
 
 export type PaidTier = keyof typeof TIER_PRICES;
 
+/**
+ * Joe coin packs. Face value: 1 coin = $0.01 for earnings math.
+ * Packs include psychological bonus coins above face value at higher tiers.
+ */
 export const COIN_PACKS = [
-  { id: "pack_100", coins: 100, priceCents: 499, label: "100 coins" },
-  { id: "pack_500", coins: 500, priceCents: 1999, label: "500 coins" },
-  { id: "pack_1200", coins: 1200, priceCents: 3999, label: "1200 coins" },
-  { id: "pack_3000", coins: 3000, priceCents: 7999, label: "3000 coins" },
+  { id: "pack_99", coins: 100, priceCents: 99, label: "100 coins" },
+  { id: "pack_499", coins: 500, priceCents: 499, label: "500 coins" },
+  { id: "pack_999", coins: 1100, priceCents: 999, label: "1,100 coins" },
+  { id: "pack_1999", coins: 2400, priceCents: 1999, label: "2,400 coins" },
+  { id: "pack_4999", coins: 6500, priceCents: 4999, label: "6,500 coins" },
+  { id: "pack_9999", coins: 14000, priceCents: 9999, label: "14,000 coins" },
 ] as const;
 
 export type CoinPackId = (typeof COIN_PACKS)[number]["id"];
 
-/** Platform fee on gift coin value converted to creator earnings (basis points). */
-export const GIFT_PLATFORM_FEE_BPS = 1000;
+/** Legacy pack ids map onto Joe packs so old clients keep working. */
+export const COIN_PACK_ALIASES: Record<string, CoinPackId> = {
+  pack_100: "pack_99",
+  pack_500: "pack_499",
+  pack_1200: "pack_999",
+  pack_3000: "pack_1999",
+};
+
+export function resolveCoinPack(packId: string) {
+  const resolved = COIN_PACK_ALIASES[packId] ?? packId;
+  return COIN_PACKS.find((pack) => pack.id === resolved) ?? null;
+}
+
+/**
+ * Creator revenue share of eligible gift cents (after tip-side fee), by subscription tier.
+ * Prefer `revenue_share_rules` in DB; these are fallbacks. Values are basis points (10000 = 100%).
+ */
+export const REVENUE_SHARE_BPS = {
+  amateur: 1000,
+  gearhead: 1500,
+  racing_pro: 2000,
+  pro: 3000,
+} as const;
+
+/**
+ * Tip-side fee: deducted from gift face value BEFORE creator revenue share.
+ * This is a platform tip-side deduction, not a Stripe processing fee.
+ */
+export const TIP_SIDE_FEE_BPS = 400;
+
+/** @deprecated Alias of TIP_SIDE_FEE_BPS — tip-side deduction, not Stripe fee. */
+export const GIFT_PLATFORM_FEE_BPS = TIP_SIDE_FEE_BPS;
+
+/** Days before PENDING creator earnings become AVAILABLE for Connect transfer. */
+export const EARNINGS_HOLD_DAYS = 7;
