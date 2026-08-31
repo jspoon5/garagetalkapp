@@ -209,6 +209,54 @@ describe("A9 billing and tips", () => {
     expect(ledgers[0]?.balanceAfter).toBe(1111);
   });
 
+  it("credits coin packs from checkout.session.completed webhooks", async () => {
+    const packEvent = {
+      id: "evt_coin_pack_1",
+      type: "checkout.session.completed",
+      data: {
+        object: {
+          id: "cs_coin_1",
+          payment_intent: "pi_coin_1",
+          metadata: {
+            type: "coin_pack",
+            userId: payerId,
+            packId: "pack_100",
+            coins: "100",
+          },
+        },
+      },
+    };
+    const rawBody = JSON.stringify(packEvent);
+    const credited = await app.inject({
+      method: "POST",
+      url: "/billing/webhooks/stripe",
+      headers: {
+        "content-type": "application/json",
+        "stripe-signature": signStripeWebhookPayload(rawBody),
+      },
+      payload: rawBody,
+    });
+    expect(credited.statusCode).toBe(200);
+    expect(credited.json().reconciled).toBe(true);
+
+    const wallet = await app.inject({
+      method: "GET",
+      url: "/wallet",
+      headers: { cookie: payerCookie },
+    });
+    expect(wallet.statusCode).toBe(200);
+    expect(wallet.json().balanceCoins).toBe(100);
+
+    const reconcile = await app.inject({
+      method: "POST",
+      url: "/coins/reconcile",
+      headers: { cookie: payerCookie },
+    });
+    expect(reconcile.statusCode).toBe(200);
+    expect(reconcile.json().balanceCoins).toBe(100);
+    expect(reconcile.json().creditedCoins).toBe(0);
+  });
+
   async function postStripeEvent(event: ReturnType<typeof subscriptionEvent>) {
     const rawBody = JSON.stringify(event);
     return app.inject({

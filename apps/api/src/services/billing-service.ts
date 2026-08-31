@@ -127,6 +127,13 @@ export function verifyStripeWebhookSignature(
   return safeEqual(expected, parts.v1);
 }
 
+/** Real Stripe webhook secrets are `whsec_...` and must use constructEvent (not raw HMAC). */
+export function shouldUseStripeConstructEvent(secret: string): boolean {
+  const stripe = stripeFromEnv();
+  if (!stripe) return false;
+  return secret.startsWith("whsec_") || Boolean(process.env.STRIPE_SECRET_KEY);
+}
+
 export class BillingService {
   private readonly entitlements: EntitlementService;
 
@@ -214,10 +221,31 @@ export class BillingService {
 
   async handleStripeWebhook(rawBody: string, signatureHeader: string) {
     const secret = process.env.STRIPE_WEBHOOK_SECRET ?? DEFAULT_WEBHOOK_SECRET;
-    if (!verifyStripeWebhookSignature(rawBody, signatureHeader, secret)) {
-      return { ok: false as const, error: "invalid_signature" as const };
+    let event: z.infer<typeof stripeEventSchema>;
+
+    if (shouldUseStripeConstructEvent(secret)) {
+      const stripe = stripeFromEnv();
+      if (!stripe) {
+        return { ok: false as const, error: "invalid_signature" as const };
+      }
+      try {
+        const constructed = stripe.webhooks.constructEvent(rawBody, signatureHeader, secret);
+        event = stripeEventSchema.parse({
+          id: constructed.id,
+          type: constructed.type,
+          data: { object: constructed.data.object as Record<string, unknown> },
+        });
+      } catch {
+        return { ok: false as const, error: "invalid_signature" as const };
+      }
+    } else {
+      // Stub/test secrets: custom HMAC (signing with the secret string as-is).
+      if (!verifyStripeWebhookSignature(rawBody, signatureHeader, secret)) {
+        return { ok: false as const, error: "invalid_signature" as const };
+      }
+      event = stripeEventSchema.parse(JSON.parse(rawBody) as unknown);
     }
-    const event = stripeEventSchema.parse(JSON.parse(rawBody) as unknown);
+
     const existing = await this.db
       .select()
       .from(webhookEvents)

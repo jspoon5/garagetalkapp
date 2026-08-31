@@ -159,6 +159,91 @@ export class GiftService {
     return this.creditCoins(userId, coins, "coin_purchase", idempotencyKey, paymentIntent ?? null);
   }
 
+  /**
+   * Backfill coin packs when Stripe Checkout succeeds but the webhook lagged or failed signature verification.
+   * Idempotent via creditCoinsFromCheckout / coin ledger keys.
+   */
+  async reconcileOpenCheckouts(userId: string): Promise<{ creditedCoins: number; sessionsChecked: number }> {
+    const stripe = stripeFromEnv();
+    if (!stripe) return { creditedCoins: 0, sessionsChecked: 0 };
+
+    const [user] = await this.db.select().from(users).where(eq(users.id, userId)).limit(1);
+    if (!user) return { creditedCoins: 0, sessionsChecked: 0 };
+
+    const sessions = await this.listRecentCheckoutSessions(stripe, user);
+    let creditedCoins = 0;
+    let sessionsChecked = 0;
+
+    for (const session of sessions) {
+      if (session.payment_status !== "paid" && session.status !== "complete") continue;
+      const metadata = (session.metadata ?? {}) as Record<string, string>;
+      if (metadata.type !== "coin_pack") continue;
+      if (metadata.userId && metadata.userId !== userId) continue;
+      if (!metadata.userId && session.client_reference_id && session.client_reference_id !== userId) {
+        continue;
+      }
+
+      sessionsChecked += 1;
+      const coins = Number(metadata.coins);
+      const paymentIntent =
+        typeof session.payment_intent === "string"
+          ? session.payment_intent
+          : session.payment_intent && typeof session.payment_intent === "object" && "id" in session.payment_intent
+            ? String(session.payment_intent.id)
+            : session.id;
+
+      const before = await this.getWallet(userId);
+      const credited = await this.creditCoinsFromCheckout(
+        {
+          ...metadata,
+          userId,
+          coins: metadata.coins ?? String(coins || 0),
+          packId: metadata.packId ?? "",
+        },
+        paymentIntent,
+      );
+      if (!credited) continue;
+      const after = await this.getWallet(userId);
+      const delta = after.balanceCoins - before.balanceCoins;
+      if (delta > 0) creditedCoins += delta;
+    }
+
+    return { creditedCoins, sessionsChecked };
+  }
+
+  private async listRecentCheckoutSessions(
+    stripe: Stripe,
+    user: typeof users.$inferSelect,
+  ): Promise<Stripe.Checkout.Session[]> {
+    const byId = new Map<string, Stripe.Checkout.Session>();
+
+    if (user.stripeCustomerId) {
+      try {
+        const listed = await stripe.checkout.sessions.list({
+          customer: user.stripeCustomerId,
+          limit: 25,
+        });
+        for (const session of listed.data) byId.set(session.id, session);
+      } catch {
+        // Customer may be missing in this Stripe environment.
+      }
+    }
+
+    for (const query of [
+      `metadata["userId"]:"${user.id}"`,
+      `client_reference_id:"${user.id}"`,
+    ]) {
+      try {
+        const searched = await stripe.checkout.sessions.search({ query, limit: 25 });
+        for (const session of searched.data) byId.set(session.id, session);
+      } catch {
+        // Search may be unavailable on some Stripe accounts/modes.
+      }
+    }
+
+    return [...byId.values()];
+  }
+
   async sendGift(
     senderId: string,
     sessionId: string,
