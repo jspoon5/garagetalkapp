@@ -198,7 +198,10 @@ export class ApiError extends Error {
 }
 
 export async function apiGet<T>(path: string): Promise<T> {
-  const res = await fetch(path, { credentials: "include" });
+  const res = await fetch(path, {
+    credentials: "include",
+    headers: adminHeaders(),
+  });
   if (!res.ok) throw await apiErrorFrom(res);
   return (await res.json()) as T;
 }
@@ -207,12 +210,42 @@ export async function apiSend<T>(path: string, method: string, body?: unknown): 
   const res = await fetch(path, {
     method,
     credentials: "include",
-    headers: body === undefined ? undefined : { "Content-Type": "application/json" },
+    headers: {
+      ...adminHeaders(),
+      ...(body === undefined ? {} : { "Content-Type": "application/json" }),
+    },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   if (!res.ok) throw await apiErrorFrom(res);
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
+}
+
+const ADMIN_TOTP_KEY = "gt_admin_totp";
+
+export function setAdminTotp(code: string) {
+  try {
+    sessionStorage.setItem(ADMIN_TOTP_KEY, code);
+  } catch {
+    // private mode
+  }
+}
+
+export function clearAdminTotp() {
+  try {
+    sessionStorage.removeItem(ADMIN_TOTP_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+function adminHeaders(): Record<string, string> {
+  try {
+    const totp = sessionStorage.getItem(ADMIN_TOTP_KEY)?.trim();
+    return totp ? { "x-admin-totp": totp } : {};
+  } catch {
+    return {};
+  }
 }
 
 async function apiErrorFrom(res: Response): Promise<ApiError> {

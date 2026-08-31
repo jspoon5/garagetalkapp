@@ -2,6 +2,7 @@ import { loadEnv } from "@garagetalk/shared";
 import { createDb } from "@garagetalk/db";
 import { AuthService } from "./services/auth-service.js";
 import { seedHardcodedAmateurTesters } from "./seed-testers.js";
+import { seedAdminFromEnv } from "./seed-admin.js";
 import { buildApp } from "./app.js";
 import { VideoService } from "./services/video-service.js";
 import {
@@ -52,6 +53,18 @@ async function main() {
       app.log.info({ usernames }, "seeded amateur tester accounts");
     } catch (err) {
       app.log.error({ err }, "tester seed failed");
+    }
+
+    try {
+      const auth = new AuthService(db, { appBaseUrl });
+      const adminUsername = await seedAdminFromEnv(auth);
+      if (adminUsername) {
+        app.log.info({ username: adminUsername }, "seeded admin operator from ADMIN_EMAIL");
+      } else {
+        app.log.warn("ADMIN_EMAIL/ADMIN_PASSWORD not set — /admin login will not work until configured");
+      }
+    } catch (err) {
+      app.log.error({ err }, "admin seed failed");
     }
 
     try {

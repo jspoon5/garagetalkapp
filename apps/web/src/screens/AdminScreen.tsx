@@ -1,5 +1,13 @@
-import { useEffect, useState } from "react";
-import { apiGet, formatUsd, type User } from "../api";
+import { useEffect, useState, type FormEvent } from "react";
+import {
+  apiGet,
+  apiSend,
+  ApiError,
+  clearAdminTotp,
+  formatUsd,
+  setAdminTotp,
+  type User,
+} from "../api";
 
 type DashboardStats = {
   users: number;
@@ -17,7 +25,7 @@ type DashboardStats = {
   envHealth?: Record<string, boolean>;
 };
 
-type AdminUser = {
+type AdminUserRow = {
   id: string;
   email: string;
   username: string;
@@ -31,17 +39,25 @@ type AdminUser = {
 
 export function AdminScreen({
   user,
-  onNeedAccount,
+  onSignedIn,
+  onSignedOut,
 }: {
   user: User | null;
-  onNeedAccount: () => void;
+  onSignedIn: (user: User) => void;
+  onSignedOut: () => void;
 }) {
   const isAdmin = Boolean(user?.roles?.includes("admin"));
   const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [users, setUsers] = useState<AdminUserRow[]>([]);
   const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
+  const [totp, setTotp] = useState("");
+  const [loginBusy, setLoginBusy] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
 
   async function loadDashboard() {
     const data = await apiGet<{ stats: DashboardStats }>("/admin/dashboard");
@@ -49,42 +65,127 @@ export function AdminScreen({
   }
 
   async function searchUsers(nextQuery = query) {
-    const data = await apiGet<{ users: AdminUser[] }>(
+    const data = await apiGet<{ users: AdminUserRow[] }>(
       `/admin/users${nextQuery.trim() ? `?query=${encodeURIComponent(nextQuery.trim())}` : ""}`,
     );
     setUsers(data.users);
   }
 
   useEffect(() => {
-    if (!user) return;
-    if (!isAdmin) return;
+    if (!user || !isAdmin) return;
     setBusy(true);
     void Promise.all([loadDashboard(), searchUsers("")])
       .catch((err) => {
+        const code = err instanceof ApiError ? err.code : null;
+        if (code === "admin_2fa_required") {
+          setError("Admin 2FA required — enter your authenticator code and sign in again.");
+          return;
+        }
         setError(err instanceof Error ? err.message : "Could not load admin dashboard.");
       })
       .finally(() => setBusy(false));
   }, [user?.id, isAdmin]);
 
-  if (!user) {
-    return (
-      <div className="screen-intro">
-        <span>ADMIN</span>
-        <h1>Sign in required.</h1>
-        <p>Admin tools need an authenticated admin session.</p>
-        <button type="button" className="sell-button" onClick={onNeedAccount}>
-          Sign in
-        </button>
-      </div>
-    );
+  async function adminLogin(event: FormEvent) {
+    event.preventDefault();
+    setLoginBusy(true);
+    setLoginError(null);
+    setError(null);
+    try {
+      if (totp.trim()) setAdminTotp(totp.trim());
+      else clearAdminTotp();
+
+      const data = await apiSend<{ user: User }>("/auth/login", "POST", {
+        username: identifier.trim(),
+        password,
+      });
+      if (!data.user.roles?.includes("admin")) {
+        clearAdminTotp();
+        await apiSend("/auth/logout", "POST").catch(() => undefined);
+        onSignedOut();
+        setLoginError(
+          "That account is not an admin. Set ADMIN_EMAIL and ADMIN_PASSWORD on the API (Render), redeploy, then sign in here.",
+        );
+        return;
+      }
+      onSignedIn(data.user);
+      setPassword("");
+    } catch (err) {
+      clearAdminTotp();
+      setLoginError(
+        err instanceof ApiError
+          ? err.code === "invalid_credentials"
+            ? "Wrong email/username or password."
+            : `Sign-in failed (${err.code}).`
+          : "Sign-in failed.",
+      );
+    } finally {
+      setLoginBusy(false);
+    }
   }
 
-  if (!isAdmin) {
+  async function adminLogout() {
+    clearAdminTotp();
+    await apiSend("/auth/logout", "POST").catch(() => undefined);
+    onSignedOut();
+    setStats(null);
+    setUsers([]);
+  }
+
+  if (!user || !isAdmin) {
     return (
       <div className="screen-intro">
         <span>ADMIN</span>
-        <h1>Access denied.</h1>
-        <p>This area is limited to GarageTalk admins.</p>
+        <h1>Admin login</h1>
+        <p>Sign in with the operator account from ADMIN_EMAIL / ADMIN_PASSWORD.</p>
+        {user && !isAdmin ? (
+          <p className="auth-error">
+            Signed in as @{user.username}, but that account is not an admin. Use the operator login below.
+          </p>
+        ) : null}
+        <form className="auth-card" onSubmit={(event) => void adminLogin(event)}>
+          <label>
+            Email or username
+            <input
+              value={identifier}
+              onChange={(event) => setIdentifier(event.target.value)}
+              autoComplete="username"
+              required
+              disabled={loginBusy}
+            />
+          </label>
+          <label>
+            Password
+            <input
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              autoComplete="current-password"
+              required
+              disabled={loginBusy}
+            />
+          </label>
+          <label>
+            Authenticator code (only if 2FA is enrolled)
+            <input
+              value={totp}
+              onChange={(event) => setTotp(event.target.value)}
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              placeholder="6-digit code"
+              disabled={loginBusy}
+            />
+          </label>
+          {loginError ? <p className="auth-error">{loginError}</p> : null}
+          <button type="submit" className="sell-button" disabled={loginBusy}>
+            {loginBusy ? "Signing in…" : "Sign in to admin"}
+          </button>
+        </form>
+        {user ? (
+          <button type="button" className="ghost-button" onClick={() => void adminLogout()}>
+            Sign out current session
+          </button>
+        ) : null}
       </div>
     );
   }
@@ -95,8 +196,14 @@ export function AdminScreen({
     <>
       <div className="screen-intro">
         <span>ADMIN</span>
-        <h1>Ops dashboard.</h1>
-        <p>User search, live/gift volume, and environment health (presence only — no secrets).</p>
+        <h1>Ops dashboard</h1>
+        <p>
+          Signed in as @{user.username}. User search, live/gift volume, and environment health (presence only — no
+          secrets).
+        </p>
+        <button type="button" className="ghost-button" onClick={() => void adminLogout()}>
+          Sign out
+        </button>
       </div>
       {error ? <p className="auth-error">{error}</p> : null}
       {busy && !stats ? <p className="empty-state">Loading…</p> : null}

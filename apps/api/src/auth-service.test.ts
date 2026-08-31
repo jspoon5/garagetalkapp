@@ -126,4 +126,31 @@ describe("AuthService", () => {
     const firstLogin = await auth.login({ username: "tester", password: "GarageTalkTest1" });
     expect(firstLogin?.user.id).toBe(created.id);
   });
+
+  it("creates and repairs admin from env credentials", async () => {
+    const created = await auth.ensureAdminFromEnv({
+      email: "ops@garagetalk.app",
+      username: "opsadmin",
+      password: "AdminPassword1",
+    });
+    expect(created.roles).toContain("admin");
+    expect(created.email).toBe("ops@garagetalk.app");
+
+    const login = await auth.login({ username: "ops@garagetalk.app", password: "AdminPassword1" });
+    expect(login?.user.roles).toContain("admin");
+    expect(login?.user.username).toBe("opsadmin");
+
+    const repaired = await auth.ensureAdminFromEnv({
+      email: "ops@garagetalk.app",
+      username: "opsadmin",
+      password: "AdminPassword2!",
+    });
+    expect(repaired.id).toBe(created.id);
+    expect(repaired.roles).toContain("admin");
+
+    const oldLogin = await auth.login({ username: "opsadmin", password: "AdminPassword1" });
+    expect(oldLogin).toBeNull();
+    const newLogin = await auth.login({ username: "opsadmin", password: "AdminPassword2!" });
+    expect(newLogin?.user.id).toBe(created.id);
+  });
 });

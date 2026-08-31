@@ -110,6 +110,77 @@ export class AuthService {
   }
 
   /**
+   * Create or repair an admin operator from env (ADMIN_EMAIL / ADMIN_PASSWORD).
+   * Adds the `admin` role; never removes it from unrelated accounts.
+   */
+  async ensureAdminFromEnv(input: {
+    email: string;
+    username: string;
+    password: string;
+  }): Promise<PublicUser> {
+    const email = input.email.trim().toLowerCase();
+    const username = input.username.trim();
+    if (!email || !username || input.password.length < 10) {
+      throw new Error("invalid_admin_bootstrap");
+    }
+    const passwordHash = await argon2.hash(input.password, ARGON2_OPTS);
+
+    const [byEmail] = await this.db.select().from(users).where(eq(users.email, email)).limit(1);
+    const [byUsername] = await this.db
+      .select()
+      .from(users)
+      .where(eq(users.username, username))
+      .limit(1);
+
+    const existing = byEmail ?? byUsername;
+    if (!existing) {
+      const [user] = await this.db
+        .insert(users)
+        .values({
+          id: uuidv7(),
+          email,
+          username,
+          passwordHash,
+          roles: ["user", "admin"],
+          tier: "pro",
+          birthYear: 1990,
+          ageVerifiedAt: new Date(),
+          privacyPolicyAcceptedAt: new Date(),
+        })
+        .returning();
+      if (!user) throw new Error("failed to create admin");
+      return toPublic(user);
+    }
+
+    const targetId = byEmail?.id ?? existing.id;
+    if (byUsername && byUsername.id !== targetId) {
+      await this.db
+        .update(users)
+        .set({
+          username: `${username}_was_${byUsername.id.replace(/-/g, "").slice(0, 8)}`,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, byUsername.id));
+    }
+
+    const roles = Array.from(new Set([...(existing.roles ?? []), "user", "admin"]));
+    const [user] = await this.db
+      .update(users)
+      .set({
+        passwordHash,
+        email,
+        username,
+        roles,
+        deletedAt: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, targetId))
+      .returning();
+    if (!user) throw new Error("failed to repair admin");
+    return toPublic(user);
+  }
+
+  /**
    * Create or repair a non-admin amateur tester. If the username or email already
    * exists, reset the password hash so a known login cannot stay broken.
    */

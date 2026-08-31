@@ -673,7 +673,11 @@ export function App() {
           ) : overlay?.kind === "terms" ? (
             <LegalDocumentScreen title="Terms of Use" sections={termsOfUseSections} onClose={() => setOverlay(null)} />
           ) : overlay?.kind === "admin" ? (
-            <AdminScreen user={user} onNeedAccount={() => goSignIn()} />
+            <AdminScreen
+              user={user}
+              onSignedIn={(next) => setUser(next)}
+              onSignedOut={() => setUser(null)}
+            />
           ) : overlay?.kind === "post" && activePost ? (
             <PostThreadScreen
               post={activePost}
