@@ -25,6 +25,17 @@ export const giftRoutes: FastifyPluginAsync<{ gifts: GiftService; appBaseUrl?: s
     return { checkout };
   });
 
+  app.post("/coins/reconcile", async (req, reply) => {
+    if (!req.user) return reply.code(401).send({ error: "unauthorized" });
+    const result = await gifts.reconcileOpenCheckouts(req.user.id);
+    const wallet = await gifts.getWallet(req.user.id);
+    return {
+      balanceCoins: wallet.balanceCoins,
+      creditedCoins: result.creditedCoins,
+      sessionsChecked: result.sessionsChecked,
+    };
+  });
+
   app.get("/creators/earnings", async (req, reply) => {
     if (!req.user) return reply.code(401).send({ error: "unauthorized" });
     return await gifts.getCreatorEarnings(req.user.id);

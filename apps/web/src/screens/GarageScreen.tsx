@@ -405,25 +405,72 @@ function WalletAndEarnings() {
   useEffect(() => {
     void refreshBalances();
     const params = new URLSearchParams(window.location.search);
+    const coinSuccess = params.get("coins") === "success";
     const paid =
-      params.get("coins") === "success" ||
+      coinSuccess ||
       params.get("tip") === "success" ||
       params.get("billing") === "success";
     if (paid) {
       setNotice(
-        params.get("coins") === "success"
+        coinSuccess
           ? "Coin purchase received — balance updates when Stripe confirms (usually a few seconds)."
           : params.get("tip") === "success"
             ? "Tip payment received — the creator balance updates when Stripe confirms."
             : "Payment received — balances refresh shortly.",
       );
-      // Webhooks can lag behind the redirect; poll a few times.
-      const timers = [1500, 4000, 8000].map((ms) =>
+      let baseline: number | null = null;
+      let reconciled = false;
+      let cancelled = false;
+
+      const pollCoinBalance = async (isLast: boolean) => {
+        if (cancelled) return;
+        try {
+          const wallet = await apiGet<{ balanceCoins: number }>("/wallet");
+          if (baseline === null) baseline = wallet.balanceCoins;
+          setBalanceCoins(wallet.balanceCoins);
+          if (wallet.balanceCoins > baseline) {
+            setNotice(`Coins credited — balance ${wallet.balanceCoins}.`);
+            return;
+          }
+          if (coinSuccess && isLast && !reconciled && (wallet.balanceCoins === 0 || wallet.balanceCoins === baseline)) {
+            reconciled = true;
+            const result = await apiSend<{ balanceCoins: number; creditedCoins: number }>(
+              "/coins/reconcile",
+              "POST",
+            );
+            setBalanceCoins(result.balanceCoins);
+            setNotice(
+              result.creditedCoins > 0
+                ? `Coins credited — balance ${result.balanceCoins}.`
+                : "Payment received — if coins don't appear, refresh in a moment.",
+            );
+            return;
+          }
+        } catch {
+          // keep prior notice; earnings refresh is best-effort
+        }
+        if (!coinSuccess) void refreshBalances();
+        else {
+          const [tips, gifts] = await Promise.all([
+            apiGet<{ dashboard: { netCents: number } }>("/creator/earnings").catch(() => null),
+            apiGet<{ balanceCents: number }>("/creators/earnings").catch(() => null),
+          ]);
+          if (tips) setTipEarningsCents(tips.dashboard.netCents);
+          if (gifts) setGiftEarningsCents(gifts.balanceCents);
+        }
+      };
+
+      // Webhooks can lag behind the redirect; poll a few times, then reconcile once if needed.
+      const delays = [1500, 4000, 8000];
+      const timers = delays.map((ms, index) =>
         window.setTimeout(() => {
-          void refreshBalances();
+          void pollCoinBalance(index === delays.length - 1);
         }, ms),
       );
-      return () => timers.forEach((id) => window.clearTimeout(id));
+      return () => {
+        cancelled = true;
+        timers.forEach((id) => window.clearTimeout(id));
+      };
     }
     return undefined;
   }, []);

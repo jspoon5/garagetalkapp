@@ -32,6 +32,7 @@ const SESSION_PREFIXES = [
   "/billing/tips",
   "/wallet",
   "/coins/checkout",
+  "/coins/reconcile",
   "/creators",
   "/gifts",
   "/feed",

@@ -107,17 +107,48 @@ export function LiveSessionScreen({
     if (params.get("coins") === "success") {
       setNotice("Coin purchase received — refreshing your balance…");
       setShowCoins(true);
-      const timers = [1500, 4000, 8000].map((ms) =>
+      let baseline: number | null = null;
+      let reconciled = false;
+      let cancelled = false;
+
+      const poll = async (isLast: boolean) => {
+        if (cancelled) return;
+        try {
+          const wallet = await apiGet<{ balanceCoins: number }>("/wallet");
+          if (baseline === null) baseline = wallet.balanceCoins;
+          setWalletCoins(wallet.balanceCoins);
+          if (wallet.balanceCoins > baseline) {
+            setNotice(`Balance updated: ${wallet.balanceCoins} coins.`);
+            return;
+          }
+          if (isLast && !reconciled && (wallet.balanceCoins === 0 || wallet.balanceCoins === baseline)) {
+            reconciled = true;
+            const result = await apiSend<{ balanceCoins: number; creditedCoins: number }>(
+              "/coins/reconcile",
+              "POST",
+            );
+            setWalletCoins(result.balanceCoins);
+            setNotice(
+              result.creditedCoins > 0
+                ? `Balance updated: ${result.balanceCoins} coins.`
+                : "Payment received — if coins don't appear, refresh in a moment.",
+            );
+          }
+        } catch {
+          // ignore transient wallet errors during Stripe lag
+        }
+      };
+
+      const delays = [1500, 4000, 8000];
+      const timers = delays.map((ms, index) =>
         window.setTimeout(() => {
-          void apiGet<{ balanceCoins: number }>("/wallet")
-            .then((data) => {
-              setWalletCoins(data.balanceCoins);
-              setNotice(`Balance updated: ${data.balanceCoins} coins.`);
-            })
-            .catch(() => undefined);
+          void poll(index === delays.length - 1);
         }, ms),
       );
-      return () => timers.forEach((id) => window.clearTimeout(id));
+      return () => {
+        cancelled = true;
+        timers.forEach((id) => window.clearTimeout(id));
+      };
     }
     return undefined;
   }, [user?.id, showCoins]);
