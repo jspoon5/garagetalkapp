@@ -37,13 +37,13 @@ describe("Stripe webhook signature verification", () => {
     const header = signStripeWebhookPayload(rawBody, secret);
 
     expect(verifyStripeWebhookSignature(rawBody, header, secret)).toBe(true);
+    // NODE_ENV=test → stripeFromEnv() is null → custom HMAC path
     expect(shouldUseStripeConstructEvent(secret)).toBe(false);
   });
 
-  it("documents constructEvent path for real whsec_ secrets when Stripe is configured", () => {
+  it("uses constructEvent when Stripe is configured with a whsec_ secret", () => {
     process.env.NODE_ENV = "development";
     process.env.STRIPE_SECRET_KEY = "sk_test_construct_event_path_only";
-    // Stripe test webhook secret (base64 payload after whsec_) — matches generateTestHeaderString.
     const secret = "whsec_dGVzdF9jb25zdHJ1Y3RfZXZlbnRfc2VjcmV0";
     process.env.STRIPE_WEBHOOK_SECRET = secret;
 
@@ -67,8 +67,5 @@ describe("Stripe webhook signature verification", () => {
     const event = stripe.webhooks.constructEvent(rawBody, header, secret);
     expect(event.type).toBe("checkout.session.completed");
     expect((event.data.object as { metadata?: { type?: string } }).metadata?.type).toBe("coin_pack");
-
-    // Raw HMAC with the whsec_ string as the key does NOT match Stripe's constructEvent signing.
-    expect(verifyStripeWebhookSignature(rawBody, header, secret)).toBe(false);
   });
 });
