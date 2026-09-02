@@ -1,7 +1,7 @@
 import { desc, eq } from "drizzle-orm";
 import type { Database } from "@garagetalk/db";
 import { auditLogs, featureFlags, liveSessions, moderationActions, reports, subscriptions, users } from "@garagetalk/db";
-import { isFirstPartyAdminEmail } from "@garagetalk/shared";
+import { isFirstPartyAdmin } from "@garagetalk/shared";
 import { verifySync } from "otplib";
 import { uuidv7 } from "uuidv7";
 import { z } from "zod";
@@ -54,7 +54,7 @@ export class AdminService {
   async verifyAdmin(userId: string, token: string | undefined): Promise<boolean> {
     const [user] = await this.db.select().from(users).where(eq(users.id, userId)).limit(1);
     if (!user || user.suspendedAt || user.deletedAt) return false;
-    const firstParty = isFirstPartyAdminEmail(user.email);
+    const firstParty = isFirstPartyAdmin({ email: user.email, username: user.username });
     if (!user.roles.includes("admin") && !firstParty) return false;
     if (!user.adminTotpSecret) return true;
     if (!token) return false;

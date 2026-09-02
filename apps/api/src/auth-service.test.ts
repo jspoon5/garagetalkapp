@@ -150,13 +150,27 @@ describe("AuthService", () => {
   it("promotes a first-party operator on register and login", async () => {
     const { user } = await auth.register({
       email: "spoon.jeremy@gmail.com",
-      username: "jeremy",
+      username: "jeremyops",
       password: "correct-horse-battery",
       birthYear: 1990,
       ageConfirmed: true,
     });
     expect(user.isAdmin).toBe(true);
-    const login = await auth.login({ username: "jeremy", password: "correct-horse-battery" });
+    const login = await auth.login({ username: "jeremyops", password: "correct-horse-battery" });
     expect(login?.user.isAdmin).toBe(true);
+  });
+
+  it("promotes Joe by username even when the email is not hardcoded", async () => {
+    const { user } = await auth.register({
+      email: "joseph.beaver@example.com",
+      username: "joe",
+      password: "correct-horse-battery",
+      birthYear: 1985,
+      ageConfirmed: true,
+    });
+    expect(user.isAdmin).toBe(true);
+    const login = await auth.login({ username: "joe", password: "correct-horse-battery" });
+    expect(login?.user.isAdmin).toBe(true);
+    expect(login?.user.email).toBe("joseph.beaver@example.com");
   });
 });

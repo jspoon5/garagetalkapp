@@ -17,10 +17,10 @@ const TIER_LABEL: Record<AdminUserRow["tier"], string> = {
 
 export function AdminScreen({
   user,
-  onNeedAccount,
+  setUser,
 }: {
   user: User | null;
-  onNeedAccount: () => void;
+  setUser: (user: User | null) => void;
 }) {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [rows, setRows] = useState<AdminUserRow[]>([]);
@@ -28,12 +28,12 @@ export function AdminScreen({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
+  const [signingIn, setSigningIn] = useState(false);
 
   async function load(nextQuery = query) {
-    if (!user) {
-      onNeedAccount();
-      return;
-    }
+    if (!user?.isAdmin) return;
     setError(null);
     try {
       const path = nextQuery.trim()
@@ -47,7 +47,7 @@ export function AdminScreen({
       setRows(listed.users);
     } catch (err) {
       if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
-        setError("This desk is for first-party operators. Sign in with Jeremy or Joe’s Garage Talk account.");
+        setError("This desk is for Jeremy and Joe. Sign in with your Garage Talk account.");
         setStats(null);
         setRows([]);
         return;
@@ -58,7 +58,36 @@ export function AdminScreen({
 
   useEffect(() => {
     void load().catch(() => undefined);
-  }, [user?.id]);
+  }, [user?.id, user?.isAdmin]);
+
+  async function signIn() {
+    setError(null);
+    setSigningIn(true);
+    try {
+      const data = await apiSend<{ user: User }>("/auth/login", "POST", {
+        username: identifier.trim(),
+        password,
+      });
+      setPassword("");
+      setUser(data.user);
+      if (!data.user.isAdmin) {
+        setError("Signed in, but this account is not an operator. Use Jeremy or Joe’s Garage Talk login.");
+      }
+    } catch {
+      setError("Could not sign in. Use the same username or email and password as the app.");
+    } finally {
+      setSigningIn(false);
+    }
+  }
+
+  async function signOut() {
+    await apiSend("/auth/logout", "POST");
+    setUser(null);
+    setStats(null);
+    setRows([]);
+    setError(null);
+    setNotice(null);
+  }
 
   async function setTier(row: AdminUserRow, tier: "pro" | "amateur") {
     setBusyId(row.id);
@@ -88,17 +117,53 @@ export function AdminScreen({
     }
   }
 
-  if (!user) {
+  if (!user || !user.isAdmin) {
     return (
       <>
         <div className="screen-intro">
           <span>ADMIN</span>
           <h1>Operator desk.</h1>
-          <p>Sign in with the same Garage Talk account Jeremy or Joe already use. There is no separate admin password.</p>
+          <p>Sign in here with Jeremy or Joe’s Garage Talk username or email. Same password as the app. No separate admin password.</p>
         </div>
-        <button type="button" className="sell-button" data-testid="admin-need-account" onClick={onNeedAccount}>
-          Sign in
-        </button>
+        {error ? <p className="auth-error">{error}</p> : null}
+        <form
+          className="auth-card"
+          data-testid="admin-login-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void signIn();
+          }}
+        >
+          <label>
+            Username or email
+            <input
+              data-testid="admin-login-username"
+              autoComplete="username"
+              value={identifier}
+              onChange={(event) => setIdentifier(event.target.value)}
+              required
+            />
+          </label>
+          <label>
+            Password
+            <input
+              data-testid="admin-login-password"
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              required
+            />
+          </label>
+          <button type="submit" data-testid="admin-login-submit" disabled={signingIn}>
+            {signingIn ? "Signing in…" : "Sign in to admin"}
+          </button>
+        </form>
+        {user && !user.isAdmin ? (
+          <button type="button" className="sheet-close" onClick={() => void signOut()}>
+            Sign out {user.username}
+          </button>
+        ) : null}
       </>
     );
   }
@@ -183,6 +248,9 @@ export function AdminScreen({
         </article>
       ))}
       {rows.length === 0 && !error ? <p className="empty-state">No users match that search.</p> : null}
+      <button type="button" className="sheet-close" data-testid="admin-sign-out" onClick={() => void signOut()}>
+        Sign out
+      </button>
     </>
   );
 }

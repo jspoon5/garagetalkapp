@@ -2,9 +2,14 @@
 
 Attached to normal Garage Talk sign-in. No separate admin password and no public self-serve tier endpoint.
 
+## How to log in
+
+Open `/admin` on the app. The desk has its own username/email + password form. Use the same Garage Talk account Jeremy or Joe already use. After a successful operator sign-in, the subscriber list stays on `/admin`.
+
 ## Who can open it
 
-Jeremy Spoon (`spoon.jeremy@gmail.com`) is hardcoded. Joseph Beaver (Joe) is admitted when his Garage Talk login email is listed in `ADMIN_EMAIL` or `ADMIN_EMAILS` (comma-separated). After that, they sign in on the app like anyone else and open **Garage → Admin desk** or `/admin`.
+- Jeremy Spoon: email `spoon.jeremy@gmail.com`, or username `jeremy` / `jspoon5`
+- Joseph Beaver (Joe): username `joe` / `joseph` / `josephbeaver` / `jbeaver`, or any email listed in `ADMIN_EMAIL` / `ADMIN_EMAILS`
 
 Session cookie is the gate. TOTP is only required if that operator already has `admin_totp_secret` set. Testers are never admins.
 

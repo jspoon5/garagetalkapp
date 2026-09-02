@@ -55,6 +55,8 @@ export const envSchema = z.object({
   ADMIN_EMAIL: z.string().optional(),
   /** Comma-separated first-party admin emails (Joe and extras). */
   ADMIN_EMAILS: z.string().optional(),
+  /** Comma-separated first-party admin usernames. */
+  ADMIN_USERNAMES: z.string().optional(),
 });
 
 export type AppEnv = z.infer<typeof envSchema>;

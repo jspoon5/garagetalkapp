@@ -10,7 +10,7 @@ import {
   type EmailClient,
 } from "@garagetalk/email";
 import { uuidv7 } from "uuidv7";
-import { isFirstPartyAdminEmail, meetsMinimumAge } from "@garagetalk/shared";
+import { isFirstPartyAdmin, meetsMinimumAge } from "@garagetalk/shared";
 
 const ARGON2_OPTS: argon2.Options & { raw?: false } = {
   type: argon2.argon2id,
@@ -153,7 +153,7 @@ export class AuthService {
     const passwordHash = await argon2.hash(input.password, ARGON2_OPTS);
 
     const now = new Date();
-    const roles = isFirstPartyAdminEmail(email) ? ["user", "admin"] : ["user"];
+    const roles = isFirstPartyAdmin({ email, username }) ? ["user", "admin"] : ["user"];
     const [user] = await this.db
       .insert(users)
       .values({
@@ -238,7 +238,9 @@ export class AuthService {
   private async ensureFirstPartyAdminRole(
     user: typeof users.$inferSelect,
   ): Promise<typeof users.$inferSelect> {
-    if (!isFirstPartyAdminEmail(user.email) || user.roles.includes("admin")) return user;
+    if (!isFirstPartyAdmin({ email: user.email, username: user.username }) || user.roles.includes("admin")) {
+      return user;
+    }
     const roles = [...new Set([...user.roles, "admin"])];
     const [updated] = await this.db
       .update(users)

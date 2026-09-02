@@ -207,6 +207,38 @@ describe("A10 admin", () => {
     );
   });
 
+  it("lets Joe sign in with username and open admin without TOTP", async () => {
+    const registered = await app.inject({
+      method: "POST",
+      url: "/auth/register",
+      payload: {
+        email: "joseph.beaver@example.com",
+        username: "joe",
+        password: "correct-horse-battery",
+        birthYear: 1985,
+        ageConfirmed: true,
+      },
+    });
+    expect(registered.statusCode).toBe(200);
+    expect(registered.json().user.isAdmin).toBe(true);
+
+    const login = await app.inject({
+      method: "POST",
+      url: "/auth/login",
+      payload: { username: "joe", password: "correct-horse-battery" },
+    });
+    expect(login.statusCode).toBe(200);
+    const cookie = cookieFrom(login);
+    const me = await app.inject({
+      method: "GET",
+      url: "/admin/me",
+      headers: { cookie },
+    });
+    expect(me.statusCode).toBe(200);
+    expect(me.json().admin).toBe(true);
+    expect(me.json().user.username).toBe("joe");
+  });
+
   it("lets a first-party operator grant Pro with app session only", async () => {
     const previous = process.env.ADMIN_EMAILS;
     process.env.ADMIN_EMAILS = "joe.operator@example.com";
