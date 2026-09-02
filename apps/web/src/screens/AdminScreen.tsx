@@ -58,6 +58,8 @@ export function AdminScreen({
   const [totp, setTotp] = useState("");
   const [loginBusy, setLoginBusy] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   async function loadDashboard() {
     const data = await apiGet<{ stats: DashboardStats }>("/admin/dashboard");
@@ -132,12 +134,39 @@ export function AdminScreen({
     setUsers([]);
   }
 
+  async function setTier(row: AdminUserRow, tier: "pro" | "amateur") {
+    setBusyId(row.id);
+    setError(null);
+    setNotice(null);
+    try {
+      const result = await apiSend<{ user: AdminUserRow }>(`/admin/users/${row.id}/tier`, "PATCH", {
+        tier,
+        status: tier === "pro" ? "active" : "canceled",
+      });
+      setUsers((current) => current.map((item) => (item.id === row.id ? { ...item, ...result.user } : item)));
+      setNotice(
+        tier === "pro"
+          ? `Granted Pro to ${row.email}. No Stripe charge was created.`
+          : `Revoked Pro from ${row.email}.`,
+      );
+      await loadDashboard().catch(() => undefined);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        setError("Session expired. Sign in again.");
+        return;
+      }
+      setError(`Could not update ${row.email}.`);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   if (!user || !isAdmin) {
     return (
       <div className="screen-intro">
         <span>ADMIN</span>
         <h1>Admin login</h1>
-        <p>Sign in with the operator account from ADMIN_EMAIL / ADMIN_PASSWORD.</p>
+        <p>Sign in with Joe’s operator account. Username joe or email joe@garagetalk.app. Same password we issued — Joe does not register himself.</p>
         {user && !isAdmin ? (
           <p className="auth-error">
             Signed in as @{user.username}, but that account is not an admin. Use the operator login below.
@@ -206,6 +235,7 @@ export function AdminScreen({
         </button>
       </div>
       {error ? <p className="auth-error">{error}</p> : null}
+      {notice ? <p className="empty-state">{notice}</p> : null}
       {busy && !stats ? <p className="empty-state">Loading…</p> : null}
 
       {stats ? (
@@ -279,7 +309,7 @@ export function AdminScreen({
       </form>
 
       {users.map((row) => (
-        <article className="feed-card" key={row.id}>
+        <article className="feed-card" key={row.id} data-testid={`admin-user-${row.username}`}>
           <strong>@{row.username}</strong>
           <p>
             {row.email} · {row.tier}/{row.tierStatus}
@@ -287,6 +317,24 @@ export function AdminScreen({
             {row.suspendedAt ? " · suspended" : ""}
           </p>
           <p className="empty-state">{row.id}</p>
+          <div className="admin-user-actions">
+            <button
+              type="button"
+              data-testid={`admin-grant-pro-${row.username}`}
+              disabled={busyId === row.id || row.tier === "pro"}
+              onClick={() => void setTier(row, "pro")}
+            >
+              Grant Pro
+            </button>
+            <button
+              type="button"
+              data-testid={`admin-revoke-pro-${row.username}`}
+              disabled={busyId === row.id || row.tier === "amateur"}
+              onClick={() => void setTier(row, "amateur")}
+            >
+              Revoke
+            </button>
+          </div>
         </article>
       ))}
 

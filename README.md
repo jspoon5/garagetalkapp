@@ -49,12 +49,12 @@ Set dashboard secrets as needed (`ADMIN_*`, Stripe, Twilio, AI, Resend). `SESSIO
 
 ### Admin login
 
-1. On the `garagetalk-app` service, set `ADMIN_EMAIL` and `ADMIN_PASSWORD` (min 10 characters). Optional: `ADMIN_USERNAME` (defaults from the email local-part).
-2. Redeploy so boot seed creates/repairs the operator with the `admin` role.
-3. Open `https://app.garagetalk.app/admin` (or the app host + `/admin`), sign in with that email/username and password.
+1. On the `garagetalk-app` service, set `ADMIN_PASSWORD` (min 10 characters). Optional overrides: `ADMIN_EMAIL` (default `joe@garagetalk.app`) and `ADMIN_USERNAME` (default `joe`).
+2. Redeploy so boot seed creates/repairs Joe’s operator account with the `admin` role. Joe does not register himself.
+3. Open `https://app.garagetalk.app/admin` and sign in with `joe` or `joe@garagetalk.app` and that password.
 4. If the account has admin 2FA enrolled, enter the authenticator code on the same form.
 
-Without `ADMIN_EMAIL` / `ADMIN_PASSWORD`, the API logs a warning and `/admin` has no operator account to sign in with.
+Without `ADMIN_PASSWORD`, the API logs a warning and `/admin` has no operator account to sign in with.
 
 Planned custom domains (after DNS cutover):
 

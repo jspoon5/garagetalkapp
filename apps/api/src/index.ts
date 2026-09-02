@@ -59,9 +59,9 @@ async function main() {
       const auth = new AuthService(db, { appBaseUrl });
       const adminUsername = await seedAdminFromEnv(auth);
       if (adminUsername) {
-        app.log.info({ username: adminUsername }, "seeded admin operator from ADMIN_EMAIL");
+        app.log.info({ username: adminUsername }, "seeded admin operator");
       } else {
-        app.log.warn("ADMIN_EMAIL/ADMIN_PASSWORD not set — /admin login will not work until configured");
+        app.log.warn("ADMIN_PASSWORD not set — /admin login will not work until configured");
       }
     } catch (err) {
       app.log.error({ err }, "admin seed failed");
