@@ -41,6 +41,7 @@ If Joe later revokes tester in the desk, later boots will **not** re-grant. Re-g
 ```bash
 ADMIN_EMAIL=joe@example.com
 ADMIN_EMAILS=joe@example.com,ops@garagetalk.app
+ADMIN_USERNAMES=josephbeaver
 ```
 
-Do not put tester emails here.
+Do not put tester emails or usernames here.
